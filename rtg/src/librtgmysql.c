@@ -39,18 +39,18 @@ int __db_test() {
 }
 
 /* return the thread-specific mysql variable */
-MYSQL getmysql() {
+MYSQL * getmysql() {
 	MYSQL *mysql;
 	/* if this fails it will just return NULL */
 	mysql = pthread_getspecific(key);
 
-	return(*mysql);
+	return(mysql);
 }
 
 /* utility function to safely escape table names */
 char *escape_string(char *output, char *input)
 {
-	MYSQL mysql = getmysql();
+	MYSQL * mysql = getmysql();
 
 	/* length of string */
 	size_t input_len = strlen(input);
@@ -61,7 +61,7 @@ char *escape_string(char *output, char *input)
 
 	/* TODO check return */
 	/* escape the string */
-	mysql_real_escape_string(&mysql, scratch, input, input_len);
+	mysql_real_escape_string(mysql, scratch, input, input_len);
 
 	/* set output to correct length string, including NUL */
 	asprintf(&output, "%s", scratch);
@@ -76,9 +76,9 @@ char *escape_string(char *output, char *input)
  * we don't try and reconnect because this is sometimes used to confirm a disconnect
  */
 int __db_status() {
-	MYSQL mysql = getmysql();
+	MYSQL * mysql = getmysql();
 
-	if (mysql_ping(&mysql) == 0) {
+	if (mysql_ping(mysql) == 0) {
 		return TRUE;
 	} else {
 		return FALSE;
@@ -138,10 +138,10 @@ int __db_connect(config_t *config) {
 }
 
 int __db_disconnect() {
-	MYSQL mysql = getmysql();
+	MYSQL * mysql = getmysql();
 
 	/* no return value to check */
-	mysql_close(&mysql);
+	mysql_close(mysql);
 
 	debug(LOW, "Mysql connection closed\n");
 
@@ -149,7 +149,7 @@ int __db_disconnect() {
 }
 
 int __db_insert(char *table, int iid, unsigned long long insert_val, double insert_rate) {
-	MYSQL mysql = getmysql();
+	MYSQL * mysql = getmysql();
 
 	char *query;
 
@@ -169,14 +169,14 @@ int __db_insert(char *table, int iid, unsigned long long insert_val, double inse
 
 	/* now execute the query */
 
-	result = mysql_real_query(&mysql, query, strlen(query));
+	result = mysql_real_query(mysql, query, strlen(query));
 
 	free(query);
 
 	if (result == 0) {
 		return TRUE;
 	} else {
-		debug(LOW, "MySQL error: %s\n", mysql_error(&mysql));
+		debug(LOW, "MySQL error: %s\n", mysql_error(mysql));
 		return FALSE;
 	}
 }
@@ -186,11 +186,11 @@ int __db_commit() {
     struct timespec ts2;
     unsigned int ms_took;
     int com_ret;
-    MYSQL mysql = getmysql();
+    MYSQL * mysql = getmysql();
 
     clock_gettime(CLOCK_REALTIME,&ts1);
     
-    com_ret = mysql_commit(&mysql);
+    com_ret = mysql_commit(mysql);
 
     clock_gettime(CLOCK_REALTIME,&ts2);
     
