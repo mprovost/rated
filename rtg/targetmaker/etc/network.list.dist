@@ -1,0 +1,12 @@
+# $Id: network.list.dist,v 1.1 2008/01/19 03:22:14 btoneill Exp $
+#
+# Network polling list
+# Format: network_base:ip range
+# the network base only works for /24 networks, you can NOT use
+# /16's or /8's. If you don't know what these means, just 
+# follow the examples :)
+# 
+# EXAMPLE: 192.168.1:1-25
+# This would scan hosts 192.168.1.1 thru 192.168.1.25
+# 
+

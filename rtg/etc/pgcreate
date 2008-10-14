@@ -1,0 +1,118 @@
+#!/bin/sh 
+#
+# Script creates necessary Postgres databases, tables and users for a
+# standard RTG installation.
+#
+
+if [ $# -ne 1 ]; then
+   echo 1>&2 Usage: $0 postgres_root_password 
+   exit 127
+fi
+PGSQLBIN="/usr/bin"
+ROOTPASS=$1
+HOST="localhost"
+RTGPASS="rtgdefault"
+DATABASE="rtg"
+USER="snmp"
+
+echo ""
+echo "$0 setting up Postgres database for RTG."
+echo "Using Postgres binaries in $PGSQLBIN."
+echo ""
+
+cat <<EOT >/tmp/rtg.sql
+--#
+--# Table structure for table 'router'
+--#
+
+CREATE TABLE router (
+  rid int NOT NULL,
+  name char(120) NOT NULL default '',
+  pop char(10) NOT NULL default '',
+  popid smallint NOT NULL default '0'
+);
+CREATE INDEX router_idx ON router (rid);
+
+--#
+--# Table structure for table 'interface'
+--#
+
+CREATE TABLE interface (
+  id int NOT NULL,
+  name char(255) NOT NULL default '',
+  rid int NOT NULL default '0',
+  speed bigint default NULL,
+  description char(255) default NULL,
+  status boolean default true
+);
+CREATE INDEX interface_idx ON interface (id);
+
+--#
+--# Table structure for table 'ifInOctets'
+--#
+
+CREATE TABLE ifInOctets (
+  id int NOT NULL default '0',
+  dtime timestamp NOT NULL,
+  counter bigint NOT NULL default '0',
+  rate real NOT NULL default '0.0'
+);
+CREATE INDEX ifInOctets_idx ON ifInOctets (dtime);
+
+--#
+--# Table structure for table 'ifOutOctets'
+--#
+
+CREATE TABLE ifOutOctets (
+  id int NOT NULL default '0',
+  dtime timestamp NOT NULL,
+  counter bigint NOT NULL default '0',
+  rate real NOT NULL default '0.0'
+);
+
+CREATE INDEX ifOutOctets_idx ON ifOutOctets (dtime);
+
+--#
+--# Table structure for table 'ifInUcastPkts'
+--#
+
+CREATE TABLE ifInUcastPkts (
+  id int NOT NULL default '0',
+  dtime timestamp NOT NULL,
+  counter bigint NOT NULL default '0',
+  rate real NOT NULL default '0.0'
+);
+CREATE INDEX ifInUcastPkts_idx ON ifInUcastPkts (dtime);
+
+--#
+--# Table structure for table 'ifOutUcastPkts'
+--#
+
+CREATE TABLE ifOutUcastPkts (
+  id int NOT NULL default '0',
+  dtime timestamp NOT NULL,
+  counter bigint NOT NULL default '0',
+  rate real NOT NULL default '0.0'
+);
+CREATE INDEX ifOutUcastPkts_idx ON ifOutUcastPkts (dtime);
+
+--#
+--# Table structure for table 'ifInErrors'
+--#
+
+CREATE TABLE ifInErrors (
+  id int NOT NULL default '0',
+  dtime timestamp NOT NULL,
+  counter bigint NOT NULL default '0',
+  rate real NOT NULL default '0.0'
+);
+CREATE INDEX ifInErrors_idx ON ifInErrors (dtime);
+EOT
+
+echo "Creating Postgres user \"$USER\"..."
+$PGSQLBIN/psql -U postgres -d template1 -c "CREATE USER $USER WITH PASSWORD '$RTGPASS'"
+echo "Creating RTG database \"$DATABASE\"..."
+$PGSQLBIN/createdb -U postgres --owner $USER $DATABASE
+echo "Creating RTG tables..."
+cat /tmp/rtg.sql | $PGSQLBIN/psql -U $USER -d $DATABASE
+echo "Done."

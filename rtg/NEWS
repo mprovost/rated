@@ -1,0 +1,194 @@
+rtg-0.9 (CVS Only) (Development Branch)
+* Created 0.9 branch
+* fully to librtgmysql.so
+* fully migrated to new plot format
+
+rtg-0.8.1 (CVS Only) (Development Branch)
+---------
+* Created 0.8 branch.
+* Added daemon support, poller forks and detaches by default.
+* Added syslog support, poller logs to syslog when daemon.
+* Added thread cancellation logic.
+* Added Postgres support.
+* Added support for version 0.8 format target files.
+* Removed Third Party Packages: gd, libpng, zlib.
+* Autoconf changes to find gd, libpng, zlib.
+* Autoconf cleaning.
+* Fixed time routines to be 64-bit clean.
+* Rewrote rtgplot, see man.  Rtgplot changes:
+   Added plot border autosizing based on number of legends.
+   Added graph titling
+   Now possible to aggregate arbitrary device:interfaces
+   Can aggregate dynamic (up to memory limit) number of interfaces 
+* From: Bill Fumerola
+   Complete rewrite of target parser using lexx/yacc grammar.
+* Updated Simon Leinen's SNMP_Session to version 1.05 for bundled
+   RTG Perl scripts
+* From: Mark
+   Patch to properly compute rtgplot average rates.
+* From: Garry Thomas
+   Patch to rtgplot so only successfully polled targets transition
+   out of NEW to LIVE status.
+* From: Ian Holsman
+   Patch configure to specify database to Perl DBI scripts.
+* From: Brian T. O'Neill
+   Patch to fix rtgplot version label placement
+* From: Brian T. O'Neill
+   Patch to add rtgplot legend offset
+* From: François Thoret
+   Patch to cleanup x-axis labels
+
+rtg-0.7.5 (CVS Only) (Maintenance Branch)
+---------
+* Changed rtgpoll SQL insert statement to include column names so
+   that new columns can be added without affecting rtgpoll.
+* Fixed rtgplot legend routine so that legend padding is done properly.
+* From: Chris Brotsos
+   rtgtargmkr.pl fix to handle zero ifSpeeds.
+* From: Josh Richard
+   added dbprune script to /contrib
+
+
+rtg-0.7.4 (2003-10-02)
+---------
+* Added fast target hashing in rtgpoll.
+* Added plotting of interface aggregates into rtgplot.
+* Added multiple simultaneous interface plotting into rtgplot.
+* Added y-scaling by interface speed support into rtgplot.  
+* Added arbitrary image and border sizing into rtgplot.
+* Added using autoconf defined --prefix as search path for rtg.conf.
+* Added graph fill of area under plot lines into rtgplot.
+* Added rtgpoll option (-m) to skip checking for multiple instances.
+* Added rtgpoll option (-z) to force database insertion for zero deltas.
+* Added per-target result upper bounds based on ifSpeed and polling
+  interval.
+* Added debug file pointer; allows writing debug info to file while 
+   running rtgplot via CGI.
+* Added contrib directory to top-level distribution tree.
+* Added libz probing in configure; cleaned up probing logic.
+* Changed autoconf SNMP library probing order to detect Net-SNMP first.
+* Changed autoconf and code to use strtoll() if possible.
+* Audit code for potential buffer overflows; modified all code to use 
+   strncpy(), snprintf, and sscan with width specifier.
+* Modified all php to use full tags instead of short tags.
+* Thread code cleaned and logic improved.
+* Fixed bug in rtgplot that incorrectly counted skewed measurements
+   in rate max and average.
+* From: Chris Brotsos
+   Support for per-target maximum polled values.
+* From: Chris Brotsos
+   Patch to allow ASN_INTEGER/ASN_OPAQUE type responses. 
+* From: Shayne Smyth
+   Patch to allow ASN_TIMETICKS type responses.
+* From: Chris Brotsos
+   Patch to implement a PID file and additional signal catching.
+* From: Joost Lek
+   Support for Nth percentile lines in rtgplot.
+* From: Chris Brotsos
+   Patch to allow rtgplot to determine last database value when last
+   delta occurs outside of queried range.
+* From: Michal Szczotka
+   Patch to fix division by zero in 95.pl and report.pl.
+* From: Brian T. O'Neill
+   Patch for extending YPLOT_AREA with GAUGE data lines to allow visibility. 
+* From: Brian T. O'Neill
+   Patch for allowing configurable HighSkewSlop and LowSkewSlop (See README).
+* From: Brian T. O'Neill
+   Patch to implement factor logic with GAUGE data.
+* From: Brian T. O'Neill
+   Modularized rtgtargmkr included in contrib.
+* From: Brian T. O'Neill
+   Patch to properly read large interface speeds from database.
+
+
+rtg-0.7.3 (2003-02-08)
+---------
+* Fixed bug in poller() where last_value object was improperly updated
+   when polled device did not respond.
+* Fixed rtgplot.cgi to support apache2.
+* Fixed read_rtg_config() to handle comments and arbitrary ordering.
+* Fixed NULL pointer crash in rtgsnmp.c snmp_free_pdu().
+* Fixed rtgplot to detect, compensate and properly plot missed polls.
+* Fixed rtgplot to time-align samples between multiple data sources
+   when scalex is defined and the data (in database) for one begins
+   before the other.
+* Fixed FreeBSD autoconf support.
+* Added gauge (absolute SNMP counter) support.
+* Added config directive to specify SNMP version (1 or 2).
+* Added config directive to specify number of threads.
+* Added timestamp to poll begin/complete messages.
+* Added poll round counter to poll complete messages.
+* Added shading to rtgplot.c
+* Added red arrow showing direction of growth to rtgplot graphs.
+* Added autoconf detection for libz if required by MySQL.
+* Added 95.php, 95th percentile report PHP web script.
+* Added view.php, an MRTG-style day/week/month display for RTG in PHP.
+* Modified all .pl and .php scripts to find and read from the 
+   master rtg.conf first, then fall back to defaults.
+* Modified rtgtargmkr.pl to read counter bit size from routers
+   configuration file to allow size to be specified per router.
+* Modified sleepy() routine to use usleep calls making the sleep
+   interval exact and the period between polls accurate.
+* Modified rtgtargmkr.pl to write out IPs instead of hostnames so
+   that DNS failures do not impact collection.
+* Aligned rate text in rtgplot.c properly.
+* Updated Simon Leinen's included SNMP_Session to version 0.94 (used 
+   by rtgtargmkr.pl).
+* From: Jon Dustin
+   Patch to rtgtargmkr.pl to perform case insensitive checking of
+   reserved interfaces.
+* From: Stephen Fromm
+   Patch to configure to deal with multiple MySQL installs.
+
+
+rtg-0.7.2 (2002-10-04)
+---------
+* Fixed report.pl to handle interfaces with zero speed gracefully.
+* Rewrote autoconf to detect either UCD-SNMP or Net-SNMP.
+* Fixed incompatibility with ucd/net-snmp versions >= 5.x.  Poller now 
+   fixed to use only 5.x SNMP functions.
+* Fixed bad SQL update statement in rtgtargmkr.pl
+* Made rtgtargmkr.pl Cisco Catalyst aware.
+* Added time range argument to 95th percentile report
+* From: David A. Snodgrass
+   Patch to rtgtargmkr.pl to handle interface descriptions with quotes.
+
+
+rtg-0.7.1 (2002-08-28)
+---------
+* Fixed bad overflow with 64-bit SNMP counters.
+* Fixed database schema to accommodate long interface names.
+* Fixed rtgtargmkr.pl router file parsing.
+* Fixed rtgtargmkr.pl bug handling descriptions with trailing whitespace.
+* From: Adam Rothschild
+   Patch to report.pl to specify time periods.
+* From: David A. Snodgrass
+   Changed createdb MySQL permissions to be more restrictive.
+* From: Omachonu Ogali
+   Patch to rtgtargmkr.pl to support per-device communities.
+
+
+rtg-0.7 (2002-08-07)
+-------
+* Major rewrite of poller to be entirely multi-threaded.  Assumes
+   full pthreads support and MySQL thread-safe client support.  
+* Autoconf fixes to support FreeBSD -pthreads, Solaris thread
+   compiler flags, checks for long longs.
+* Changed insert date to NOW() function to reflect SQL server's current
+   time.  This removes any synchronization issues in the RTG pollers.
+* Fixed SIGHUP initiated memory leak.
+* Cleaned up installation and installation scripts.
+* Added Perl DBI reports.
+* Added Perl target file maintainer script.
+* From: David A. Snodgrass
+   Patch to createdb to include autoconf MySQL path
+
+
+rtg-0.6 (2002-07-23)
+-------
+* Added randomization of target list to "even out" SNMP query load on 
+   network devices.
+* Made the out-of-range value (a sanity check to make sure the value is
+   not larger than it could possibly be) configurable from the RTG
+   configuration file (rtg.conf).
+* Fixed plot scaling issues.

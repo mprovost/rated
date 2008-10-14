@@ -1,0 +1,6 @@
+# $Id: hosts.template.dist,v 1.1 2008/01/19 03:22:14 btoneill Exp $
+#
+# This is the same format as the normal RTG routers file
+# please put any additional hosts in here that might not 
+# get picked up by findsnmp_hosts.
+#

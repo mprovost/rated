@@ -1,0 +1,64 @@
+# $Id: bright,v 1.1 2008/01/19 03:22:16 btoneill Exp $
+# $Author: btoneill $
+# $Date: 2008/01/19 03:22:16 $
+#
+
+# main background color
+BACKGROUND=FF00FF
+#BACKGROUND=123456
+
+# used on configuration screen
+CONFIGNAME=FF99FF
+CONFIGVALUE=FFCCFF
+
+# used on host info part of display screen
+INFONAME=660066
+INFOVALUE=66FF66
+
+# used on class list line on display screen
+CLASSLINE=00FF33
+
+# used on stat name line
+STATNAME=FF9999
+
+# used on interface description line
+INTDESC=FF0033
+
+# stat background color
+STATBACK=66FF33
+
+# stat vertical host background
+STATHOST=0066FF
+STATHOSTALT=0099FF
+
+# used on date range description on interface stat view
+STATDATE=99FF33
+
+# used for stat col name when we compress
+STATCOLNAME=FF3300
+
+FONTFAMILYDEFAULT=Arial, Helvetica, sans-serif
+FONTFAMILYALT=Verdana, Arial, Helvetica, sans-serif
+
+BODYSIZE=10pt
+H1SIZE=14pt
+THSIZE=10pt
+TDSIZE=9pt
+FORMSIZE=10pt
+ASIZE=10pt
+AVISITSIZE=10pt
+AHOVERSIZE=10pt
+ANAVSIZE=10pt
+THWEIGHT=bold
+H1WEIGHT=bold
+
+# font colors 
+LINKCOLOR=blue
+LINKVISITED=blue
+HOVERCOLOR=green
+
+
+TABLE_BORDER=0
+TABLE_CELLSPACING=0
+TABLE_CELLPADDING=0
+

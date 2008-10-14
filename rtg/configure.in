@@ -1,0 +1,355 @@
+# 
+# RTG 0.8.1 configure.in
+# Author: Rob Beverly <rbeverly@users.sourceforge.net>
+#
+
+AC_INIT(src/rtg.h)
+AC_CONFIG_AUX_DIR(config)
+AC_SUBST(ac_aux_dir)
+AM_INIT_AUTOMAKE(rtg, 0.9.0)
+AC_SUBST(VERSION)
+AM_CONFIG_HEADER(config/config.h)
+AC_CANONICAL_HOST
+AC_PREFIX_DEFAULT(/usr/local/rtg)
+
+dnl Define auxiliary libraries
+CGI_LIB_DIR=cgilib-0.4
+
+dnl Compilation Setup
+AC_ARG_WITH(mysql,
+   [  --with-mysql=PATH       MySQL path [default=/usr/local]],,)
+
+AC_ARG_WITH(pgsql,
+   [  --with-pgsql=PATH       Postgres path [default=/usr/local]],,)
+
+AC_ARG_WITH(snmp,
+   [  --with-snmp=PATH        SNMP path [default=/usr/local]],,)
+
+AC_ARG_WITH(gd,
+   [  --with-gd=PATH        gd path [default=/usr/local]],,)
+
+AC_ARG_WITH(png,
+   [  --with-png=PATH        png path [default=/usr/local]],,)
+
+
+dnl substitute them in all the files listed in AC_OUTPUT
+AC_SUBST(CGI_LIB_DIR)
+AC_SUBST(MYSQL_DIR)
+AC_SUBST(RTG_HOME)
+AC_SUBST(DBD_DRIVER)
+
+dnl if host_alias is empty, ac_cv_host_alias may still have the info
+if test -z "$host_alias"; then
+    host_alias=$ac_cv_host_alias
+fi
+
+dnl Platform-specific tweaks
+case $host_alias in
+*solaris*)
+    CPPFLAGS="$CPPFLAGS -D_POSIX_PTHREAD_SEMANTICS"
+    CFLAGS="$CFLAGS -D_POSIX_PTHREAD_SEMANTICS";;
+*freebsd*)
+    LIBS="$LIBS -pthread"
+    AC_DEFINE(HAVE_LIBPTHREAD, 1);;
+esac
+
+dnl Checks for programs.
+AC_PROG_AWK
+AC_PROG_CC
+AC_PROG_CPP
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_DISABLE_STATIC
+AC_PROG_LIBTOOL
+AC_PROG_YACC
+AM_PROG_LEX
+
+AC_MSG_CHECKING([whether to enable -Wall])
+AC_ARG_ENABLE(warnings,
+  [  --enable-warnings       Enable -Wall if using gcc.],
+  [ if test -n "$GCC"; then
+    AC_MSG_RESULT(adding -Wall to CFLAGS.)
+        CFLAGS="$CFLAGS -Wall"
+   fi],AC_MSG_RESULT(no))
+
+dnl Checks for libraries.
+AC_CHECK_LIB(kstat, kstat_lookup)
+AC_CHECK_LIB(nsl, gethostbyname)
+AC_CHECK_LIB(socket, socket)
+AC_CHECK_LIB(m, floor)
+AC_CHECK_LIB(pthread, pthread_exit)
+AC_CHECK_LIB(rt, clock_gettime)
+dnl Some builds of MySQL require libz - try to detect
+AC_CHECK_LIB(z, deflate)
+
+dnl check for libtool
+AC_MSG_CHECKING(libtool)
+for i in /usr /usr/local; do
+	test -f $i/lib/libltdl.a -o -f $i/lib/libltdl.so && LT_LIBDIR=$i/lib
+	test -f $i/lib64/libltdl.a -o -f $i/lib64/libltdl.so && LT_LIBDIR=$i/lib64
+done
+LDFLAGS="-L$LT_LIBDIR $LDFLAGS"
+AC_CHECK_LIB(ltdl, lt_dlinit,,AC_MSG_ERROR(Cannot link with libtool libs! (libltdl)))
+
+dnl Checks for header files.
+AC_HEADER_STDC
+AC_CHECK_HEADERS(malloc.h math.h syslog.h ctype.h sys/time.h netinet/in.h)
+
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+AC_CHECK_TYPES([unsigned long long, long long])
+AC_C_CONST
+AC_TYPE_SIZE_T
+AC_HEADER_TIME
+AC_STRUCT_TM
+
+dnl Checks for library functions.
+AC_TYPE_SIGNAL
+AC_CHECK_FUNCS(gettimeofday strerror strtoll)
+
+dnl Determine RTG home installation path for script substitution
+if test "x$prefix" != "xNONE"; then
+    RTG_HOME=$prefix 
+else 
+    RTG_HOME=/usr/local/rtg
+fi
+AC_DEFINE_UNQUOTED(RTG_HOME, "$RTG_HOME", RTG root installation prefix)
+
+
+dnl ****************** Begin PNG checking ***********************
+if test "x$with_png" != "x"; then
+  PNG_DIR=$with_png
+  for i in / /include /include/png /png; do
+     test -f $with_png/$i/png.h           && PNG_INCDIR=$with_png/$i
+  done
+  test -f $with_png/lib/libpng.a -o -f $with_png/lib/libpng.so && PNG_LIBDIR=$with_png/lib
+  test -f $with_png/lib64/libpng.a -o -f $with_png/lib64/libpng.so && PNG_LIBDIR=$with_png/lib64
+  test -f $with_png/libpng.a -o -f $with_png/libpng.so && PNG_LIBDIR=$with_png
+else
+  for i in /usr/include /usr/local/include; do
+    test -f $i/png.h                       && PNG_INCDIR=$i
+  done
+  for i in /usr /usr/local /usr/local/png; do
+    test -f $i/lib/libpng.a -o -f $i/lib/libpng.so && PNG_LIBDIR=$i/lib
+    test -f $i/lib64/libpng.a -o -f $i/lib64/libpng.so && PNG_LIBDIR=$i/lib64
+  done
+fi
+
+LDFLAGS="-L$PNG_LIBDIR $LDFLAGS"
+dnl CFLAGS="-I$PNG_INCDIR $CFLAGS"
+CPPFLAGS="$CPPFLAGS -I$PNG_INCDIR"
+
+AC_CHECK_HEADER(png.h,[],AC_MSG_ERROR(Can't find png.h!))
+AC_CHECK_LIB(png, png_read_info)
+dnl ****************** End PNG checking ***********************
+
+dnl ****************** Begin GD checking ***********************
+if test "x$with_gd" != "x"; then
+  GD_DIR=$with_gd
+  for i in / /include /include/gd /gd; do
+     test -f $with_gd/$i/gd.h           && GD_INCDIR=$with_gd/$i
+  done
+  test -f $with_gd/lib/libgd.a -o -f $with_gd/lib/libgd.so && GD_LIBDIR=$with_gd/lib
+  test -f $with_gd/libgd.a -o -f $with_gd/libgd.so && GD_LIBDIR=$with_gd
+else
+  for i in /usr/include /usr/local/include /usr/local/include/gd; do
+    test -f $i/gd.h                       && GD_INCDIR=$i
+  done
+  for i in /usr /usr/local; do
+    test -f $i/lib/libgd.a -o -f $i/lib/libgd.so && GD_LIBDIR=$i/lib
+    test -f $i/lib64/libgd.a -o -f $i/lib64/libgd.so && GD_LIBDIR=$i/lib64
+    test -f $i/lib/gd/libgd.a -o -f $i/lib/gd/libgd.so && GD_LIBDIR=$i/lib/gd
+    test -f $i/lib64/gd/libgd.a -o -f $i/lib64/gd/libgd.so && GD_LIBDIR=$i/lib64/gd
+  done
+fi
+
+LDFLAGS="-L$GD_LIBDIR $LDFLAGS"
+dnl CFLAGS="-I$GD_INCDIR $CFLAGS"
+CPPFLAGS="$CPPFLAGS -I$GD_INCDIR"
+
+AC_CHECK_HEADER(gd.h,[],AC_MSG_ERROR(Can't find gd.h!))
+AC_CHECK_LIB(gd, gdImageCreateFromPng,[],AC_MSG_ERROR(Can't find libgd!))
+dnl ****************** End GD checking ***********************
+
+dnl if test "x$with_pgsql" != "x"; then
+
+dnl ****************** Begin Postgres checking ***********************
+AC_MSG_CHECKING(pgsql)
+if test "x$with_pgsql" != "xyes"; then
+  PGSQL_DIR=$with_pgsql
+else
+  for i in /usr /usr/local /usr/local/psql; do
+    test -f $i/bin/psql                         && PGSQL_DIR=$i
+  done
+fi
+
+for i in $PGSQL_DIR /usr /usr/local; do
+   test -f $i/include/libpq-fe.h                    && PGSQL_INC_DIR=$i/include
+   test -f $i/include/postgresql/libpq-fe.h         && PGSQL_INC_DIR=$i/include/postgresql
+done
+
+if test -z "$PGSQL_INC_DIR"; then
+  if test "x$with_pgsql" != "x"; then
+    AC_MSG_ERROR(Cannot find Postgres header files under $PGSQL_DIR)
+  else
+    AC_MSG_WARN(Cannot find Postgres headers.  Use --with-pgsql= to specify non-default path.)
+  fi
+fi
+
+AC_CHECK_LIB(pq, PQconnectdb,
+       [ LIBS="-lpq $LIBS"
+       ltlibraries="librtgpgsql.la $ltlibraries"
+       CPPFLAGS="$CPPFLAGS -I$PGSQL_INC_DIR"
+       AC_DEFINE(HAVE_PGSQL, 1, [Whether you have Postgres]) ],
+       AC_MSG_WARN(Cannot link with Postgres libs! (pq)))
+
+DBD_DRIVER="Pg"
+dnl ****************** End Postgres checking ***********************
+
+dnl else 
+
+dnl ****************** Begin MySQL checking ***********************
+AC_MSG_CHECKING(mysql)
+AC_DEFUN(MYSQL_LIB_CHK,[
+  str="$1/libmysqlclient.*"
+  for j in `echo $str`; do
+    if test -r $j; then
+      MYSQL_LIB_DIR=$1
+      break 2
+    fi
+  done
+])
+
+if test "x$with_mysql" != "x"; then
+  MYSQL_DIR=$with_mysql
+else
+  for i in /usr /usr/local /usr/local/mysql; do
+    test -f $i/bin/mysql                         && MYSQL_DIR=$i
+  done
+fi
+
+for i in $MYSQL_DIR /usr/local /usr/local/mysql; do
+   test -f $i/include/mysql.h                    && MYSQL_INC_DIR=$i/include
+   test -f $i/include/mysql/mysql.h              && MYSQL_INC_DIR=$i/include/mysql
+   test -f $i/mysql/include/mysql.h              && MYSQL_INC_DIR=$i/mysql/include
+done
+
+if test -z "$MYSQL_INC_DIR"; then
+  if test "x$with_mysql" != "x"; then
+    AC_MSG_ERROR(Cannot find MySQL header files under $MYSQL_DIR)
+  else
+    AC_MSG_WARN(Cannot find MySQL headers.  Use --with-mysql= to specify non-default path.)
+  fi
+fi
+
+for i in $MYSQL_DIR /usr/local /usr/local/mysql; do
+   MYSQL_LIB_CHK($i/lib)
+   MYSQL_LIB_CHK($i/lib64)
+   MYSQL_LIB_CHK($i/lib/mysql)
+done
+
+if test -d "$MYSQL_LIB_DIR"; then
+  AC_DEFINE(HAVE_MYSQL, 1, [Whether you have MySQL])
+else
+  AC_MSG_WARN(Cannot find thread-safe MySQL library (libmysqlclient_r))
+fi
+
+DBD_DRIVER="mysql"
+LDFLAGS="-L$MYSQL_LIB_DIR $LDFLAGS"
+CPPFLAGS="$CPPFLAGS -I$MYSQL_INC_DIR"
+
+AC_CHECK_LIB(mysqlclient_r, my_thread_init,
+       [ LIBS="-lmysqlclient_r $LIBS"
+       ltlibraries="librtgmysql.la $ltlibraries" ],
+       AC_MSG_WARN(Cannot link with thread-safe MySQL lib (libmysqlclient_r)))
+dnl ****************** End MySQL checking ***********************
+dnl fi
+
+
+dnl ****************** Begin SNMP checking ***********************
+dnl Determine UCD or Net-SNMP installation paths
+if test "x$with_snmp" != "x"; then
+    for i in / /ucd-snmp /include/ucd-snmp; do
+       test -f $with_snmp/$i/snmp.h           && SNMP_INCDIR=$with_snmp/$i
+    done
+    for i in / /net-snmp /include/net-snmp; do
+       test -f $with_snmp/$i/net-snmp-config.h  && SNMP_INCDIR=$with_snmp/$i
+    done
+    test -f $with_snmp/lib/libsnmp.a -o -f $with_snmp/lib/libsnmp.so && SNMP_LIBDIR=$with_snmp/lib
+    test -f $with_snmp/lib/libnetsnmp.a -o -f $with_snmp/lib/libnetsnmp.so && SNMP_LIBDIR=$with_snmp/lib
+    AC_DEFINE(IN_UCD_SNMP_SOURCE, 1, [UCD SNMP Path Explicitly Defined])
+else
+    for i in /usr/include /usr/local/include; do
+      test -f $i/snmp.h                       && SNMP_INCDIR=$i
+      test -f $i/ucd-snmp/snmp.h              && SNMP_INCDIR=$i/ucd-snmp
+      test -f $i/net-snmp/net-snmp-config.h   && SNMP_INCDIR=$i/net-snmp
+      test -f $i/snmp/snmp.h                  && SNMP_INCDIR=$i/snmp
+      test -f $i/snmp/include/ucd-snmp/snmp.h && SNMP_INCDIR=$i/snmp/include/ucd-snmp
+      test -f $i/snmp/include/net-snmp/net-snmp-config.h && SNMP_INCDIR=$i/snmp/include/net-snmp
+    done
+    for i in /usr /usr/snmp /usr/local /usr/local/snmp; do
+      test -f $i/lib/libsnmp.a -o -f $i/lib/libsnmp.so && SNMP_LIBDIR=$i/lib
+      test -f $i/lib64/libsnmp.a -o -f $i/lib64/libsnmp.so && SNMP_LIBDIR=$i/lib64
+      test -f $i/lib/libnetsnmp.a -o -f $i/lib/libnetsnmp.so && SNMP_LIBDIR=$i/lib
+      test -f $i/lib64/libnetsnmp.a -o -f $i/lib64/libnetsnmp.so && SNMP_LIBDIR=$i/lib64
+    done
+fi
+
+if test -z "$SNMP_INCDIR"; then
+  if test "x$with_snmp" != "x";then
+    AC_MSG_ERROR(Cannot find SNMP header files under $with_snmp)
+  else
+    AC_MSG_ERROR(Cannot find SNMP headers.  Use --with-snmp= to specify non-default path.)
+  fi
+fi
+
+LDFLAGS="-L$SNMP_LIBDIR $LDFLAGS"
+CPPFLAGS="$CPPFLAGS -I$SNMP_INCDIR -I$SNMP_INCDIR/.."
+
+dnl Net/UCD-SNMP includes v3 support and insists on crypto unless 
+dnl compiled --without-openssl
+AC_MSG_CHECKING([if UCD-SNMP needs crypto support])
+SNMP_SSL=no
+AC_TRY_COMPILE([#include <ucd-snmp-config.h>], [exit(USE_OPENSSL != 1);],
+  [  AC_MSG_RESULT(yes)
+     SNMP_SSL=yes ],
+  AC_MSG_RESULT(no))
+AC_MSG_CHECKING([if Net-SNMP needs crypto support])
+AC_TRY_COMPILE([#include <net-snmp-config.h>], [exit(USE_OPENSSL != 1);],
+  [  AC_MSG_RESULT(yes)
+     SNMP_SSL=yes ],
+  AC_MSG_RESULT(no))
+
+if test "$SNMP_SSL" = "yes"; then
+  LDFLAGS="-L/usr/local/ssl/lib $LDFLAGS"
+  AC_CHECK_LIB(crypto, CRYPTO_free,[],[AC_MSG_ERROR(libcrypto not found!)])
+  AC_CHECK_LIB(des, CRYPTO_free,[],[])
+fi
+
+AC_CHECK_LIB(netsnmp, snmp_timeout,
+       [ LIBS="-lnetsnmp $LIBS"
+         AC_DEFINE(HAVE_NET_SNMP, 1, Net-SNMP Found) 
+	 OLD_UCD_SNMP=no ],
+       [ AC_MSG_RESULT(Cannot find Net-SNMP libraries(netsnmp)... checking UCD-SNMP)
+         OLD_UCD_SNMP=yes ])
+
+if test "$OLD_UCD_SNMP" = "yes"; then
+ AC_CHECK_LIB(snmp, snmp_timeout,
+       [ LIBS="-lsnmp $LIBS"
+         AC_DEFINE(OLD_UCD_SNMP, 1, Old UCD SNMP Version) ],
+       AC_MSG_ERROR(Cannot find UCD/Net-SNMP libraries))
+fi
+dnl ****************** End SNMP checking ***********************
+
+AC_SUBST(ltlibraries)
+
+AC_OUTPUT(Makefile                         \
+	  cgilib-0.4/Makefile              \
+	  etc/Makefile                     \
+	  src/Makefile                     \
+	  contrib/Makefile                 \
+	  etc/createdb			   \
+          etc/rtgtargmkr.pl                \
+          etc/common.php                   \
+          man/rtgplot.1                    \
+          man/rtgpoll.1)

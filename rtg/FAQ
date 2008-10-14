@@ -1,0 +1,220 @@
+RTG Frequently Asked Questions (FAQ)
+Last Updated: April 8, 2005
+
+Table of Contents
+-----------------
+1. General
+ 1.1 Where to obtain RTG?
+ 1.2 Why did you write RTG?
+ 1.3 Who should use RTG?
+ 1.4 How fast is RTG?
+ 1.5 Does RTG support SNMP v1/v2c?
+ 1.6 Does RTG support SNMP v3 (encryption)?
+ 1.7 Does RTG support 64-bit SNMP OIDs?
+ 1.8 Does RTG support gauge types?
+ 1.9 Does RTG perform any averaging?
+ 1.10 Does RTG align the data samples?
+ 1.11 Can you explain the default RTG database schema?
+ 1.12 Aren't SQL databases a poor way to store time-series data?
+
+2. Installation 
+ 2.1 Which Operating Systems does RTG run on?
+ 2.2 Can RTG use a database other than MySQL? 
+ 2.3 Do I need to load a special MIB for device X?
+
+3. Configuration
+ 3.1 What is the OutOfRange setting?
+
+4. Common Problems
+ 4.1 SNMP errors and 64-bit counters
+ 4.2 I'm seeing strange spikes/dips in my graphs?
+ 4.3 RTG does not detect some of my interfaces
+ 4.4 rtgplot images in web pages appear broken
+ 4.5 I'm getting many out-of-range errors?
+ 4.6 My database is corrupted!
+ 4.7 Where to find more help
+
+5. Miscellaneous
+ 5.1 What does RTG stand for?
+ 5.2 What are the future development plans for RTG?
+ 5.3 RTG is really useful.  How can I help?
+ 5.4 Submitting code
+
+
+
+1. General
+---------------
+1.1 Where to obtain RTG?
+The RTG home page is: http://rtg.sourceforge.net/ Thanks to SourceForge
+and Firefly Networks for their support.
+
+1.2 Why did you write RTG?
+Because other freely available traffic gathering programs:
+  a) did not finish polling and graphing all of our targets before the 
+     next polling interval
+  b) did not retain data long enough or without averaging
+  c) did not provide an interface to generate complex or custom reports or 
+     graphs
+  d) were resource intensive.
+  e) were not easily distributable
+
+1.3 Who should use RTG?
+If you have requirements to: 
+  a) record large amounts of time-series SNMP data quickly
+  b) keep the data for long periods
+  c) generate complex reports based on the data 
+then RTG is a good fit.  If you are simply looking to generate
+weekly/monthly traffic plots, MRTG [1], RRDtool [2] or Cricket [3] are
+probably better bets.
+
+1.4 How fast is RTG?
+It depends on many factors, but several hundred objects (OIDs) per second
+is typical.  The current RTG speed record is over 1800 objects per second.  
+We maintain an RTG speed record page at:
+http://rtg.sourceforge.net/docs/rtgspeed.html.
+
+1.5 Does RTG support SNMP v1/v2c?
+Yes.
+
+1.6 Does RTG support SNMP v3 (encryption)?
+Not yet.
+
+1.7 Does RTG support 64-bit SNMP OIDs?
+Yes.  
+
+1.8 Does RTG support gauge types?
+Yes.
+
+1.9 Does RTG perform any averaging?
+No.  If your database tables are growing too large, you may wish to
+implement a back-end script that averages data into other tables.
+
+1.10 Does RTG align the data samples, say on 5 minute boundaries?
+No.  It is up to the supporting applications (graphers, perl reports)
+to "do the right thing" and calculate the time between successive samples.
+
+1.11 Can you explain the default RTG database schema?
+Sure.  Many new RTG users are confused about the default database
+schema and concerned that it will not scale in their environment.  As
+with all database issues, the schema will be highly dependent on the
+individual installation.  In fact, the poller is almost completely agnostic
+with regard to the actual schema.  Users are encouraged to tailor the schema
+based on speed, space, targets, number of tables, etc.  Issues related
+to the schema have been discussed on the mailing list, in particular:
+http://fireflynetworks.net/pipermail/rtg/2003-July/000477.html
+
+1.12 Aren't SQL databases a poor way to store time-series data?
+That's a matter of opinion.  We favor the abstract interface that a SQL
+database provides to the data.  This makes it easy to develop new and
+custom reports quickly in any language (C, Perl DBI, PHP, etc).  
+
+
+2. Installation 
+---------------
+2.1 Which Operating Systems does RTG run on?
+RTG is developed on FreeBSD and tested extensively on Solaris and Linux.  
+RTG should compile on most UNIX boxes although autoconf doesn't always
+work its magic properly.  If you modify RTG to support a new platform,
+please let us know.  RTG does not support Windows.
+
+2.2 Can RTG use a database other than MySQL? 
+Yes, RTG also supports Postgres as of version 0.8.  Other databases
+could quite probably be supported, but are not a current focus.
+
+2.3 Do I need to load a special MIB for device X?
+No, assuming that polling device X's OID returns a 32 or 64 bit integer 
+or a gauge.
+
+
+3. Configuration
+---------------
+3.1 What is the OutOfRange setting?
+The OutOfRange (OOR) setting in rtg.conf is just a sanity check to keep
+bogus data from entering the database.  For example, rtg is polling a
+64bit OID on a router; the last value returned was 100. The router is
+rebooted before the next poll.  On the next poll, the router returns 50
+for this OID.  RTG must assume this was a counter wrap, so the delta value
+is: 2^64 - 100 + 50, corresponding to approximately 4^17 bps which is
+clearly impossible.  This is where the OOR comes into play.  It is simply
+a sanity check that is set to a reasonable value. 93750000000 * 8 / 300 ~=
+2.5Gbps, so most people will not want or need to adjust the OOR setting.
+
+
+4. Common Problems
+---------------
+4.1 SNMP errors and 64-bit counters
+If you receive "no such variable name" errors when polling 64-bit OIDs,
+make certain you are using SNMPv2 in rtg.conf.
+
+4.2 I'm seeing strange spikes/dips in my graphs?
+First, make certain that the device was not rebooted or its counters
+reset.  RTG can detect counter wraps, but there is no way to detect
+multiple counter wraps.  With 32 bit counters and 5 minute polling
+intervals, the interface cannot be running more than ~114Mbps or the
+counter will wrap multiple times.  Increase the polling interval or use 64
+bit counters (recommended).
+
+4.3 RTG does not detect some of my interfaces
+The rtgtargmkr.pl script intentionally ignores certain interfaces listed
+in the array @reserved.  To debug the rtgtargmkr.pl script, set the $DEBUG
+and $DBOFF variables to 1 (on).
+
+4.4 rtgplot images in web pages appear broken
+Check the web server error log first, this often reveals the source of 
+the problem.  Make certain the web directory has CGI exec privileges.
+Make certain the rtgplot binary can locate the libraries it requires.
+Instructions for configuring apache are in Section 7 of the README.
+
+4.5 I'm getting many out of range errors?
+This is typically caused by a '0' in the targets file OOR column.
+See also question 3.1.  The next version of RTG will include a new
+configuration file format to prevent this (unintentional) misconfiguration.
+
+4.6 My database is corrupted!
+This isn't an RTG-specific problem, but can occur if the database 
+fills or crashes (e.g. power outage).  The database is typically
+repaired easily, following the MySQL documentation:
+  http://dev.mysql.com/doc/mysql/en/Table_maintenance_SQL.html                    
+  http://dev.mysql.com/doc/mysql/en/REPAIR_TABLE.html 
+
+4.7 Where to find more help
+We're all overworked.  If you could, please follow these steps in order to
+get more help to a particular question:
+
+ a) Read the FAQ/README/NEWS/TODO files carefully
+ b) Browse and search the mailing list archives:
+      http://rtg.sourceforge.net/docs/index.html
+ c) Post to the mailing list
+
+
+5. Miscellaneous
+---------------
+5.1 What does RTG stand for?
+We weren't feeling terribly creative the day we named RTG and we 
+intended to pay our respects to the MRTG authors, Tobias Oetiker
+and Dave Rand.  RTG stands for "Real Traffic Grabber."  Real as
+in no averaging and Grabber to show its primary functionality.
+
+5.2 What are the future development plans for RTG?
+While we've squashed most of the bugs after several releases of RTG,
+there is a substantial backlog of feature requests.  Rather than adding
+each new feature with a separate hack, we're redesigning parts of the
+poller and grapher to allow more flexibility.  This redesign will allow
+for unanticipated new features to be easily added.  See our version 0.8
+roadmap at: http://rtg.sourceforge.net/docs/rtg-0.8.html
+
+5.3 RTG is really useful.  How can I help?
+Send beer!  Alternatively, send us feedback so we can help improve RTG at:
+http://rtg.sourceforge.net/feedback/feedback.html Coders can reference the
+TODO file in the source tarball to find ways to contribute.
+
+5.4 Submitting code
+If you have written a useful {module,extension,patch,script} for RTG 
+that others might benefit from, please share it.  Send to:
+rbeverly at "users" d0t "sourceforge" d0t "net".  Thanks!
+
+
+References:
+[1] MRTG, http://people.ee.ethz.ch/~oetiker/webtools/mrtg/
+[2] RRDtool, http://people.ee.ethz.ch/~oetiker/webtools/rrdtool/
+[3] Cricket, http://cricket.sourceforge.net/

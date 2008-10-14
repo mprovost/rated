@@ -1,0 +1,62 @@
+# $Id: ugly,v 1.1 2008/01/19 03:22:16 btoneill Exp $
+# $Author: btoneill $
+# $Date: 2008/01/19 03:22:16 $
+#
+
+# main background color
+BACKGROUND=cyan
+
+# used on configuration screen
+CONFIGNAME=CCFFCC
+CONFIGVALUE=336633
+
+# used on host info part of display screen
+INFONAME=99FF99
+INFOVALUE=FFFFCC
+
+# used on class list line on display screen
+CLASSLINE=666600
+
+# used on stat name line
+STATNAME=CC99FF
+
+# used on interface description line
+INTDESC=FFCC66
+
+# stat background color
+STATBACK=33FFFF
+
+# stat vertical host background
+STATHOST=33FF33
+STATHOSTALT=00FF99
+
+# used on date range description on interface stat view
+STATDATE=33FFFF
+
+# used for stat col name when we compress
+STATCOLNAME=00CC00
+
+FONTFAMILYDEFAULT=Arial, Helvetica, sans-serif
+FONTFAMILYALT=Verdana, Arial, Helvetica, sans-serif
+
+BODYSIZE=10pt
+H1SIZE=14pt
+THSIZE=10pt
+TDSIZE=12pt
+FORMSIZE=10pt
+ASIZE=12pt
+AVISITSIZE=12pt
+AHOVERSIZE=14pt
+ANAVSIZE=12pt
+THWEIGHT=bold
+H1WEIGHT=bold
+
+# font colors
+LINKCOLOR=orange
+LINKVISITED=orange
+HOVERCOLOR=yellow
+
+TABLE_BORDER=0
+TABLE_CELLSPACING=0
+TABLE_CELLPADDING=0
+

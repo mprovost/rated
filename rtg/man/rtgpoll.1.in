@@ -1,0 +1,161 @@
+.TH rtgpoll 1 "February 2004" "Manual page for rtgpoll"
+.SH NAME
+.I rtgpoll
+\- RTG SNMP polling daemon
+.SH SYNOPSIS
+.B rtgpoll
+\-t file [options]
+.br
+.SH DESCRIPTION
+.I rtgpoll
+queries SNMP-capable devices and inserts the results of these 
+queries into a MySQL database.  The poller reads a fixed-format
+target file, randomizes the targets and maintains a set number
+of queries in flight.  
+.I rtgpoll
+optionally reads a configuration file to modify run-time
+parameters.
+.SH OPTIONS
+.PP
+.TP
+.IR "\-t file"
+Target file.  See target file section below for additional details.
+.TP
+.IR "\-c file"
+Configuration file.  See configuration file section below for additional 
+details.
+.TP
+.IR "\-d"
+Disable database inserts.
+.TP
+.IR "\-m"
+Skip checking for multiple instances.
+.TP
+.IR "\-z"
+Force database insertion of zero deltas.
+.TP
+.IR "\-v"
+Increase verbosity by one level.  Four verbosity levels exist 
+(in increasing order): Off, Low, High, Debug.
+.SH "CONFIGURATION FILE"
+.PP
+.br
+All RTG programs attempt to find an rtg.conf file in the following
+path order:
+.PP
+1. ./rtg.conf
+.br
+2. /usr/local/rtg/etc/rtg.conf
+.br
+3. /etc/rtg.conf
+.PP
+If rtgpoll or rtgplot cannot find an rtg.conf file in any of these 
+paths, it will attempt to create one in the current working directory.
+Most users maintain a master rtg.conf file customized for their 
+environment.  rtg.conf contains the following configurable fields:
+.PP
+  Interval         300
+.br
+  HighSkewSlop     3.0
+.br
+  LowSkewSlop      0.5
+.br
+  OutOfRange       93750000000
+.br
+  SNMP_Ver         1
+.br
+  SNMP_Port        161
+.br
+  DB_Host          localhost
+.br
+  DB_Database      rtg
+.br
+  DB_User          snmp
+.br
+  DB_Pass          rtgdefault
+.br
+  Threads          5
+.PP
+Interval is the time between successive polls of the target list, default
+is 300 seconds (5 minutes).  HighSkewSlop defines the maximum number of
+Intervals allowed between two consecutive poll values before the time in
+seconds between said points is deemed too large to calculate a valid rate.
+With the default Interval and HighSkewSlop values, that time would be 300
+* 3 (15 minutes).  LowSkewSlop defines the minimum number of Intervals
+alloweed between two consecutive poll values before the time in seconds
+between said points is deemed two low to calculate a valid rate.  With the
+default Interval and LowSkewSlop values, that time would be 300 * 0.5 (2.5
+minutes).  OutOfRange defines an upper bound above which rtgpoll will never
+attempt an insert into the database. OutOfRange should be a multiple of
+the maximum number of bytes possible in the defined Interval for your
+highest speed link.  The default OutOfRange value will suffice in most
+installations.  OutOfRange may be specified on a per OID basis in
+the TARGET FILE. OOR values are inserted after the interface ID and before the
+description. The default value entered by rtgtargmkr.pl is basically the
+interface's ifSpeed value multiplied by the Interval specified in rtg.conf.
+Legal values for OOR are 30 or less numeric characters. SNMP_Ver specifies the
+SNMP version the poller will use.
+The number of threads rtgpoll will use is defined in the variable Threads.
+
+Variables in rtg.conf must match the names above exactly.  Comments
+and blank lines are allowed and the ordering of variables in rtg.conf
+does not matter.
+.PP
+.SH "TARGET FILE"
+.PP
+The target file specifies the objects to be SNMP polled.  Comments must be
+preceded with a '#' sign.  Elements in the target file are tab delimited.
+The format of the target file is fixed:
+.PP
+  # Host  OID  64/32  Community  Table   ID   Description
+.PP
+where
+.PP
+  Host        = IP or hostname of target
+.br
+  OID         = Full SNMP OID, e.g. .1.3.6.1.2.1.31.1.1.1.10.19
+.br
+  64/32/0     = Specify 64/32 bit objects or 0 for gauge objects 
+.br
+  Community   = SNMP Community
+.br
+  Table       = MySQL table in the database to use
+.br
+  ID          = A unique ID that is used with each insert
+.br
+  OOR         = The maximum delta of an object's counter within one interval.
+.br
+  Description = Text
+.PP
+RTG can monitor OIDs that return a gauge value allowing one to monitor
+items such as temperature, CPU, users, etc.  If an entry in the target
+file has 0 (zero) specified as the OID bit width instead of 64 or 32,
+the poller assumes that it is monitoring a gauge and does not attempt
+to calculate an interval delta value.
+.PP
+rtgpoll first reads the configuration file, then the target file.  For
+each SNMP poll, rtgpoll will attempt an SQL INSERT of the form:
+.PP
+  INSERT INTO Table VALUES (ID, NOW(), bigint)
+.PP
+Where Table is the name of the database table and ID is an integer.  Both
+Table and ID come from the target list, NOW() is the current timestamp and
+bigint is the delta value between successive SNMP polls.
+.PP
+.SH "SIGNALS"
+.PP
+rtgpoll accepts a number of signals.  SIGHUP forces a reload of the target
+file.  If rtgpoll is actively polling, the target file is reloaded when
+rtgpoll becomes idle.  This is useful when automating the target list
+creation based on your active network.  SIGUSR1 increases the verbosity of
+a running rtgpoll; SIGUSR2 decreases the verbosity.
+.PP
+.SH "SEE ALSO"
+rtgplot(1)
+.br
+.SH VERSION
+This manual page documents rtgpoll version @VERSION@
+.SH AUTHOR
+.br
+(c) 2002-2004 by Robert Beverly
+.PP

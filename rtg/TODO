@@ -1,0 +1,41 @@
+TODO
+Last Updated: April 6, 2005
+---------------------------
+
+Please help support the RTG community.  The following items need work and
+are roughly in order of importance.  Some tasks are already in progress;
+please contact the owner first if you'd like to help.  Thanks!
+
+1. Allow negative gauge values in poller and plotter
+
+2. Allow fractional factor argument to rtgplot
+
+3. Display Nth percentile value in legend along with percentile line.
+
+4. Add proper timezone support.
+
+5. Integrate Brian O'Neill's targetmarker
+
+6. Add "WithPeak" option to rtgplot; use averages otherwise
+
+7. Modify database schema to track interface changes (description change,
+removal, etc) over time.  Modify rtgtargmkr.pl to use this schema.
+
+8. Add in buffering mechanism to buffer poll results in case the SQL 
+database is down or unreachable, i.e. separate SQL insert thread pool.
+
+9. Develop functionality for multiple rtgpoll clients to talk to one
+another to provide distributed polling or some form of redundancy.
+
+10. Need to add more graceful recovery from failed/restarted pollers.
+Currently a poller that is restarted will look like a drop in 
+traffic for the period of time the poller was down.
+
+11. Develop Linux RPMs.
+
+12. Add "pacing" to poller to specify a minimum inter-query rate
+to a single device.
+
+13. Add SNMPv3 support.
+
+14. rtgplot trend lines.

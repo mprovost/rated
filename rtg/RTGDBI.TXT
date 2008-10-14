@@ -1,0 +1,133 @@
+RTGDBI is the database independent abstraction layer for the RTG
+project. It is loosely modeled on the libdbi project
+(http://libdbi.sourceforge.net/) although none of their code was used
+(or even referenced).
+
+The project is small enough that we don't need to provide a full
+abstraction layer for every type of database operation. For example, the
+code has a single insert operation. So we don't need to provide a full SQL
+implementation, instead we can just provide a single C function to
+insert specific data.
+
+Originally the Postgres code was imported and #ifdefd into the existing
+code alongside the MySQL sections. However this made the code messy and
+also made your choice of databases a compile-time option (and also meant
+that you had to choose one or the other, not both.) Adding more
+databases would only make the situation worse.
+
+The original version of RTG had a master thread with a single database
+connection and multiple (a user specified number) of SNMP polling
+threads. As part of the Postgres port, the database connection was moved
+from the master process (rtgpoll.c) into the polling threads (rtgsnmp.c).
+This allowed for more simultaneous database connections. Ideally it
+would be nice to have separate database threads and polling threads so
+that one could specify different numbers for each, but that is more
+complicated and having multiple database connections is a step in this
+direction.
+
+It seemed that the ideal way to provide separate database drivers was to
+make them into shared libraries that the code could dynamically load. To
+fit in with the existing autoconf/automake infrastructure of the
+project, GNU Libtool was used to build the libraries. (Although in
+reality the code barely uses libtool and could easily be replaced, but
+libtool also attempts to make library building easier across platforms.)
+
+An issue that came up from the beginning was that the database code was
+reentrant for both databases. That is, along with each function, you
+have to pass a handle to the database connection. This is the correct
+way to write a database driver, but it makes writing the DBI layer
+difficult. This is because ideally the RTG code shouldn't know anything
+about the database connection structs for each database (ie the RTG code
+shouldn't #include any database specific headers.) You could pass the
+handle back into the RTG code as a void or bag of bits, but blind data
+objects like that aren't very helpful.
+
+The solution was to move the data storage into the database driver
+itself. So each database thread loads a copy of the driver when it
+starts up, and each copy of the driver creates local storage to hold the
+database handle in between calls. That way the database thread (rtg
+code) doesn't have to know anything about the handle.
+
+The storage for each thread needs to be created once (not once per
+thread) but the pthread library provides a function for this,
+pthread_once. So we create a constructor for the library that runs every
+time the library is loaded, and it creates thread local storage the
+first time (only) that it is loaded.
+
+void __attribute__ ((constructor)) dl_init(void) {
+	/* only call the thread-specific variable setup once */
+	pthread_once_t  once = PTHREAD_ONCE_INIT;
+
+	pthread_once(&once, makekey);
+
+}
+
+This used to look like:
+void _init(void) but it was changed because libtool complained while
+building it, and pages like:
+http://howtos.linux.com/howtos/Program-Library-HOWTO/miscellaneous.shtml
+say that you should use the constructor instead.
+
+So then we provide a function called makekey to create the storage:
+void makekey() {
+	pthread_key_create(&key, killkey);
+}
+
+When we connect to the database, we need to create space for the handle,
+like in this mysql example:
+MYSQL* mysql = (MYSQL*)malloc(sizeof(MYSQL));
+
+Then initialize the variable and connect, etc. Once we're connected and
+have a valid handle, we stuff it back into per-thread storage:
+pthread_setspecific(key, (void*)mysql)
+
+Now for each function that needs that variable (almost all of them) we
+need to pull it back out of storage before using it:
+MYSQL *mysql;
+mysql = pthread_getspecific(key);
+
+Since we have to do this for many functions, we just make a simple
+function called getmysql() that returns a MYSQL struct and that we call
+at the top of each function. It's more work inside the library code, but
+it means that we don't have to worry about any of this complexity in the
+RTG code itself. For example, to connect to the database and then check
+the connection, we can just do:
+
+db_connect(set);
+if (db_status())
+	printf("ok!");
+
+In fact the design of the DBI layer is such that the functions should
+basically return TRUE or FALSE to indicate success or failure. Of course
+the select functions will have to return more specific information.
+
+Of course to code these functions into RTG we can't rely on the library
+providing them, since it hasn't been loaded at compile time. So this is
+where we actually provide the DBI layer between the code and the
+drivers.
+
+To avoid name collisions, we have to prototype every function twice in
+rtgdbi.h. We use a double underscore to designate those functions as
+internal - ie they are the ones used by the libraries.
+
+/* for the library */
+int __db_connect(config_t *config);
+/* for the rtg code */
+int (*db_connect)(config_t *config);
+
+(There may be a way to declare each function once but I haven't been able
+to get it to work.)
+
+In rtgdbi.c we have a function db_init that loads the library and then
+binds all of its internal functions (starting with __) to the shorter
+names so that the rest of rtg can use them. Programs such as rtgpoll
+have to link against rtgdbi.c but not any of the libraries. Binding a
+function looks like:
+
+db_connect = lt_dlsym(dbhandle, "__db_connect")
+
+So all the rtg code needs to do is link against rtgdbi.c, then call
+db_init with the name of the driver to load, and it then has access to
+the internal library functions. As long as every databse driver adheres
+to the 'spec' in rtgdbi.h neither rtgdbi.c nor any of the other rtg code
+needs to know about how it works internally.

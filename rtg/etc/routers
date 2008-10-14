@@ -1,0 +1,32 @@
+# This file parsed by rtgtargmkr.pl to generate an RTG target list.
+# Place DNS names or IP addresses of devices which RTG will monitor
+# in this file.
+#
+# OLD_FORMAT:
+# To specify a non-default community, add a colon
+# and the community name immediately after the device name.
+# rtgtargmkr.pl uses 32bits by default, add a colon and "64" 
+# immediately after the community to specify bits.
+#
+#  e.g.        device:community:bits
+#
+# NEW_FORMAT:
+# Only the router needs to be listed, but 32|64 may be specified for bits,
+# 1|2 may be used for snmpver, and a valid community string may also be
+# specified. Defaults for bits and community are in rtgtargmkr.pl,
+# and the default for SNMP_Ver can be specified in rtg.conf.
+# 
+#  e.g.        device:bits:snmpver:community
+#
+# Only one format is allowed.
+#
+# OLD_FORMAT
+rbeverly.net
+#rtr-1.my.net
+#rtr-2.my.net:public:32
+#rtr-3.my.net:foobar:64
+#
+# NEW_TARGET_FORMAT
+#rtr-1.my.net:32:1:foobar
+#rtr-2.my.net:64:2
+#rtr-3.my.net

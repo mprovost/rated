@@ -1,0 +1,18 @@
+Created by Robert Beverly <rbeverly@users.sourceforge.net>.
+Currently maintained by Brian T. O'Neill
+Previously maintained by Rob Beverly and Chris Brotsos.
+Postgres porting by Matt Provost.
+Lexical parser by Bill Fumerola.
+Targetmaker maintained by Brian T. O'Neill.
+
+Uses (and useless without) the excellent work of many others, including:
+ MySQL, Net-SNMP, libgd, libpng, zlib, cgilib and SNMP_Session.
+
+Inspired by the likes of MRTG, RRDtool (Tobias Oetiker, Dave Rand)
+and Cricket (Jeff Allen).
+
+Thanks to all those who have tested and provided patches or suggestions
+to RTG!  Individual contributions listed in the NEWS file; let us know
+if we missed any attributions.  Enjoy RTG!
+
+  -- Rob Beverly & Chris Brotsos & Matt Provost & Brian T. O'Neill
