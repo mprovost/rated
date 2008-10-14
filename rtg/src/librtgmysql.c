@@ -181,7 +181,6 @@ int __db_insert(char *table, int iid, unsigned long long insert_val, double inse
 	}
 }
 
-
 int __db_commit() {
     struct timespec ts1;
     struct timespec ts2;
@@ -200,79 +199,3 @@ int __db_commit() {
 
     return com_ret;
 }
-
-#ifdef HAVE_STRTOLL
-long long __db_intSpeed(char *query) {
-#else
-long __db_intSpeed(char *query) {
-#endif
-    MYSQL mysql = getmysql();
-    int result; 
-    MYSQL_RES *result2;
-    MYSQL_ROW row;
-
-    result = mysql_real_query(&mysql, query, strlen(query));
-
-    if (result == 0) {
-        result2 = mysql_store_result(&mysql);
-    } else { 
-        debug(LOW, "MySQL error: %s\n", mysql_error(&mysql));
-        return FALSE;
-    }
-
-    row = mysql_fetch_row(result2);
-
-#ifdef HAVE_STRTOLL
-    return strtoll(row[0], NULL, 0);
-#else
-    return strtol(row[0], NULL, 0);
-#endif
-}
-
-
-
-int __db_populate(char *query, data_obj_t *DO) {
-    data_t *new = NULL;
-    data_t *last = NULL;
-    data_t **data = &(DO->data);
-    int stat;
-    MYSQL mysql = getmysql();
-    int res;
-    MYSQL_RES *result;
-    MYSQL_ROW row;
-
-    res = mysql_real_query(&mysql, query, strlen(query));
-
-    if (res != 0) {
-        debug(LOW, "MySQL error: %s\n", mysql_error(&mysql));
-        return FALSE;
-    } else {
-        result = mysql_store_result(&mysql);
-    }
-
-    while ((row = mysql_fetch_row(result))) {
-        if ((new = (data_t *) malloc(sizeof(data_t))) == NULL)
-            debug(LOW, "  Fatal malloc error in populate.\n");
-#ifdef HAVE_STRTOLL
-        new->counter = strtoll(row[0], NULL, 0);
-#else
-        new->counter = strtol(row[0], NULL, 0);
-#endif
-        new->timestamp = atoi(row[1]);
-        new->next = NULL;
-        (DO->datapoints)++;
-        if (new->counter > DO->counter_max)
-            DO->counter_max = new->counter;
-        if (*data != NULL) {
-            last->next = new;
-            last = new;
-        } else {
-            DO->dataBegin = new->timestamp;
-            *data = new;
-            last = new;
-        }
-    }
-
-    return stat;
-}
-

@@ -62,14 +62,6 @@ int db_init(config_t *set) {
 		debug(LOW, "Couldn't load db_insert: %s\n",(char *) lt_dlerror());
 		return FALSE;
 	}
-	if ((db_populate= lt_dlsym(dbhandle, "__db_populate")) == NULL) {
-		debug(LOW, "Couldn't load db_populate: %s\n",(char *) lt_dlerror());
-		return FALSE;
-	}
-	if ((db_intSpeed= lt_dlsym(dbhandle, "__db_intSpeed")) == NULL) {
-		debug(LOW, "Couldn't load db_intSpeed: %s\n",(char *) lt_dlerror());
-		return FALSE;
-	}
 
         db_test();
 	return TRUE;

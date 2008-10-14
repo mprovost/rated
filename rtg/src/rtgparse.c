@@ -7,7 +7,6 @@
 
 #include "common.h"
 #include "rtg.h"
-#include "rtgplot.h"
  
 extern data_obj_t **DOs;
 
