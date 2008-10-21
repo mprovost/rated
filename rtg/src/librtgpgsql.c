@@ -139,6 +139,7 @@ int __db_insert(char *table, int iid, unsigned long long insert_val, double inse
 
 	char *query;
 	char *table_esc;
+	ExecStatusType status;
 
 	PGresult *result;
 
@@ -159,15 +160,14 @@ int __db_insert(char *table, int iid, unsigned long long insert_val, double inse
 
 	free(query);
 
-	if (PQresultStatus(result) == PGRES_COMMAND_OK) {
-		/* free the result */
-		(void)PQclear(result);
+	status = PQresultStatus(result);
 
+	/* free the result */
+	(void)PQclear(result);
+
+	if (status == PGRES_COMMAND_OK) {
 		return TRUE;
 	} else {
-		/* free the result */
-		(void)PQclear(result);
-
 		/* Note that by libpq convention, a non-empty PQerrorMessage will include a trailing newline. */
 		/* also errors start with 'ERROR:' so we don't need to */
 		debug(LOW, "Postgres %s", PQerrorMessage(pgsql));
