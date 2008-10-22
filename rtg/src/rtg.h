@@ -11,11 +11,6 @@
 #ifndef _RTG_H_
 #define _RTG_H_ 1
 
-/****** XXX 0.8 FEATURES -- Remove, resolve or fix for release */
-#define FEATURES 1
-#define RATE_INSERT 1
-/****** XXX 0.8 FEATURES -- Remove, resolve or fix for release */
-
 /* Defines */ 
 #ifndef FALSE
 # define FALSE 0
@@ -140,9 +135,7 @@ typedef struct target_struct {
 #endif
     enum targetState init;
     unsigned long long last_value;
-#ifdef FEATURES
     struct timeval last_time;
-#endif
     struct target_struct *next;
 } target_t;
 

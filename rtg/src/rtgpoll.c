@@ -14,11 +14,6 @@ stats_t stats =
 char *target_file = NULL;
 target_t *current = NULL;
 char *pid_file = PIDFILE;
-#ifndef FEATURES
-  #if HAVE_MYSQL
-  MYSQL mysql;
-  #endif
-#endif
 int entries = 0;
 
 /* Globals */
@@ -144,25 +139,6 @@ int main(int argc, char *argv[]) {
 	debug(LOW, "Initializing SNMP (port %d).\n", set->snmp_port);
     init_snmp("RTG");
 
-    /* Attempt to connect to the MySQL Database */
-#ifndef FEATURES
- #if HAVE_MYSQL
-    if (!(set->dboff)) {
-		if (mysql_dbconnect(set->dbdb, &mysql) < 0) 
-			fatal("** Database error - check configuration.\n");
-		if (!mysql_ping(&mysql))
-			debug(LOW, "connected.\n");
-		else
-			fatal("server not responding.\n");
-    }
- #endif
-#else
- #if HAVE_MYSQL
-	my_init();
- #endif
-#endif
-
-
 	debug(HIGH, "\nStarting threads.\n");
     for (i = 0; i < set->threads; i++) {
 		crew.member[i].index = i;
@@ -232,13 +208,6 @@ int main(int argc, char *argv[]) {
 	    sleepy(sleep_time, set);
     } /* while */
 
-#ifndef FEATURES
-  #if HAVE_MYSQL
-    /* Disconnect from the MySQL Database, exit. */
-    if (!(set->dboff))
-	mysql_dbdisconnect(&mysql);
-  #endif
-#endif
     exit(0);
 }
 
@@ -271,13 +240,7 @@ void *sig_handler(void *arg)
             case SIGTERM:
             case SIGINT:
             case SIGQUIT:
-				debug(LOW, "Quiting: received signal %d.\n", sig_number);
-
-#if HAVE_MYSQL
-  #ifndef FEATURES
-                mysql_dbdisconnect(&mysql);
-  #endif
-#endif
+		debug(LOW, "Quiting: received signal %d.\n", sig_number);
                 unlink(pid_file);
                 exit(1);
                 break;
