@@ -66,7 +66,7 @@ void *poller(void *thread_args)
     /* for thread settings */
     int oldstate, oldtype;
 
-    debug(HIGH, "Thread [%d] starting.\n", worker->index);
+    tdebug(HIGH, "starting.\n");
 
     pthread_cleanup_push(cleanup_db, NULL);
 
@@ -82,11 +82,16 @@ void *poller(void *thread_args)
         pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &oldtype);
     }
 
+    PT_MUTEX_LOCK(&crew->mutex);
+    tdebug(HIGH, "running.\n");
+    crew->running++;
+    PT_MUTEX_UNLOCK(&crew->mutex);
+
     while (1) {
 
 /*
         if(loop_count >= POLLS_PER_TRANSACTION) {
-            debug(HIGH, "Thread [%d] doing commit on %d\n", worker->index, POLLS_PER_TRANSACTION);
+            tdebug(HIGH, "doing commit on %d\n", POLLS_PER_TRANSACTION);
             db_status = db_commit(); 
             loop_count = 0;
         }
@@ -94,8 +99,8 @@ void *poller(void *thread_args)
 
 	/* see if we've been cancelled before we start another loop */
 	pthread_testcancel();
-	debug(DEVELOP, "Thread [%d] locking (wait on work)\n", worker->index);
 
+	tdebug(DEVELOP, "locking (wait on work)\n");
 	PT_MUTEX_LOCK(&crew->mutex);
 	/* add an unlock to the cancel stack */
 	pthread_cleanup_push(cancel_lock, &crew->mutex);	
@@ -103,12 +108,11 @@ void *poller(void *thread_args)
 	while (current == NULL) {
             PT_COND_WAIT(&crew->go, &crew->mutex);
 	}
-	debug(DEVELOP, "Thread [%d] done waiting, received go (work cnt: %d)\n",
-            worker->index, crew->work_count);
+	tdebug(DEVELOP, "done waiting, received go (work cnt: %d)\n", crew->work_count);
         cur_work = crew->work_count;
 /*
         if(cur_work > prev_work) {
-            debug(HIGH, "Thread [%d] doing commit at %d\n", worker->index,time(NULL));
+            tdebug(HIGH, "doing commit at %d\n", time(NULL));
             db_status = db_commit(); 
             loop_count = 0;
         }
@@ -116,8 +120,8 @@ void *poller(void *thread_args)
         prev_work = cur_work;
 
 	if (current != NULL) {
-            debug(DEVELOP, "Thread [%d] processing %s %s (%d work units remain in queue)\n",
-                worker->index, current->host->host, current->objoid, crew->work_count);
+            tdebug(DEVELOP, "processing %s %s (%d work units remain in queue)\n",
+                current->host->host, current->objoid, crew->work_count);
 	    snmp_enable_stderrlog(); 
             snmp_sess_init(&session);
 
@@ -149,7 +153,7 @@ void *poller(void *thread_args)
             current = getNext();
 	}
 
-	debug(DEVELOP, "Thread [%d] unlocking (done grabbing current)\n", worker->index);
+	tdebug(DEVELOP, "unlocking (done grabbing current)\n");
 	PT_MUTEX_UNLOCK(&crew->mutex);
 
 	/* take the unlock off the cancel stack */
@@ -204,33 +208,33 @@ void *poller(void *thread_args)
 		 * Switch over vars->type and modify/assign result accordingly.
 		 */
 		case ASN_COUNTER64:
-		    debug(DEBUG, "64-bit result: (%s@%s) %s\n", session.peername, storedoid, result_string);
+		    tdebug(DEBUG, "64-bit result: (%s@%s) %s\n", session.peername, storedoid, result_string);
 		    result = vars->val.counter64->high;
 		    result = result << 32;
 		    result = result + vars->val.counter64->low;
 		    break;
 		case ASN_COUNTER:
-		    debug(DEBUG, "32-bit result: (%s@%s) %s\n", session.peername, storedoid, result_string);
+		    tdebug(DEBUG, "32-bit result: (%s@%s) %s\n", session.peername, storedoid, result_string);
 		    result = (unsigned long) *(vars->val.integer);
 		    break;
 		case ASN_INTEGER:
-		    debug(DEBUG, "Integer result: (%s@%s) %s\n", session.peername, storedoid, result_string);
+		    tdebug(DEBUG, "Integer result: (%s@%s) %s\n", session.peername, storedoid, result_string);
 		    result = (unsigned long) *(vars->val.integer);
 		    break;
 		case ASN_GAUGE:
-		    debug(DEBUG, "32-bit gauge: (%s@%s) %s\n", session.peername, storedoid, result_string);
+		    tdebug(DEBUG, "32-bit gauge: (%s@%s) %s\n", session.peername, storedoid, result_string);
 		    result = (unsigned long) *(vars->val.integer);
 		    break;
 		case ASN_TIMETICKS:
-		    debug(DEBUG, "Timeticks result: (%s@%s) %s\n", session.peername, storedoid, result_string);
+		    tdebug(DEBUG, "Timeticks result: (%s@%s) %s\n", session.peername, storedoid, result_string);
 		    result = (unsigned long) *(vars->val.integer);
 		    break;
 		case ASN_OPAQUE:
-		    debug(DEBUG, "Opaque result: (%s@%s) %s\n", session.peername, storedoid, result_string);
+		    tdebug(DEBUG, "Opaque result: (%s@%s) %s\n", session.peername, storedoid, result_string);
 		    result = (unsigned long) *(vars->val.integer);
 		    break;
 		case ASN_OCTET_STR:
-		    debug(DEBUG, "String Result: (%s@%s) %s\n", session.peername, storedoid, result_string);
+		    tdebug(DEBUG, "String Result: (%s@%s) %s\n", session.peername, storedoid, result_string);
 #ifdef HAVE_STRTOLL
 		    result = strtoll(vars->val.string, NULL, 0);
 #else
@@ -238,18 +242,18 @@ void *poller(void *thread_args)
 #endif
 		    break;
 		default:
-		    debug(LOW, "Unknown result type: (%s@%s) %s\n", session.peername, storedoid, result_string);
+		    tdebug(LOW, "Unknown result type: (%s@%s) %s\n", session.peername, storedoid, result_string);
 	    }
 
             /* Gauge Type */
             if (bits == 0) {
                 if (result != last_value) {
                     insert_val = result;
-                    debug(DEVELOP, "Thread [%d]: Gauge change from %lld to %lld\n", worker->index, last_value, insert_val);
+                    tdebug(DEVELOP, "Gauge change from %lld to %lld\n", last_value, insert_val);
 		} else {
                     if (set->withzeros) 
                         insert_val = result;
-                        debug(DEVELOP, "Thread [%d]: Gauge steady at %lld\n", worker->index, insert_val);
+                        tdebug(DEVELOP, "Gauge steady at %lld\n", insert_val);
                 }
 	    /* Counter Wrap Condition */
 	    } else if (result < last_value) {
@@ -261,7 +265,7 @@ void *poller(void *thread_args)
 
                 rate = insert_val / timediff(current_time, last_time);
 
-                debug(LOW, "*** Counter Wrap (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
+                tdebug(LOW, "*** Counter Wrap (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
                     session.peername, storedoid, result, last_value, insert_val);
 	    /* Not a counter wrap and this is not the first poll */
 	    } else if ((last_value >= 0) && (init != NEW)) {
@@ -278,11 +282,11 @@ void *poller(void *thread_args)
 	    } else {
 		/* set up this result for the next poll */
 		entry->last_value = result;
-		debug(HIGH, "Thread [%d]: First Poll, Normalizing\n", worker->index);
+		tdebug(HIGH, "First Poll, Normalizing\n");
 	    }
 	    /* Check for bogus data, either negative or unrealistic */
 	    if (insert_val > entry->maxspeed || result < 0) {
-		debug(LOW, "*** Out of Range (%s@%s) [insert_val: %llu] [oor: %lld]\n",
+		tdebug(LOW, "*** Out of Range (%s@%s) [insert_val: %llu] [oor: %lld]\n",
 		    session.peername, storedoid, insert_val, entry->maxspeed);
 		insert_val = 0;
 		rate = 0;
@@ -293,7 +297,7 @@ void *poller(void *thread_args)
 
             if (!(set->dboff)) {
                 if ( (insert_val > 0) || (set->withzeros) ) {
-                    debug(DEVELOP, "db_insert sent: %s %d %d %e\n",entry->table,entry->iid,insert_val,rate);
+                    tdebug(DEVELOP, "db_insert sent: %s %d %d %e\n",entry->table,entry->iid,insert_val,rate);
                     /* insert into the database */
                     db_status = db_insert(entry->table, entry->iid, insert_val, rate);
 
@@ -307,7 +311,7 @@ void *poller(void *thread_args)
 	} /* STAT_SUCCESS */
 
 /*
-        debug(HIGH, "Thread [%d] doing commit\n", worker->index);
+        tdebug(HIGH, "doing commit\n");
         db_status = db_commit();
 */
 
@@ -316,7 +320,7 @@ void *poller(void *thread_args)
             if (response != NULL) snmp_free_pdu(response);
         }
 
-	debug(DEVELOP, "Thread [%d] locking (update work_count)\n", worker->index);
+	tdebug(DEVELOP, "locking (update work_count)\n");
 	PT_MUTEX_LOCK(&crew->mutex);
 	crew->work_count--;
 	/* Only if we received a positive result back do we update the
@@ -330,10 +334,10 @@ void *poller(void *thread_args)
 	entry->last_time = current_time;	
 
 	if (crew->work_count <= 0) {
-            debug(HIGH, "Queue processed. Broadcasting thread done condition.\n");
+            tdebug(HIGH, "Queue processed. Broadcasting thread done condition.\n");
             PT_COND_BROAD(&crew->done);
 	}
-        debug(DEVELOP, "Thread [%d] unlocking (update work_count)\n", worker->index);
+        tdebug(DEVELOP, "unlocking (update work_count)\n");
 
         PT_MUTEX_UNLOCK(&crew->mutex);
 

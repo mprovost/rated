@@ -87,6 +87,7 @@ enum debugLevel {OFF, LOW, HIGH, DEBUG, DEVELOP};
 #define sysloginfo(x...) syslog(LOG_INFO |  LOG_LOCAL2, x) // replace with conf'g facility
 #define syslogcrit(x...) syslog(LOG_CRIT |  LOG_LOCAL2, x) // replace with conf'g facility
 #define debug(level,x...) do {if (set->verbose >= level) {if (set->daemon) sysloginfo(x); else fprintf(stdout,x);} } while (0)
+#define tdebug(level,x...) do {if (set->verbose >= level) {if (set->daemon) sysloginfo(x); else {fprintf(stdout, "Thread [%d]: ", worker->index); fprintf(stdout,x);} } } while (0)
 #define debugfile(dfp,level,x...) do {if (set->verbose >= level) {if (set->daemon) sysloginfo(x); else fprintf(dfp,x);} } while (0)
 #define fatal(x...) do { if (set->daemon) syslogcrit(x); else fprintf(stderr,x); exit(-1); } while (0)
 #define fatalfile(dfp,x...) do { fprintf(dfp,x); exit(-1); } while (0)
@@ -147,6 +148,7 @@ typedef struct host_struct {
 
 typedef struct crew_struct {
     int work_count;
+    int running;
     worker_t member[MAX_THREADS];
     pthread_mutex_t mutex;
     pthread_cond_t done;

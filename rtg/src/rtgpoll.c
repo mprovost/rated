@@ -37,14 +37,15 @@ int main(int argc, char *argv[]) {
     char *conf_file = NULL;
     char errstr[BUFSIZE];
     int ch, i;
+    struct timespec ts;
 
-	dfp = stderr;
+    dfp = stderr;
 
     /* Check argument count */
     if (argc < 3)
 	usage(argv[0]);
 
-	/* Set default environment */
+    /* Set default environment */
     config_defaults(set);
 
     /* Parse the command-line. */
@@ -79,14 +80,13 @@ int main(int argc, char *argv[]) {
 	    break;
 	}
 
-	debug(LOW, "RTG version %s starting.\n", VERSION);
+    debug(LOW, "RTG version %s starting.\n", VERSION);
 
-	if (set->daemon) {
-		if (daemon_init() < 0)
-			fatal("Could not fork daemon!\n");
-		debug(LOW, "Daemon detached\n");
-	}
-
+    if (set->daemon) {
+        if (daemon_init() < 0)
+            fatal("Could not fork daemon!\n");
+        debug(LOW, "Daemon detached\n");
+    }
 
     /* Initialize signal handler */
     sigemptyset(&signal_set);
@@ -96,63 +96,75 @@ int main(int argc, char *argv[]) {
     sigaddset(&signal_set, SIGTERM);
     sigaddset(&signal_set, SIGINT);
     sigaddset(&signal_set, SIGQUIT);
-	if (!set->multiple) 
-		checkPID(pid_file, set);
+    if (!set->multiple) 
+        checkPID(pid_file, set);
 
     if (pthread_sigmask(SIG_BLOCK, &signal_set, NULL) != 0)
-		printf("pthread_sigmask error\n");
+        printf("pthread_sigmask error\n");
 
     /* Read configuration file to establish local environment */
     if (conf_file) {
-      if ((read_rtg_config(conf_file, set)) < 0) 
-		fatal("Could not read config file: %s\n", conf_file);
+        if ((read_rtg_config(conf_file, set)) < 0) 
+            fatal("Could not read config file: %s\n", conf_file);
     } else {
-      conf_file = malloc(BUFSIZE);
-      if (!conf_file) 
-         fatal("Fatal malloc error!\n");
-      for(i=0;i<CONFIG_PATHS;i++) {
-        snprintf(conf_file, BUFSIZE, "%s%s", config_paths[i], DEFAULT_CONF_FILE); 
-        if (read_rtg_config(conf_file, set) >= 0)
-           break;
-        if (i == CONFIG_PATHS-1) {
-			snprintf(conf_file, BUFSIZE, "%s%s", config_paths[0], DEFAULT_CONF_FILE); 
-			if ((write_rtg_config(conf_file, set)) < 0) 
-				fatal("Couldn't write config file.\n");
+        conf_file = malloc(BUFSIZE);
+        if (!conf_file) 
+            fatal("Fatal malloc error!\n");
+        for(i=0;i<CONFIG_PATHS;i++) {
+            snprintf(conf_file, BUFSIZE, "%s%s", config_paths[i], DEFAULT_CONF_FILE); 
+            if (read_rtg_config(conf_file, set) >= 0)
+                break;
+            if (i == CONFIG_PATHS-1) {
+                snprintf(conf_file, BUFSIZE, "%s%s", config_paths[0], DEFAULT_CONF_FILE); 
+                if ((write_rtg_config(conf_file, set)) < 0) 
+                    fatal("Couldn't write config file.\n");
+            }
         }
-      }
     }
-
 
     /* hash list of targets to be polled */
     init_hash();
-	entries = hash_target_file(target_file);
+    entries = hash_target_file(target_file);
     if (entries <= 0) 
-		fatal("Error updating target list.");
+        fatal("Error updating target list.");
 
-	debug(LOW, "Initializing threads (%d).\n", set->threads);
+    debug(LOW, "Initializing threads (%d).\n", set->threads);
     pthread_mutex_init(&(crew.mutex), NULL);
     pthread_cond_init(&(crew.done), NULL);
     pthread_cond_init(&(crew.go), NULL);
     crew.work_count = 0;
 
     /* Initialize the SNMP session */
-	debug(LOW, "Initializing SNMP (port %d).\n", set->snmp_port);
+    debug(LOW, "Initializing SNMP (port %d).\n", set->snmp_port);
     init_snmp("RTG");
 
-	debug(HIGH, "\nStarting threads.\n");
+    debug(HIGH, "Starting threads...");
+    crew.running = 0;
     for (i = 0; i < set->threads; i++) {
-		crew.member[i].index = i;
-		crew.member[i].crew = &crew;
-		if (pthread_create(&(crew.member[i].thread), NULL, poller, (void *) &(crew.member[i])) != 0)
-			printf("pthread_create error\n");
+        crew.member[i].index = i;
+        crew.member[i].crew = &crew;
+        if (pthread_create(&(crew.member[i].thread), NULL, poller, (void *) &(crew.member[i])) != 0)
+	    fatal("pthread_create error\n");
+	debug(HIGH, " %i", i);
 	}
+    debug(HIGH, " done\n");
     if (pthread_create(&sig_thread, NULL, sig_handler, (void *) &(signal_set)) != 0)
-		printf("pthread_create error\n");
+	fatal("pthread_create error\n");
 
-    /* give threads time to start up */
-    sleep(1);
+    /* spin waiting for all threads to start up */
+    debug(HIGH, "Waiting for thread startup.\n");
+    ts.tv_sec = 0;
+    ts.tv_nsec = 10000000; /* 10 ms */
+    gettimeofday(&now, NULL);
+    begin_time = now.tv_sec * 1000 + now.tv_usec / 1000; /* convert to milliseconds */
+    while (crew.running < set->threads) {
+	nanosleep(&ts, NULL);
+    }
+    gettimeofday(&now, NULL);
+    end_time = now.tv_sec * 1000 + now.tv_usec / 1000; /* convert to milliseconds */
+    debug(HIGH, "Waited %d milliseconds for thread startup.\n", end_time - begin_time);
 
-	debug(LOW, "RTG Ready.\n");
+    debug(LOW, "RTG Ready.\n");
 
     /* Loop Forever Polling Target List */
     while (1) {
@@ -166,18 +178,14 @@ int main(int argc, char *argv[]) {
 	crew.work_count = entries;
 	PT_MUTEX_UNLOCK(&(crew.mutex));
 	    
-	if (set->verbose >= LOW) {
-		if (set->daemon)
-			sysloginfo("Queue ready, broadcasting thread go condition.");
-		else
-        	timestamp("Queue ready, broadcasting thread go condition.");
-	}
+	debug(LOW, "Queue ready, broadcasting thread go condition.\n");
+
 	PT_COND_BROAD(&(crew.go));
 	PT_MUTEX_LOCK(&(crew.mutex));
-	    
-	while (crew.work_count > 0) {
-		PT_COND_WAIT(&(crew.done), &(crew.mutex));
-	}
+
+        while (crew.work_count > 0) {
+            PT_COND_WAIT(&(crew.done), &(crew.mutex));
+        }
 	PT_MUTEX_UNLOCK(&(crew.mutex));
 
 	gettimeofday(&now, NULL);
@@ -188,32 +196,29 @@ int main(int argc, char *argv[]) {
 	sleep_time = set->interval - stats.poll_time;
 
 	if (waiting) {
-		debug(HIGH, "Processing pending SIGHUP.\n");
-	    entries = hash_target_file(target_file);
-	    waiting = FALSE;
+            debug(HIGH, "Processing pending SIGHUP.\n");
+            entries = hash_target_file(target_file);
+            waiting = FALSE;
 	}
 
+	debug(LOW, "Poll round %d complete.\n", stats.round);
 	if (set->verbose >= LOW) {
-        snprintf(errstr, sizeof(errstr), "Poll round %d complete.", stats.round);
-		if (set->daemon)
-			sysloginfo(errstr);
-		else
-			timestamp(errstr);
-	    print_stats(stats, set);
-    }
+	    /* TODO inline */
+            print_stats(stats, set);
+        }
 
 	if (sleep_time <= 0)
-	    stats.slow++;
+            stats.slow++;
 	else
-	    sleepy(sleep_time, set);
+            sleepy(sleep_time, set);
     } /* while */
-
     exit(0);
 }
 
 
 /* Signal Handler.  USR1 increases verbosity, USR2 decreases verbosity. 
-   HUP re-reads target list */
+ * HUP re-reads target list
+ */
 void *sig_handler(void *arg)
 {
     sigset_t *signal_set = (sigset_t *) arg;
@@ -259,9 +264,9 @@ void usage(char *prog)
     printf("  -d          Disable database inserts\n");
     printf("  -t <file>   Specify target file\n");
     printf("  -v          Increase verbosity\n");
-	printf("  -m          Allow multiple instances\n");
+    printf("  -m          Allow multiple instances\n");
     printf("  -p <file>	  Specify PID file [default /var/run/rtgpoll.pid]\n"); 
-	printf("  -z          Database zero delta inserts\n");
+    printf("  -z          Database zero delta inserts\n");
     printf("  -h          Help\n");
     exit(-1);
 }
