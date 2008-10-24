@@ -52,11 +52,13 @@ int db_init(config_t *set) {
 		debug(LOW, "Couldn't load db_disconnect: %s\n",(char *) lt_dlerror());
 		return FALSE;
 	}
-	
+
+	/*
         if ((db_commit= lt_dlsym(dbhandle, "__db_commit")) == NULL) {
 		debug(LOW, "Couldn't load db_commit: %s\n",(char *) lt_dlerror());
 		return FALSE;
 	}
+	*/
 
 	if ((db_insert = lt_dlsym(dbhandle, "__db_insert")) == NULL) {
 		debug(LOW, "Couldn't load db_insert: %s\n",(char *) lt_dlerror());
