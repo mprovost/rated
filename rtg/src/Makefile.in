@@ -60,20 +60,21 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" \
 	"$(DESTDIR)$(includedir)"
 libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
-librtgmysql_la_LIBADD =
-am_librtgmysql_la_OBJECTS = librtgmysql.lo
+am__DEPENDENCIES_1 =
+librtgmysql_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
+am_librtgmysql_la_OBJECTS = librtgmysql_la-librtgmysql.lo
 librtgmysql_la_OBJECTS = $(am_librtgmysql_la_OBJECTS)
-librtgpgsql_la_LIBADD =
-am_librtgpgsql_la_OBJECTS = librtgpgsql.lo
+librtgpgsql_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
+am_librtgpgsql_la_OBJECTS = librtgpgsql_la-librtgpgsql.lo
 librtgpgsql_la_OBJECTS = $(am_librtgpgsql_la_OBJECTS)
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am_rtgpoll_OBJECTS = rtgsnmp.$(OBJEXT) rtgdbi.$(OBJEXT) \
-	rtgpoll.$(OBJEXT) rtgutil.$(OBJEXT) rtgtarg.$(OBJEXT) \
-	rtggram.$(OBJEXT) rtghash.$(OBJEXT)
+am_rtgpoll_OBJECTS = rtgpoll-rtgsnmp.$(OBJEXT) \
+	rtgpoll-rtgdbi.$(OBJEXT) rtgpoll-rtgpoll.$(OBJEXT) \
+	rtgpoll-rtgutil.$(OBJEXT) rtgpoll-rtgtarg.$(OBJEXT) \
+	rtgpoll-rtggram.$(OBJEXT) rtgpoll-rtghash.$(OBJEXT)
 rtgpoll_OBJECTS = $(am_rtgpoll_OBJECTS)
-am__DEPENDENCIES_1 =
-rtgpoll_DEPENDENCIES = $(am__DEPENDENCIES_1)
+rtgpoll_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/config
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -113,7 +114,6 @@ CFLAGS = @CFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
-DBD_DRIVER = @DBD_DRIVER@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 ECHO = @ECHO@
@@ -137,7 +137,9 @@ LIBTOOL = @LIBTOOL@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
+MYSQL_CPPFLAGS = @MYSQL_CPPFLAGS@
 MYSQL_DIR = @MYSQL_DIR@
+MYSQL_LIB = @MYSQL_LIB@
 OBJEXT = @OBJEXT@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
@@ -146,10 +148,14 @@ PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
+PGSQL_CPPFLAGS = @PGSQL_CPPFLAGS@
+PGSQL_LIB = @PGSQL_LIB@
 RANLIB = @RANLIB@
 RTG_HOME = @RTG_HOME@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+SNMP_CPPFLAGS = @SNMP_CPPFLAGS@
+SNMP_LIB = @SNMP_LIB@
 STRIP = @STRIP@
 VERSION = @VERSION@
 YACC = @YACC@
@@ -206,18 +212,18 @@ EXTRA_LTLIBRARIES = librtgmysql.la librtgpgsql.la
 # the ltlibraries variable is AC_SUBSTd from configure
 lib_LTLIBRARIES = $(ltlibraries)
 librtgmysql_la_SOURCES = librtgmysql.c
+librtgmysql_la_CPPFLAGS = $(MYSQL_CPPFLAGS)
 librtgmysql_la_LDFLAGS = -rpath '$(libdir)'
+librtgmysql_la_LIBADD = $(MYSQL_LIB)
 librtgpgsql_la_SOURCES = librtgpgsql.c
+librtgpgsql_la_CPPFLAGS = $(PGSQL_CPPFLAGS)
 librtgpgsql_la_LDFLAGS = -rpath '$(libdir)'
-
-#librtgpgsql_la_SOURCES = librtgpgsql.c
-#librtgpgsql_la_LDFLAGS = -rpath '$(libdir)'
-rtgpoll_SOURCES = rtgsnmp.c rtgdbi.c rtgpoll.c rtgutil.c \
-                  rtgtarg.y rtggram.l rtghash.c
-
+librtgpgsql_la_LIBADD = $(PGSQL_LIB)
+rtgpoll_SOURCES = rtgsnmp.c rtgdbi.c rtgpoll.c rtgutil.c rtgtarg.y rtggram.l rtghash.c
+rtgpoll_CPPFLAGS = $(SNMP_CPPFLAGS)
 rtgpoll_LDFLAGS = -rpath '$(libdir)'
-include_HEADERS = rtg.h rtgplot.h common.h rtgdbi.h
-rtgpoll_LDADD = $(LEXLIB)
+rtgpoll_LDADD = $(LEXLIB) $(SNMP_LIB)
+include_HEADERS = rtg.h common.h rtgdbi.h
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -326,15 +332,15 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/librtgmysql.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/librtgpgsql.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgdbi.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtggram.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtghash.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgpoll.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgsnmp.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgtarg.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgutil.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/librtgmysql_la-librtgmysql.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/librtgpgsql_la-librtgpgsql.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgpoll-rtgdbi.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgpoll-rtggram.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgpoll-rtghash.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgpoll-rtgpoll.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgpoll-rtgsnmp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgpoll-rtgtarg.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgpoll-rtgutil.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -356,6 +362,118 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
+
+librtgmysql_la-librtgmysql.lo: librtgmysql.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(librtgmysql_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT librtgmysql_la-librtgmysql.lo -MD -MP -MF "$(DEPDIR)/librtgmysql_la-librtgmysql.Tpo" -c -o librtgmysql_la-librtgmysql.lo `test -f 'librtgmysql.c' || echo '$(srcdir)/'`librtgmysql.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/librtgmysql_la-librtgmysql.Tpo" "$(DEPDIR)/librtgmysql_la-librtgmysql.Plo"; else rm -f "$(DEPDIR)/librtgmysql_la-librtgmysql.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='librtgmysql.c' object='librtgmysql_la-librtgmysql.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(librtgmysql_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o librtgmysql_la-librtgmysql.lo `test -f 'librtgmysql.c' || echo '$(srcdir)/'`librtgmysql.c
+
+librtgpgsql_la-librtgpgsql.lo: librtgpgsql.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(librtgpgsql_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT librtgpgsql_la-librtgpgsql.lo -MD -MP -MF "$(DEPDIR)/librtgpgsql_la-librtgpgsql.Tpo" -c -o librtgpgsql_la-librtgpgsql.lo `test -f 'librtgpgsql.c' || echo '$(srcdir)/'`librtgpgsql.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/librtgpgsql_la-librtgpgsql.Tpo" "$(DEPDIR)/librtgpgsql_la-librtgpgsql.Plo"; else rm -f "$(DEPDIR)/librtgpgsql_la-librtgpgsql.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='librtgpgsql.c' object='librtgpgsql_la-librtgpgsql.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(librtgpgsql_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o librtgpgsql_la-librtgpgsql.lo `test -f 'librtgpgsql.c' || echo '$(srcdir)/'`librtgpgsql.c
+
+rtgpoll-rtgsnmp.o: rtgsnmp.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgsnmp.o -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgsnmp.Tpo" -c -o rtgpoll-rtgsnmp.o `test -f 'rtgsnmp.c' || echo '$(srcdir)/'`rtgsnmp.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgsnmp.Tpo" "$(DEPDIR)/rtgpoll-rtgsnmp.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgsnmp.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgsnmp.c' object='rtgpoll-rtgsnmp.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgsnmp.o `test -f 'rtgsnmp.c' || echo '$(srcdir)/'`rtgsnmp.c
+
+rtgpoll-rtgsnmp.obj: rtgsnmp.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgsnmp.obj -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgsnmp.Tpo" -c -o rtgpoll-rtgsnmp.obj `if test -f 'rtgsnmp.c'; then $(CYGPATH_W) 'rtgsnmp.c'; else $(CYGPATH_W) '$(srcdir)/rtgsnmp.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgsnmp.Tpo" "$(DEPDIR)/rtgpoll-rtgsnmp.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgsnmp.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgsnmp.c' object='rtgpoll-rtgsnmp.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgsnmp.obj `if test -f 'rtgsnmp.c'; then $(CYGPATH_W) 'rtgsnmp.c'; else $(CYGPATH_W) '$(srcdir)/rtgsnmp.c'; fi`
+
+rtgpoll-rtgdbi.o: rtgdbi.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgdbi.o -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgdbi.Tpo" -c -o rtgpoll-rtgdbi.o `test -f 'rtgdbi.c' || echo '$(srcdir)/'`rtgdbi.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgdbi.Tpo" "$(DEPDIR)/rtgpoll-rtgdbi.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgdbi.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgdbi.c' object='rtgpoll-rtgdbi.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgdbi.o `test -f 'rtgdbi.c' || echo '$(srcdir)/'`rtgdbi.c
+
+rtgpoll-rtgdbi.obj: rtgdbi.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgdbi.obj -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgdbi.Tpo" -c -o rtgpoll-rtgdbi.obj `if test -f 'rtgdbi.c'; then $(CYGPATH_W) 'rtgdbi.c'; else $(CYGPATH_W) '$(srcdir)/rtgdbi.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgdbi.Tpo" "$(DEPDIR)/rtgpoll-rtgdbi.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgdbi.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgdbi.c' object='rtgpoll-rtgdbi.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgdbi.obj `if test -f 'rtgdbi.c'; then $(CYGPATH_W) 'rtgdbi.c'; else $(CYGPATH_W) '$(srcdir)/rtgdbi.c'; fi`
+
+rtgpoll-rtgpoll.o: rtgpoll.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgpoll.o -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgpoll.Tpo" -c -o rtgpoll-rtgpoll.o `test -f 'rtgpoll.c' || echo '$(srcdir)/'`rtgpoll.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgpoll.Tpo" "$(DEPDIR)/rtgpoll-rtgpoll.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgpoll.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgpoll.c' object='rtgpoll-rtgpoll.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgpoll.o `test -f 'rtgpoll.c' || echo '$(srcdir)/'`rtgpoll.c
+
+rtgpoll-rtgpoll.obj: rtgpoll.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgpoll.obj -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgpoll.Tpo" -c -o rtgpoll-rtgpoll.obj `if test -f 'rtgpoll.c'; then $(CYGPATH_W) 'rtgpoll.c'; else $(CYGPATH_W) '$(srcdir)/rtgpoll.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgpoll.Tpo" "$(DEPDIR)/rtgpoll-rtgpoll.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgpoll.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgpoll.c' object='rtgpoll-rtgpoll.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgpoll.obj `if test -f 'rtgpoll.c'; then $(CYGPATH_W) 'rtgpoll.c'; else $(CYGPATH_W) '$(srcdir)/rtgpoll.c'; fi`
+
+rtgpoll-rtgutil.o: rtgutil.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgutil.o -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgutil.Tpo" -c -o rtgpoll-rtgutil.o `test -f 'rtgutil.c' || echo '$(srcdir)/'`rtgutil.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgutil.Tpo" "$(DEPDIR)/rtgpoll-rtgutil.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgutil.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgutil.c' object='rtgpoll-rtgutil.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgutil.o `test -f 'rtgutil.c' || echo '$(srcdir)/'`rtgutil.c
+
+rtgpoll-rtgutil.obj: rtgutil.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgutil.obj -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgutil.Tpo" -c -o rtgpoll-rtgutil.obj `if test -f 'rtgutil.c'; then $(CYGPATH_W) 'rtgutil.c'; else $(CYGPATH_W) '$(srcdir)/rtgutil.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgutil.Tpo" "$(DEPDIR)/rtgpoll-rtgutil.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgutil.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgutil.c' object='rtgpoll-rtgutil.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgutil.obj `if test -f 'rtgutil.c'; then $(CYGPATH_W) 'rtgutil.c'; else $(CYGPATH_W) '$(srcdir)/rtgutil.c'; fi`
+
+rtgpoll-rtgtarg.o: rtgtarg.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgtarg.o -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgtarg.Tpo" -c -o rtgpoll-rtgtarg.o `test -f 'rtgtarg.c' || echo '$(srcdir)/'`rtgtarg.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgtarg.Tpo" "$(DEPDIR)/rtgpoll-rtgtarg.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgtarg.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgtarg.c' object='rtgpoll-rtgtarg.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgtarg.o `test -f 'rtgtarg.c' || echo '$(srcdir)/'`rtgtarg.c
+
+rtgpoll-rtgtarg.obj: rtgtarg.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgtarg.obj -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgtarg.Tpo" -c -o rtgpoll-rtgtarg.obj `if test -f 'rtgtarg.c'; then $(CYGPATH_W) 'rtgtarg.c'; else $(CYGPATH_W) '$(srcdir)/rtgtarg.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgtarg.Tpo" "$(DEPDIR)/rtgpoll-rtgtarg.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgtarg.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgtarg.c' object='rtgpoll-rtgtarg.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgtarg.obj `if test -f 'rtgtarg.c'; then $(CYGPATH_W) 'rtgtarg.c'; else $(CYGPATH_W) '$(srcdir)/rtgtarg.c'; fi`
+
+rtgpoll-rtggram.o: rtggram.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtggram.o -MD -MP -MF "$(DEPDIR)/rtgpoll-rtggram.Tpo" -c -o rtgpoll-rtggram.o `test -f 'rtggram.c' || echo '$(srcdir)/'`rtggram.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtggram.Tpo" "$(DEPDIR)/rtgpoll-rtggram.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtggram.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtggram.c' object='rtgpoll-rtggram.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtggram.o `test -f 'rtggram.c' || echo '$(srcdir)/'`rtggram.c
+
+rtgpoll-rtggram.obj: rtggram.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtggram.obj -MD -MP -MF "$(DEPDIR)/rtgpoll-rtggram.Tpo" -c -o rtgpoll-rtggram.obj `if test -f 'rtggram.c'; then $(CYGPATH_W) 'rtggram.c'; else $(CYGPATH_W) '$(srcdir)/rtggram.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtggram.Tpo" "$(DEPDIR)/rtgpoll-rtggram.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtggram.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtggram.c' object='rtgpoll-rtggram.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtggram.obj `if test -f 'rtggram.c'; then $(CYGPATH_W) 'rtggram.c'; else $(CYGPATH_W) '$(srcdir)/rtggram.c'; fi`
+
+rtgpoll-rtghash.o: rtghash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtghash.o -MD -MP -MF "$(DEPDIR)/rtgpoll-rtghash.Tpo" -c -o rtgpoll-rtghash.o `test -f 'rtghash.c' || echo '$(srcdir)/'`rtghash.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtghash.Tpo" "$(DEPDIR)/rtgpoll-rtghash.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtghash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtghash.c' object='rtgpoll-rtghash.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtghash.o `test -f 'rtghash.c' || echo '$(srcdir)/'`rtghash.c
+
+rtgpoll-rtghash.obj: rtghash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtghash.obj -MD -MP -MF "$(DEPDIR)/rtgpoll-rtghash.Tpo" -c -o rtgpoll-rtghash.obj `if test -f 'rtghash.c'; then $(CYGPATH_W) 'rtghash.c'; else $(CYGPATH_W) '$(srcdir)/rtghash.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtghash.Tpo" "$(DEPDIR)/rtgpoll-rtghash.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtghash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtghash.c' object='rtgpoll-rtghash.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtghash.obj `if test -f 'rtghash.c'; then $(CYGPATH_W) 'rtghash.c'; else $(CYGPATH_W) '$(srcdir)/rtghash.c'; fi`
 
 .l.c:
 	$(LEXCOMPILE) $<
