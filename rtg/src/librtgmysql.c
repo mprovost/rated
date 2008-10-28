@@ -91,13 +91,6 @@ int __db_connect(config_t *config) {
 	/* set the global config_t pointer so all functions can use it */
 	set = config;
 
-	/* reserve space for the mysql variable */
-	mysql = (MYSQL*)malloc(sizeof(MYSQL));
-	if (!mysql) {
-		debug(LOW, "malloc: out of memory\n");
-		return FALSE;
-	}
-
 	/* first check that we are using a threaded client */
 	if (mysql_thread_safe() == 0) {
 		debug(LOW, "MySQL library isn't thread safe\n");

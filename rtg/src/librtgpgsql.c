@@ -86,13 +86,6 @@ int __db_connect(config_t *config) {
 
 	set = config;
 
-	/* reserve space for the pgsql variable */
-	pgsql = (PGconn*)malloc(sizeof(PGconn*));
-	if (!pgsql) {
-		debug(LOW, "malloc: out of memory\n");
-		return FALSE;
-	}
-
 	/* TODO escape strings */
 	asprintf(&connectstring, "host='%s' dbname='%s' user='%s' password='%s'", set->dbhost, set->dbdb, set->dbuser, set->dbpass);
 
