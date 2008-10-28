@@ -105,6 +105,8 @@ void *poller(void *thread_args)
 	/* add an unlock to the cancel stack */
 	pthread_cleanup_push(cancel_lock, &crew->mutex);	
 
+	/* TODO crew->running-- if we're cancelled */
+
 	while (current == NULL) {
             PT_COND_WAIT(&crew->go, &crew->mutex);
 	}
@@ -122,7 +124,7 @@ void *poller(void *thread_args)
 	if (current != NULL) {
             tdebug(DEVELOP, "processing %s %s (%d work units remain in queue)\n",
                 current->host->host, current->objoid, crew->work_count);
-	    snmp_enable_stderrlog(); 
+	    snmp_enable_stderrlog();
             snmp_sess_init(&session);
 
             if (current->host->snmp_ver == 2)
@@ -323,8 +325,7 @@ void *poller(void *thread_args)
 	tdebug(DEVELOP, "locking (update work_count)\n");
 	PT_MUTEX_LOCK(&crew->mutex);
 	crew->work_count--;
-	/* Only if we received a positive result back do we update the
-            last_value object */
+	/* Only if we received a positive result back do we update the last_value object */
 	if (poll_status == STAT_SUCCESS) {
             entry->last_value = result;
             if (init == NEW) entry->init = LIVE;
