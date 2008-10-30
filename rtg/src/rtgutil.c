@@ -8,6 +8,8 @@
 #include "common.h"
 #include "rtg.h"
 
+extern quitting;
+
 extern FILE *dfp;
 
 /* read configuration file to establish local environment */
@@ -123,25 +125,26 @@ int sleepy(float sleep_time, config_t *set)
     int chunks = 10;
     int i;
 
-	if (set->daemon) {
-		usleep((unsigned int) (sleep_time*MEGA));
-		return (0);
-	}
-	if (sleep_time > chunks) {
-		debug(LOW, "Next Poll: ");
-		for (i = chunks; i > 0; i--) {
-			if (set->verbose >= LOW) {
-				printf("%d...", i);
-				fflush(NULL);
-			}
-			usleep((unsigned int) (sleep_time*MEGA/ chunks));
-		}
-		if (set->verbose >= LOW) printf("\n");
-	} else {
-		sleep_time*=MEGA;
-		usleep((unsigned int) sleep_time);
-	}
-	return (0);
+    /* always sleep in chunks so we can quit if signalled */
+    if (sleep_time > chunks) {
+        if (!set->daemon)
+            debug(LOW, "Next Poll: ");
+        for (i = chunks; i > 0; i--) {
+	    /* check if we've been signalled */
+            if (quitting)
+                break;
+            if (!set->daemon)
+                debug(LOW, "%d...", i);
+		fflush(NULL);
+            usleep((unsigned int) (sleep_time*MEGA/ chunks));
+        }
+        if (!set->daemon)
+            debug(LOW, "\n");
+    } else {
+        sleep_time*=MEGA;
+        usleep((unsigned int) sleep_time);
+    }
+    return (0);
 }
 
 
