@@ -209,6 +209,7 @@ void *poller(void *thread_args)
 		/*
 		 * Switch over vars->type and modify/assign result accordingly.
 		 */
+		/* TODO make debug string into general function */
 		case ASN_COUNTER64:
 		    tdebug(DEBUG, "64-bit result: (%s@%s) %s\n", session.peername, storedoid, result_string);
 		    result = vars->val.counter64->high;
@@ -276,7 +277,7 @@ void *poller(void *thread_args)
 		rate = insert_val / timediff(current_time, last_time);
 		
 	        /* Print out SNMP result if verbose */
-		tdebug(DEBUG, "(%lld - %lld = %llu) / %d = %llu\n", result, last_value, insert_val, timediff(current_time, last_time), rate);
+		tdebug(DEBUG, "(%lld - %lld = %llu) / %f = %f\n", result, last_value, insert_val, timediff(current_time, last_time), rate);
             /* last_value < 0, so this must be the first poll */
 	    } else {
 		/* set up this result for the next poll */
