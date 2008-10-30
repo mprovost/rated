@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
         checkPID(pid_file, set);
 
     if (pthread_sigmask(SIG_BLOCK, &signal_set, NULL) != 0)
-        printf("pthread_sigmask error\n");
+        fatal("pthread_sigmask error\n");
 
     /* Read configuration file to establish local environment */
     if (conf_file) {
@@ -245,7 +245,7 @@ void *sig_handler(void *arg)
             case SIGTERM:
             case SIGINT:
             case SIGQUIT:
-		debug(LOW, "Quiting: received signal %d.\n", sig_number);
+		debug(LOW, "Quitting: received signal %d.\n", sig_number);
                 unlink(pid_file);
                 exit(1);
                 break;

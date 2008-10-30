@@ -171,25 +171,25 @@ void *poller(void *thread_args)
 	PT_MUTEX_LOCK(&stats.mutex);
 	if (poll_status == STAT_DESCRIP_ERROR) {
 	    stats.errors++;
-            printf("*** SNMP Error: (%s) Bad descriptor.\n", session.peername);
+            tdebug(LOW, "*** SNMP Error: (%s) Bad descriptor.\n", session.peername);
 	} else if (poll_status == STAT_TIMEOUT) {
 	    stats.no_resp++;
-	    printf("*** SNMP No response: (%s@%s).\n", session.peername,
+	    tdebug(LOW, "*** SNMP No response: (%s@%s).\n", session.peername,
 	       storedoid);
 	} else if (poll_status != STAT_SUCCESS) {
 	    stats.errors++;
-	    printf("*** SNMP Error: (%s@%s) Unsuccessuful (%d).\n", session.peername,
+	    tdebug(LOW, "*** SNMP Error: (%s@%s) Unsuccessuful (%d).\n", session.peername,
 	       storedoid, poll_status);
 	} else if (poll_status == STAT_SUCCESS && response->errstat != SNMP_ERR_NOERROR) {
 	    stats.errors++;
-	    printf("*** SNMP Error: (%s@%s) %s\n", session.peername,
+	    tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", session.peername,
 	       storedoid, snmp_errstring(response->errstat));
 	} else if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR && response->variables->type == SNMP_NOSUCHINSTANCE) {
 	    stats.errors++;
-	    printf("*** SNMP Error: No Such Instance Exists (%s@%s)\n", session.peername, storedoid);
+	    tdebug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", session.peername, storedoid);
 	} else if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
 	    stats.polls++;
-	} 
+	}
 	PT_MUTEX_UNLOCK(&stats.mutex);
 
 	/*
@@ -276,10 +276,7 @@ void *poller(void *thread_args)
 		rate = insert_val / timediff(current_time, last_time);
 		
 	        /* Print out SNMP result if verbose */
-	        if (set->verbose == DEBUG)
-                    printf("Thread [%d]: (%lld-%lld -- %llu) = %llu\n", worker->index, result, last_value, insert_val,rate);
-	        if (set->verbose == HIGH)
-                    printf("Thread [%d]: %llu\n", worker->index, insert_val);
+		tdebug(DEBUG, "(%lld - %lld = %llu) / %d = %llu\n", result, last_value, insert_val, timediff(current_time, last_time), rate);
             /* last_value < 0, so this must be the first poll */
 	    } else {
 		/* set up this result for the next poll */
@@ -307,7 +304,7 @@ void *poller(void *thread_args)
                         PT_MUTEX_LOCK(&stats.mutex);
                         stats.db_inserts++;
                         PT_MUTEX_UNLOCK(&stats.mutex);
-                    } 
+                    }
                 } /* insert_val > 0 or withzeros */	
             } /* !dboff */
 	} /* STAT_SUCCESS */
