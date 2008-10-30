@@ -19,8 +19,12 @@ int entries = 0;
 /* Globals */
 config_t config;
 config_t *set = &config;
-int lock;
+
+/* for signal handler */
 int waiting;
+int quitting;
+int quit_signal;
+
 char config_paths[CONFIG_PATHS][BUFSIZE];
 
 /* dfp is a debug file pointer.  Points to stderr unless debug=level is set */
@@ -38,6 +42,9 @@ int main(int argc, char *argv[]) {
     char errstr[BUFSIZE];
     int ch, i;
     struct timespec ts;
+    waiting = FALSE;
+    quitting = FALSE;
+    quit_signal = 0;
 
     dfp = stderr;
 
@@ -168,7 +175,18 @@ int main(int argc, char *argv[]) {
 
     /* Loop Forever Polling Target List */
     while (1) {
-	lock = TRUE;
+	/* check if we've been signalled */
+	if (quitting) {
+            debug(LOW, "Quitting: received signal %i.\n", quit_signal);
+            print_stats(stats, set);
+            unlink(pid_file);
+            exit(1);
+	} else if (waiting) {
+            debug(HIGH, "Processing pending SIGHUP.\n");
+            entries = hash_target_file(target_file);
+            waiting = FALSE;
+	}
+
 	gettimeofday(&now, NULL);
 	begin_time = (double) now.tv_usec / 1000000 + now.tv_sec;
 
@@ -189,21 +207,13 @@ int main(int argc, char *argv[]) {
 	PT_MUTEX_UNLOCK(&(crew.mutex));
 
 	gettimeofday(&now, NULL);
-	lock = FALSE;
 	end_time = (double) now.tv_usec / 1000000 + now.tv_sec;
 	stats.poll_time = end_time - begin_time;
         stats.round++;
 	sleep_time = set->interval - stats.poll_time;
 
-	if (waiting) {
-            debug(HIGH, "Processing pending SIGHUP.\n");
-            entries = hash_target_file(target_file);
-            waiting = FALSE;
-	}
-
 	debug(LOW, "Poll round %d complete.\n", stats.round);
 	if (set->verbose >= LOW) {
-	    /* TODO inline */
             print_stats(stats, set);
         }
 
@@ -216,7 +226,8 @@ int main(int argc, char *argv[]) {
 }
 
 
-/* Signal Handler.  USR1 increases verbosity, USR2 decreases verbosity. 
+/*
+ * Signal Handler.  USR1 increases verbosity, USR2 decreases verbosity. 
  * HUP re-reads target list
  */
 void *sig_handler(void *arg)
@@ -228,13 +239,7 @@ void *sig_handler(void *arg)
 	sigwait(signal_set, &sig_number);
 	switch (sig_number) {
             case SIGHUP:
-                if(lock) {
-                    waiting = TRUE;
-                }
-                else {
-                    entries = hash_target_file(target_file);
-                    waiting = FALSE;
-                }
+                waiting = TRUE;
                 break;
             case SIGUSR1:
                 set->verbose++;
@@ -245,12 +250,11 @@ void *sig_handler(void *arg)
             case SIGTERM:
             case SIGINT:
             case SIGQUIT:
-		debug(LOW, "Quitting: received signal %d.\n", sig_number);
-                unlink(pid_file);
-                exit(1);
+                quit_signal = sig_number;
+                quitting = TRUE;
                 break;
         }
-   }
+    }
 }
 
 
