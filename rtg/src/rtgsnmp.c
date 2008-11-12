@@ -51,7 +51,7 @@ void *poller(void *thread_args)
     unsigned long long result = 0;
     unsigned long long last_value = 0;
     unsigned long long insert_val = 0;
-    int poll_status = 0, db_status = 0, bits = 0, init = 0;
+    int poll_status = 0, db_status = 0, init = 0;
     char query[BUFSIZE];
     char storedoid[BUFSIZE];
     char result_string[BUFSIZE];
@@ -124,6 +124,7 @@ void *poller(void *thread_args)
 	if (current != NULL) {
             tdebug(DEVELOP, "processing %s %s (%d work units remain in queue)\n",
                 current->host->host, current->objoid, crew->work_count);
+	    /* TODO only do this if we're debugging or not daemonised? */
 	    snmp_enable_stderrlog();
             snmp_sess_init(&session);
 
@@ -150,7 +151,6 @@ void *poller(void *thread_args)
 
 	    init = current->init;
 	    insert_val = 0;
-	    bits = current->bits;
 	    strncpy(storedoid, current->objoid, sizeof(storedoid));
             current = getNext();
 	}
@@ -246,10 +246,12 @@ void *poller(void *thread_args)
 		    break;
 		default:
 		    tdebug(LOW, "Unknown result type: (%s@%s) %s\n", session.peername, storedoid, result_string);
+		    /* restart the polling loop */
+		    continue;
 	    }
 
             /* Gauge Type */
-            if (bits == 0) {
+            if (vars->type == ASN_GAUGE) {
                 if (result != last_value) {
                     insert_val = result;
                     tdebug(DEVELOP, "Gauge change from %lld to %lld\n", last_value, insert_val);
@@ -263,8 +265,8 @@ void *poller(void *thread_args)
                 PT_MUTEX_LOCK(&stats.mutex);
                 stats.wraps++;
                 PT_MUTEX_UNLOCK(&stats.mutex);
-                if (bits == 32) insert_val = (THIRTYTWO - last_value) + result;
-                else if (bits == 64) insert_val = (SIXTYFOUR - last_value) + result;
+                if (vars->type == ASN_COUNTER) insert_val = (THIRTYTWO - last_value) + result;
+                else if (vars->type == ASN_COUNTER64) insert_val = (SIXTYFOUR - last_value) + result;
 
                 rate = insert_val / timediff(current_time, last_time);
 
