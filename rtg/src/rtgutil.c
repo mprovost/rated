@@ -111,8 +111,8 @@ void config_defaults(config_t * set)
 /* Print RTG stats */
 void print_stats(stats_t stats, config_t *set)
 {
-  debug(OFF, "[Polls = %lld] [DBInserts = %lld] [Wraps = %d] [OutOfRange = %d]\n",
-      stats.polls, stats.db_inserts, stats.wraps, stats.out_of_range);
+  debug(OFF, "[Polls = %lld] [DBInserts = %lld] [Zero = %d] [Wraps = %d] [OutOfRange = %d]\n",
+      stats.polls, stats.db_inserts, stats.zero, stats.wraps, stats.out_of_range);
   debug(OFF, "[No Resp = %d] [SNMP Errs = %d] [Slow = %d] [PollTime = %2.3f%c]\n",
       stats.no_resp, stats.errors, stats.slow, stats.poll_time, 's');
   return;

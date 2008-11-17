@@ -10,7 +10,7 @@
 
 /* Yes.  Globals. */
 stats_t stats =
-{PTHREAD_MUTEX_INITIALIZER, 0, 0, 0, 0, 0, 0, 0, 0, 0.0};
+{PTHREAD_MUTEX_INITIALIZER, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0};
 char *target_file = NULL;
 target_t *current = NULL;
 char *pid_file = PIDFILE;
