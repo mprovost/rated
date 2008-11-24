@@ -242,23 +242,24 @@ void *poller(void *thread_args)
 		    break;
 		default:
 		    /* no result that we can use, restart the polling loop */
+		    /* TODO should we remove this target from the list? */
 		    goto cleanup;
 	    }
 
             /* zero delta */
             if (result == last_value) {
-	        tdebug(DEBUG, "zero delta: %llu = %llu\n", result, last_value);
+                tdebug(DEBUG, "zero delta: %llu = %llu\n", result, last_value);
                 PT_MUTEX_LOCK(&stats.mutex);
                 stats.zero++;
                 PT_MUTEX_UNLOCK(&stats.mutex);
                 if (set->withzeros) {
                     insert_val = result;
-		} else {
-		    goto cleanup;
-		}
-	    /* Counter Wrap Condition */
-	    } else if (result < last_value) {
-	        if (vars->type == ASN_COUNTER || vars->type == ASN_COUNTER64) {
+                } else {
+                    goto cleanup;
+                }
+            /* Counter Wrap Condition */
+            } else if (result < last_value) {
+                if (vars->type == ASN_COUNTER || vars->type == ASN_COUNTER64) {
                     PT_MUTEX_LOCK(&stats.mutex);
                     stats.wraps++;
                     PT_MUTEX_UNLOCK(&stats.mutex);
@@ -270,43 +271,43 @@ void *poller(void *thread_args)
 
                     tdebug(LOW, "*** Counter Wrap (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
                         storedoid, session.peername, result, last_value, insert_val);
-		} else {
-		    insert_val = result;
-		}
-	    /* Not a counter wrap and this is not the first poll */
-	    } else if ((last_value >= 0) && (init != NEW)) {
+                } else {
+                    insert_val = result;
+                }
+            /* Not a counter wrap and this is not the first poll */
+            } else if ((last_value >= 0) && (init != NEW)) {
                 insert_val = result - last_value;
 
-	        if (vars->type == ASN_COUNTER || vars->type == ASN_COUNTER64) {
-		    rate = insert_val / timediff(current_time, last_time);
-		}
+                if (vars->type == ASN_COUNTER || vars->type == ASN_COUNTER64) {
+                    rate = insert_val / timediff(current_time, last_time);
+                }
             /* last_value < 0, so this must be the first poll */
-	    } else {
-	        insert_val = result;
+            } else {
+                insert_val = result;
 
-	        if (vars->type == ASN_COUNTER || vars->type == ASN_COUNTER64) {
-		    tdebug(HIGH, "First Poll, Normalizing\n");
-		    goto cleanup;
-		}
-	    }
+                if (vars->type == ASN_COUNTER || vars->type == ASN_COUNTER64) {
+                    tdebug(HIGH, "First Poll, Normalizing\n");
+                    goto cleanup;
+                }
+            }
 
-	    /* Check for bogus data, either negative or unrealistic */
-	    if (insert_val > entry->maxspeed || result < 0) {
-		tdebug(LOW, "*** Out of Range (%s@%s) [insert_val: %llu] [oor: %lld]\n",
-		    storedoid, session.peername, insert_val, entry->maxspeed);
-		insert_val = 0;
-		rate = 0;
-		PT_MUTEX_LOCK(&stats.mutex);
-		stats.out_of_range++;
-		PT_MUTEX_UNLOCK(&stats.mutex);
-	    }
+            /* Check for bogus data, either negative or unrealistic */
+            if (insert_val > entry->maxspeed || result < 0) {
+                tdebug(LOW, "*** Out of Range (%s@%s) [insert_val: %llu] [oor: %lld]\n",
+                    storedoid, session.peername, insert_val, entry->maxspeed);
+                insert_val = 0;
+                rate = 0;
+                PT_MUTEX_LOCK(&stats.mutex);
+                stats.out_of_range++;
+                PT_MUTEX_UNLOCK(&stats.mutex);
+            }
 
-	    if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / %f = %f\n", result, last_value, insert_val, timediff(current_time, last_time), rate);
+            if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / %f = %f\n", result, last_value, insert_val, timediff(current_time, last_time), rate);
 
             /* TODO do we need to check for zero values again? */
-	    
+
             if (!(set->dboff)) {
-	        if ( (insert_val > 0) || (set->withzeros) ) {
+                if ( (insert_val > 0) || (set->withzeros) ) {
                     tdebug(DEVELOP, "db_insert sent: %s %d %llu %f\n",entry->table,entry->iid,insert_val,rate);
                     /* insert into the database */
                     db_status = db_insert(entry->table, entry->iid, insert_val, rate);
@@ -316,9 +317,9 @@ void *poller(void *thread_args)
                         stats.db_inserts++;
                         PT_MUTEX_UNLOCK(&stats.mutex);
                     }
-	        }
+                }
             } /* !dboff */
-	} /* STAT_SUCCESS */
+        } /* STAT_SUCCESS */
 
 /*
         tdebug(HIGH, "doing commit\n");
@@ -331,23 +332,23 @@ cleanup:
             if (response != NULL) snmp_free_pdu(response);
         }
 
-	tdebug(DEVELOP, "locking (update work_count)\n");
-	PT_MUTEX_LOCK(&crew->mutex);
-	crew->work_count--;
+        tdebug(DEVELOP, "locking (update work_count)\n");
+        PT_MUTEX_LOCK(&crew->mutex);
+        crew->work_count--;
 
-	/* always update the time */
-	entry->last_time = current_time;	
+        /* always update the time */
+        entry->last_time = current_time;	
 
         /* Only if we received a positive result back do we update the last_value object */
-	if (poll_status == STAT_SUCCESS) {
+        if (poll_status == STAT_SUCCESS) {
             entry->last_value = result;
             if (init == NEW) entry->init = LIVE;
-	}
+        }
 
-	if (crew->work_count <= 0) {
+        if (crew->work_count <= 0) {
             tdebug(HIGH, "Queue processed. Broadcasting thread done condition.\n");
             PT_COND_BROAD(&crew->done);
-	}
+        }
         tdebug(DEVELOP, "unlocking (update work_count)\n");
 
         PT_MUTEX_UNLOCK(&crew->mutex);
