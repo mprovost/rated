@@ -109,7 +109,7 @@ typedef struct config_struct {
     char dbdb[80];
     char dbuser[80];
     char dbpass[80];
-    enum debugLevel verbose;
+    volatile enum debugLevel verbose;
     unsigned short withzeros;
     unsigned short dboff;
     unsigned short multiple;
@@ -234,7 +234,6 @@ int hash_target_file(char *);
 
 /* extern config_t set; */
 extern int lock;
-extern int waiting;
 extern char config_paths[CONFIG_PATHS][BUFSIZE];
 extern FILE *dfp;
 

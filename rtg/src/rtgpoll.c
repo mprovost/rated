@@ -21,9 +21,9 @@ config_t config;
 config_t *set = &config;
 
 /* for signal handler */
-int waiting;
-int quitting;
-int quit_signal;
+volatile sig_atomic_t waiting;
+volatile sig_atomic_t quitting;
+volatile sig_atomic_t quit_signal;
 
 char config_paths[CONFIG_PATHS][BUFSIZE];
 
@@ -129,21 +129,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    /* hash list of targets to be polled */
-    init_hash();
-    entries = hash_target_file(target_file);
-    if (entries <= 0) 
-        fatal("Error updating target list.");
-
     debug(LOW, "Initializing threads (%d).\n", set->threads);
     pthread_mutex_init(&(crew.mutex), NULL);
     pthread_cond_init(&(crew.done), NULL);
     pthread_cond_init(&(crew.go), NULL);
     crew.work_count = 0;
-
-    /* Initialize the SNMP session */
-    debug(LOW, "Initializing SNMP (port %d).\n", set->snmp_port);
-    init_snmp("RTG");
 
     debug(HIGH, "Starting threads...");
     crew.running = 0;
@@ -170,6 +160,16 @@ int main(int argc, char *argv[]) {
     gettimeofday(&now, NULL);
     end_time = now.tv_sec * 1000 + now.tv_usec / 1000; /* convert to milliseconds */
     debug(HIGH, "Waited %d milliseconds for thread startup.\n", end_time - begin_time);
+
+    /* Initialize the SNMP session */
+    debug(LOW, "Initializing SNMP (port %d).\n", set->snmp_port);
+    init_snmp("RTG");
+
+    /* hash list of targets to be polled */
+    init_hash();
+    entries = hash_target_file(target_file);
+    if (entries <= 0) 
+        fatal("Error updating target list.");
 
     debug(LOW, "RTG Ready.\n");
 
