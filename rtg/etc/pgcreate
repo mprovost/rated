@@ -13,7 +13,7 @@ ROOTPASS=$1
 HOST="localhost"
 RTGPASS="rtgdefault"
 DATABASE="rtg"
-USER="snmp"
+USER="rtg"
 
 echo ""
 echo "$0 setting up Postgres database for RTG."

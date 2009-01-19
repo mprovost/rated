@@ -107,21 +107,22 @@ int __db_connect(config_t *config) {
 	}
 
 	return TRUE;
-
 }
 
 int __db_disconnect() {
 	PGconn *pgsql = getpgsql();
 
-	debug(LOW, "Disconnecting from postgres\n");
-	PQfinish(pgsql);
+        if (pgsql) {
+	    PQfinish(pgsql);
+	    debug(LOW, "Disconnected from postgres\n");
 
-	/*
-	 * PQfinish free()s the memory location stored in the key,
-	 * so when the thread shuts down we get a double free and
-	 * a warning. Setting it back to NULL avoids this.
-	 */
-	pthread_setspecific(key, NULL);
+	    /*
+	     * PQfinish free()s the memory location stored in the key,
+	     * so when the thread shuts down we get a double free and
+	     * a warning. Setting it back to NULL avoids this.
+	     */
+	    pthread_setspecific(key, NULL);
+        }
 
 	return TRUE;
 }
@@ -140,10 +141,18 @@ int __db_insert(char *table, int iid, unsigned long long insert_val, double inse
 	/* INSERT INTO %s (id,dtime,counter,rate) VALUES (%d, NOW(), %llu, %.6f) */
 	/* escape table name */
 	table_esc = escape_string(table_esc, table);
-				
-	asprintf(&query,
-		"INSERT INTO \"%s\" (id,dtime,counter,rate) VALUES (%d,NOW(),%llu,%.6f)",
-		table_esc, iid, insert_val, insert_rate);
+
+        /* don't include the rate column if it's not needed */
+        if (insert_rate > 0) {
+            /* double columns have precision of at least 15 digits */
+            asprintf(&query,
+                "INSERT INTO \"%s\" (id,dtime,counter,rate) VALUES (%d,NOW(),%llu,%.15f)",
+                table_esc, iid, insert_val, insert_rate);
+        } else {
+            asprintf(&query,
+                "INSERT INTO \"%s\" (id,dtime,counter) VALUES (%d,NOW(),%llu)",
+                table_esc, iid, insert_val);
+        }
 
 	free(table_esc);
 
@@ -158,13 +167,13 @@ int __db_insert(char *table, int iid, unsigned long long insert_val, double inse
 	/* free the result */
 	(void)PQclear(result);
 
-	if (status == PGRES_COMMAND_OK) {
-		return TRUE;
-	} else {
-		/* Note that by libpq convention, a non-empty PQerrorMessage will include a trailing newline. */
-		/* also errors start with 'ERROR:' so we don't need to */
-		debug(LOW, "Postgres %s", PQerrorMessage(pgsql));
+        if (status == PGRES_COMMAND_OK) {
+            return TRUE;
+        } else {
+            /* Note that by libpq convention, a non-empty PQerrorMessage will include a trailing newline. */
+            /* also errors start with 'ERROR:' so we don't need to */
+            debug(LOW, "Postgres %s", PQerrorMessage(pgsql));
 
-		return FALSE;
+            return FALSE;
 	}
 }

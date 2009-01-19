@@ -159,6 +159,7 @@ typedef struct poll_stats {
     pthread_mutex_t mutex;
     unsigned long long polls;
     unsigned long long db_inserts;
+    unsigned long long db_errors;
     unsigned int round;
     unsigned int zero;
     unsigned int wraps;
@@ -166,10 +167,7 @@ typedef struct poll_stats {
     unsigned int out_of_range;
     unsigned int errors;
     unsigned int slow;
-#ifdef FEATURES
-    unsigned int zero;
     unsigned int flat;
-#endif
     double poll_time; 
 } stats_t;
 
@@ -185,26 +183,6 @@ void usage(char *);
 
 /* Precasts: rtgpoll.c */
 void *poller(void *);
-
-#if HAVE_MYSQL
-/* Precasts: rtgmysql.c */
-int mysql_db_insert(char *, MYSQL *);
-int mysql_dbconnect(char *, MYSQL *);
-void mysql_dbdisconnect(MYSQL *);
-void mysql_close_db(void *);
-#endif
-
-#if HAVE_PGSQL
-/* Precasts: rtgpgsql.c */
-PGresult * pgsql_db_query(char *, PGconn *);
-int pgsql_db_insert(char *, PGconn *);
-PGresult * pgsql_db_select(char *, PGconn *);
-int pgsql_db_begin(PGconn *);
-int pgsql_db_commit(PGconn *);
-PGconn * pgsql_dbconnect(char *, PGconn *);
-void pgsql_dbdisconnect(PGconn *);
-void pgsql_close_db(void *);
-#endif
 
 /* Precasts: rtgutil.c */
 int read_rtg_config(char *, config_t *);

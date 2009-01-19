@@ -216,7 +216,7 @@ rtgpoll_SOURCES = rtgsnmp.c rtgdbi.c rtgpoll.c rtgutil.c \
                   rtgtarg.y rtggram.l rtghash.c
 
 rtgpoll_LDFLAGS = -rpath '$(libdir)'
-include_HEADERS = rtg.h rtgplot.h common.h rtgdbi.h
+include_HEADERS = rtg.h common.h rtgdbi.h
 rtgpoll_LDADD = $(LEXLIB)
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am

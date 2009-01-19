@@ -69,12 +69,4 @@
 # include <syslog.h>
 #endif
 
-#if HAVE_MYSQL
-# include <mysql.h>
-#endif
-
-#if HAVE_PGSQL
-# include <libpq-fe.h>
-#endif
-
 #endif /* RTG_COMMON_H */

@@ -133,10 +133,14 @@ int __db_connect(config_t *config) {
 int __db_disconnect() {
 	MYSQL * mysql = getmysql();
 
-	/* no return value to check */
-	mysql_close(mysql);
+        if (mysql) {
+	    /* no return value to check */
+	    mysql_close(mysql);
+	    debug(LOW, "Mysql connection closed\n");
 
-	debug(LOW, "Mysql connection closed\n");
+            /* mysql_close deallocates the handle so set to NULL to avoid a double free */
+            pthread_setspecific(key, NULL);
+        }
 
 	return TRUE;
 }
@@ -152,9 +156,17 @@ int __db_insert(char *table, int iid, unsigned long long insert_val, double inse
 
 	table_esc = escape_string(table_esc, table);
 
-	asprintf(&query, 
-		"INSERT INTO `%s` (id,dtime,counter,rate) VALUES (%i,NOW(),%llu,%.6f)",
-		table_esc, iid, insert_val, insert_rate);
+        /* don't include the rate column if it's not needed */
+        if (insert_rate > 0) {
+            /* a mysql DOUBLE has up to 53 bits of precision, or 15 digits */
+            asprintf(&query, 
+                "INSERT INTO `%s` (id,dtime,counter,rate) VALUES (%i,NOW(),%llu,%.15f)",
+                table_esc, iid, insert_val, insert_rate);
+        } else {
+            asprintf(&query, 
+                "INSERT INTO `%s` (id,dtime,counter) VALUES (%i,NOW(),%llu)",
+                table_esc, iid, insert_val);
+        }
 
 	free(table_esc);
 

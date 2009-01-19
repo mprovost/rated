@@ -269,7 +269,7 @@ void usage(char *prog)
     printf("  -t <file>   Specify target file\n");
     printf("  -v          Increase verbosity\n");
     printf("  -m          Allow multiple instances\n");
-    printf("  -p <file>	  Specify PID file [default /var/run/rtgpoll.pid]\n"); 
+    printf("  -p <file>   Specify PID file [default /var/run/rtgpoll.pid]\n"); 
     printf("  -z          Database zero delta inserts\n");
     printf("  -h          Help\n");
     exit(-1);

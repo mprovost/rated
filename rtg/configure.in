@@ -280,8 +280,5 @@ AC_SUBST(ltlibraries)
 AC_OUTPUT(Makefile                         \
 	  etc/Makefile                     \
 	  src/Makefile                     \
-	  contrib/Makefile                 \
 	  etc/createdb			   \
-          etc/rtgtargmkr.pl                \
-          etc/common.php                   \
           man/rtgpoll.1)

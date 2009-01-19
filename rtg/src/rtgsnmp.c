@@ -51,7 +51,8 @@ void *poller(void *thread_args)
     unsigned long long result = 0;
     unsigned long long last_value = 0;
     unsigned long long insert_val = 0;
-    int poll_status = 0, db_status = 0, init = 0;
+    int poll_status = 0, init = 0;
+    int bits = 0;
     char query[BUFSIZE];
     char storedoid[BUFSIZE];
     char result_string[BUFSIZE];
@@ -62,6 +63,7 @@ void *poller(void *thread_args)
     struct timezone tzp;
     struct timeval current_time;
     struct timeval last_time;
+    int db_reconnect = FALSE;
 
     /* for thread settings */
     int oldstate, oldtype;
@@ -154,7 +156,7 @@ void *poller(void *thread_args)
 	    last_time = current->last_time;
 
 	    init = current->init;
-	    insert_val = 0;
+	    bits = current->bits;
 	    strncpy(storedoid, current->objoid, sizeof(storedoid));
             current = getNext();
 	}
@@ -257,38 +259,31 @@ void *poller(void *thread_args)
                 } else {
                     goto cleanup;
                 }
+            /* gauges */
+            } else if (bits == 0) {
+                insert_val = result;
+            /* treat all other values as counters */
             /* Counter Wrap Condition */
             } else if (result < last_value) {
-                if (vars->type == ASN_COUNTER || vars->type == ASN_COUNTER64) {
-                    PT_MUTEX_LOCK(&stats.mutex);
-                    stats.wraps++;
-                    PT_MUTEX_UNLOCK(&stats.mutex);
+                PT_MUTEX_LOCK(&stats.mutex);
+                stats.wraps++;
+                PT_MUTEX_UNLOCK(&stats.mutex);
 
-                    if (vars->type == ASN_COUNTER) insert_val = (THIRTYTWO - last_value) + result;
-                    else if (vars->type == ASN_COUNTER64) insert_val = (SIXTYFOUR - last_value) + result;
+                if (bits == 32) insert_val = (THIRTYTWO - last_value) + result;
+                else if (bits == 64) insert_val = (SIXTYFOUR - last_value) + result;
 
-                    rate = insert_val / timediff(current_time, last_time);
+                rate = insert_val / timediff(current_time, last_time);
 
-                    tdebug(LOW, "*** Counter Wrap (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
-                        storedoid, session.peername, result, last_value, insert_val);
-                } else {
-                    insert_val = result;
-                }
+                tdebug(LOW, "*** Counter Wrap (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
+                    storedoid, session.peername, result, last_value, insert_val);
             /* Not a counter wrap and this is not the first poll */
             } else if ((last_value >= 0) && (init != NEW)) {
                 insert_val = result - last_value;
-
-                if (vars->type == ASN_COUNTER || vars->type == ASN_COUNTER64) {
-                    rate = insert_val / timediff(current_time, last_time);
-                }
+                rate = insert_val / timediff(current_time, last_time);
             /* last_value < 0, so this must be the first poll */
             } else {
-                insert_val = result;
-
-                if (vars->type == ASN_COUNTER || vars->type == ASN_COUNTER64) {
-                    tdebug(HIGH, "First Poll, Normalizing\n");
-                    goto cleanup;
-                }
+                tdebug(HIGH, "First Poll, Normalizing\n");
+                goto cleanup;
             }
 
             /* Check for bogus data, either negative or unrealistic */
@@ -302,21 +297,36 @@ void *poller(void *thread_args)
                 PT_MUTEX_UNLOCK(&stats.mutex);
             }
 
-            if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / %f = %f\n", result, last_value, insert_val, timediff(current_time, last_time), rate);
+            if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / %.15f = %.15f\n", result, last_value, insert_val, timediff(current_time, last_time), rate);
 
             /* TODO do we need to check for zero values again? */
 
             if (!(set->dboff)) {
+                if (db_reconnect) {
+                    /* try and reconnect */
+                    if (db_connect(set))
+                        db_reconnect = FALSE;
+                }
                 if ( (insert_val > 0) || (set->withzeros) ) {
-                    tdebug(DEVELOP, "db_insert sent: %s %d %llu %f\n",entry->table,entry->iid,insert_val,rate);
+                    tdebug(DEVELOP, "db_insert sent: %s %d %llu %.15f\n", entry->table, entry->iid, insert_val, rate);
                     /* insert into the database */
-                    db_status = db_insert(entry->table, entry->iid, insert_val, rate);
-
-                    if (db_status) {
+                    if (db_insert(entry->table, entry->iid, insert_val, rate)) {
                         PT_MUTEX_LOCK(&stats.mutex);
                         stats.db_inserts++;
                         PT_MUTEX_UNLOCK(&stats.mutex);
+                    } else {
+                        PT_MUTEX_LOCK(&stats.mutex);
+                        stats.db_errors++;
+                        PT_MUTEX_UNLOCK(&stats.mutex);
+                        /* try and reconnect on the next poll */
+                        if (!db_status()) {
+                            /* first disconnect to close the handle */
+                            db_disconnect();
+                            db_reconnect = TRUE;
+                        }
                     }
+                } else {
+                    /* TODO check that we have a valid db connection so we can retry next time */
                 }
             } /* !dboff */
         } /* STAT_SUCCESS */
@@ -336,11 +346,12 @@ cleanup:
         PT_MUTEX_LOCK(&crew->mutex);
         crew->work_count--;
 
-        /* always update the time */
-        entry->last_time = current_time;	
+        /* update the time */
+        if (!db_reconnect)
+            entry->last_time = current_time;	
 
         /* Only if we received a positive result back do we update the last_value object */
-        if (poll_status == STAT_SUCCESS) {
+        if (poll_status == STAT_SUCCESS && !db_reconnect) {
             entry->last_value = result;
             if (init == NEW) entry->init = LIVE;
         }

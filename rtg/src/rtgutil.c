@@ -108,11 +108,11 @@ void config_defaults(config_t * set)
 }
 
 
-/* Print RTG stats */
+/* Print RTG poll stats */
 void print_stats(stats_t stats, config_t *set)
 {
-  debug(OFF, "[Polls = %lld] [DBInserts = %lld] [Zero = %d] [Wraps = %d] [OutOfRange = %d]\n",
-      stats.polls, stats.db_inserts, stats.zero, stats.wraps, stats.out_of_range);
+  debug(OFF, "[Polls = %lld] [DBInserts = %lld] [DBErrors = %lld] [Zero = %d] [Wraps = %d] [OutOfRange = %d]\n",
+      stats.polls, stats.db_inserts, stats.db_errors, stats.zero, stats.wraps, stats.out_of_range);
   debug(OFF, "[No Resp = %d] [SNMP Errs = %d] [Slow = %d] [PollTime = %2.3f%c]\n",
       stats.no_resp, stats.errors, stats.slow, stats.poll_time, 's');
   return;
@@ -133,9 +133,10 @@ int sleepy(float sleep_time, config_t *set)
 	    /* check if we've been signalled */
             if (quitting)
                 break;
-            if (!set->daemon)
+            if (!set->daemon) {
                 debug(LOW, "%d...", i);
 		fflush(NULL);
+            }
             usleep((unsigned int) (sleep_time*MEGA/ chunks));
         }
         if (!set->daemon)
