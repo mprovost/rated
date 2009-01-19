@@ -8,6 +8,8 @@
 #include "common.h"
 #include "rtg.h"
 
+extern quitting;
+
 extern FILE *dfp;
 
 /* read configuration file to establish local environment */
@@ -106,11 +108,11 @@ void config_defaults(config_t * set)
 }
 
 
-/* Print RTG stats */
+/* Print RTG poll stats */
 void print_stats(stats_t stats, config_t *set)
 {
-  debug(OFF, "[Polls = %lld] [DBInserts = %lld] [Wraps = %d] [OutOfRange = %d]\n",
-      stats.polls, stats.db_inserts, stats.wraps, stats.out_of_range);
+  debug(OFF, "[Polls = %lld] [DBInserts = %lld] [DBErrors = %lld] [Zero = %d] [Wraps = %d] [OutOfRange = %d]\n",
+      stats.polls, stats.db_inserts, stats.db_errors, stats.zero, stats.wraps, stats.out_of_range);
   debug(OFF, "[No Resp = %d] [SNMP Errs = %d] [Slow = %d] [PollTime = %2.3f%c]\n",
       stats.no_resp, stats.errors, stats.slow, stats.poll_time, 's');
   return;
@@ -123,25 +125,27 @@ int sleepy(float sleep_time, config_t *set)
     int chunks = 10;
     int i;
 
-	if (set->daemon) {
-		usleep((unsigned int) (sleep_time*MEGA));
-		return (0);
-	}
-	if (sleep_time > chunks) {
-		debug(LOW, "Next Poll: ");
-		for (i = chunks; i > 0; i--) {
-			if (set->verbose >= LOW) {
-				printf("%d...", i);
-				fflush(NULL);
-			}
-			usleep((unsigned int) (sleep_time*MEGA/ chunks));
-		}
-		if (set->verbose >= LOW) printf("\n");
-	} else {
-		sleep_time*=MEGA;
-		usleep((unsigned int) sleep_time);
-	}
-	return (0);
+    /* always sleep in chunks so we can quit if signalled */
+    if (sleep_time > chunks) {
+        if (!set->daemon)
+            debug(LOW, "Next Poll: ");
+        for (i = chunks; i > 0; i--) {
+	    /* check if we've been signalled */
+            if (quitting)
+                break;
+            if (!set->daemon) {
+                debug(LOW, "%d...", i);
+		fflush(NULL);
+            }
+            usleep((unsigned int) (sleep_time*MEGA/ chunks));
+        }
+        if (!set->daemon)
+            debug(LOW, "\n");
+    } else {
+        sleep_time*=MEGA;
+        usleep((unsigned int) sleep_time);
+    }
+    return (0);
 }
 
 

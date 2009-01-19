@@ -232,4 +232,5 @@ AC_SUBST(ltlibraries)
 
 AC_OUTPUT(Makefile                         \
 	  src/Makefile                     \
+	  etc/createdb			   \
           man/rtgpoll.1)

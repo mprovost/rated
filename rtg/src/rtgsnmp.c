@@ -51,7 +51,8 @@ void *poller(void *thread_args)
     unsigned long long result = 0;
     unsigned long long last_value = 0;
     unsigned long long insert_val = 0;
-    int poll_status = 0, db_status = 0, bits = 0, init = 0;
+    int poll_status = 0, init = 0;
+    int bits = 0;
     char query[BUFSIZE];
     char storedoid[BUFSIZE];
     char result_string[BUFSIZE];
@@ -62,6 +63,7 @@ void *poller(void *thread_args)
     struct timezone tzp;
     struct timeval current_time;
     struct timeval last_time;
+    int db_reconnect = FALSE;
 
     /* for thread settings */
     int oldstate, oldtype;
@@ -89,6 +91,10 @@ void *poller(void *thread_args)
 
     while (1) {
 
+        /* reset variables */
+	result = insert_val = 0;
+	rate =0;
+
 /*
         if(loop_count >= POLLS_PER_TRANSACTION) {
             tdebug(HIGH, "doing commit on %d\n", POLLS_PER_TRANSACTION);
@@ -105,6 +111,8 @@ void *poller(void *thread_args)
 	/* add an unlock to the cancel stack */
 	pthread_cleanup_push(cancel_lock, &crew->mutex);	
 
+	/* TODO crew->running-- if we're cancelled */
+
 	while (current == NULL) {
             PT_COND_WAIT(&crew->go, &crew->mutex);
 	}
@@ -120,9 +128,10 @@ void *poller(void *thread_args)
         prev_work = cur_work;
 
 	if (current != NULL) {
-            tdebug(DEVELOP, "processing %s %s (%d work units remain in queue)\n",
-                current->host->host, current->objoid, crew->work_count);
-	    snmp_enable_stderrlog(); 
+            tdebug(DEVELOP, "processing %s@%s (%d work units remain in queue)\n",
+                current->objoid, current->host->host, crew->work_count);
+	    /* TODO only do this if we're debugging or not daemonised? */
+	    snmp_enable_stderrlog();
             snmp_sess_init(&session);
 
             if (current->host->snmp_ver == 2)
@@ -147,7 +156,6 @@ void *poller(void *thread_args)
 	    last_time = current->last_time;
 
 	    init = current->init;
-	    insert_val = 0;
 	    bits = current->bits;
 	    strncpy(storedoid, current->objoid, sizeof(storedoid));
             current = getNext();
@@ -169,25 +177,22 @@ void *poller(void *thread_args)
 	PT_MUTEX_LOCK(&stats.mutex);
 	if (poll_status == STAT_DESCRIP_ERROR) {
 	    stats.errors++;
-            printf("*** SNMP Error: (%s) Bad descriptor.\n", session.peername);
+            tdebug(LOW, "*** SNMP Error: (%s) Bad descriptor.\n", session.peername);
 	} else if (poll_status == STAT_TIMEOUT) {
 	    stats.no_resp++;
-	    printf("*** SNMP No response: (%s@%s).\n", session.peername,
-	       storedoid);
+	    tdebug(LOW, "*** SNMP No response: (%s@%s).\n", storedoid, session.peername);
 	} else if (poll_status != STAT_SUCCESS) {
 	    stats.errors++;
-	    printf("*** SNMP Error: (%s@%s) Unsuccessuful (%d).\n", session.peername,
-	       storedoid, poll_status);
+	    tdebug(LOW, "*** SNMP Error: (%s@%s) Unsuccessuful (%d).\n", storedoid, session.peername, poll_status);
 	} else if (poll_status == STAT_SUCCESS && response->errstat != SNMP_ERR_NOERROR) {
 	    stats.errors++;
-	    printf("*** SNMP Error: (%s@%s) %s\n", session.peername,
-	       storedoid, snmp_errstring(response->errstat));
+	    tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", storedoid, session.peername, snmp_errstring(response->errstat));
 	} else if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR && response->variables->type == SNMP_NOSUCHINSTANCE) {
 	    stats.errors++;
-	    printf("*** SNMP Error: No Such Instance Exists (%s@%s)\n", session.peername, storedoid);
+	    tdebug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", storedoid, session.peername);
 	} else if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
 	    stats.polls++;
-	} 
+	}
 	PT_MUTEX_UNLOCK(&stats.mutex);
 
 	/*
@@ -198,43 +203,39 @@ void *poller(void *thread_args)
 
 	if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR && response->variables->type != SNMP_NOSUCHINSTANCE) {
 	    vars = response->variables;
+            if (set->verbose >= DEBUG) {
 #ifdef OLD_UCD_SNMP
-            sprint_value(result_string, anOID, anOID_len, vars);
+                sprint_value(result_string, anOID, anOID_len, vars);
 #else
-	    snprint_value(result_string, BUFSIZE, anOID, anOID_len, vars);
+                snprint_value(result_string, BUFSIZE, anOID, anOID_len, vars);
 #endif
+                tdebug(DEBUG, "(%s@%s) %s\n", storedoid, session.peername, result_string);
+            }
 	    switch (vars->type) {
 		/*
 		 * Switch over vars->type and modify/assign result accordingly.
 		 */
 		case ASN_COUNTER64:
-		    tdebug(DEBUG, "64-bit result: (%s@%s) %s\n", session.peername, storedoid, result_string);
 		    result = vars->val.counter64->high;
 		    result = result << 32;
 		    result = result + vars->val.counter64->low;
 		    break;
 		case ASN_COUNTER:
-		    tdebug(DEBUG, "32-bit result: (%s@%s) %s\n", session.peername, storedoid, result_string);
 		    result = (unsigned long) *(vars->val.integer);
 		    break;
 		case ASN_INTEGER:
-		    tdebug(DEBUG, "Integer result: (%s@%s) %s\n", session.peername, storedoid, result_string);
 		    result = (unsigned long) *(vars->val.integer);
 		    break;
 		case ASN_GAUGE:
-		    tdebug(DEBUG, "32-bit gauge: (%s@%s) %s\n", session.peername, storedoid, result_string);
 		    result = (unsigned long) *(vars->val.integer);
 		    break;
 		case ASN_TIMETICKS:
-		    tdebug(DEBUG, "Timeticks result: (%s@%s) %s\n", session.peername, storedoid, result_string);
 		    result = (unsigned long) *(vars->val.integer);
 		    break;
 		case ASN_OPAQUE:
-		    tdebug(DEBUG, "Opaque result: (%s@%s) %s\n", session.peername, storedoid, result_string);
 		    result = (unsigned long) *(vars->val.integer);
 		    break;
 		case ASN_OCTET_STR:
-		    tdebug(DEBUG, "String Result: (%s@%s) %s\n", session.peername, storedoid, result_string);
 #ifdef HAVE_STRTOLL
 		    result = strtoll(vars->val.string, NULL, 0);
 #else
@@ -242,101 +243,123 @@ void *poller(void *thread_args)
 #endif
 		    break;
 		default:
-		    tdebug(LOW, "Unknown result type: (%s@%s) %s\n", session.peername, storedoid, result_string);
+		    /* no result that we can use, restart the polling loop */
+		    /* TODO should we remove this target from the list? */
+		    goto cleanup;
 	    }
 
-            /* Gauge Type */
-            if (bits == 0) {
-                if (result != last_value) {
+            /* zero delta */
+            if (result == last_value) {
+                tdebug(DEBUG, "zero delta: %llu = %llu\n", result, last_value);
+                PT_MUTEX_LOCK(&stats.mutex);
+                stats.zero++;
+                PT_MUTEX_UNLOCK(&stats.mutex);
+                if (set->withzeros) {
                     insert_val = result;
-                    tdebug(DEVELOP, "Gauge change from %lld to %lld\n", last_value, insert_val);
-		} else {
-                    if (set->withzeros) 
-                        insert_val = result;
-                        tdebug(DEVELOP, "Gauge steady at %lld\n", insert_val);
+                } else {
+                    goto cleanup;
                 }
-	    /* Counter Wrap Condition */
-	    } else if (result < last_value) {
+            /* gauges */
+            } else if (bits == 0) {
+                insert_val = result;
+            /* treat all other values as counters */
+            /* Counter Wrap Condition */
+            } else if (result < last_value) {
                 PT_MUTEX_LOCK(&stats.mutex);
                 stats.wraps++;
                 PT_MUTEX_UNLOCK(&stats.mutex);
+
                 if (bits == 32) insert_val = (THIRTYTWO - last_value) + result;
                 else if (bits == 64) insert_val = (SIXTYFOUR - last_value) + result;
 
                 rate = insert_val / timediff(current_time, last_time);
 
                 tdebug(LOW, "*** Counter Wrap (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
-                    session.peername, storedoid, result, last_value, insert_val);
-	    /* Not a counter wrap and this is not the first poll */
-	    } else if ((last_value >= 0) && (init != NEW)) {
+                    storedoid, session.peername, result, last_value, insert_val);
+            /* Not a counter wrap and this is not the first poll */
+            } else if ((last_value >= 0) && (init != NEW)) {
                 insert_val = result - last_value;
-
-		rate = insert_val / timediff(current_time, last_time);
-		
-	        /* Print out SNMP result if verbose */
-	        if (set->verbose == DEBUG)
-                    printf("Thread [%d]: (%lld-%lld -- %llu) = %llu\n", worker->index, result, last_value, insert_val,rate);
-	        if (set->verbose == HIGH)
-                    printf("Thread [%d]: %llu\n", worker->index, insert_val);
+                rate = insert_val / timediff(current_time, last_time);
             /* last_value < 0, so this must be the first poll */
-	    } else {
-		/* set up this result for the next poll */
-		entry->last_value = result;
-		tdebug(HIGH, "First Poll, Normalizing\n");
-	    }
-	    /* Check for bogus data, either negative or unrealistic */
-	    if (insert_val > entry->maxspeed || result < 0) {
-		tdebug(LOW, "*** Out of Range (%s@%s) [insert_val: %llu] [oor: %lld]\n",
-		    session.peername, storedoid, insert_val, entry->maxspeed);
-		insert_val = 0;
-		rate = 0;
-		PT_MUTEX_LOCK(&stats.mutex);
-		stats.out_of_range++;
-		PT_MUTEX_UNLOCK(&stats.mutex);
-	    }
+            } else {
+                tdebug(HIGH, "First Poll, Normalizing\n");
+                goto cleanup;
+            }
+
+            /* Check for bogus data, either negative or unrealistic */
+            if (insert_val > entry->maxspeed || result < 0) {
+                tdebug(LOW, "*** Out of Range (%s@%s) [insert_val: %llu] [oor: %lld]\n",
+                    storedoid, session.peername, insert_val, entry->maxspeed);
+                insert_val = 0;
+                rate = 0;
+                PT_MUTEX_LOCK(&stats.mutex);
+                stats.out_of_range++;
+                PT_MUTEX_UNLOCK(&stats.mutex);
+            }
+
+            if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / %.15f = %.15f\n", result, last_value, insert_val, timediff(current_time, last_time), rate);
+
+            /* TODO do we need to check for zero values again? */
 
             if (!(set->dboff)) {
+                if (db_reconnect) {
+                    /* try and reconnect */
+                    if (db_connect(set))
+                        db_reconnect = FALSE;
+                }
                 if ( (insert_val > 0) || (set->withzeros) ) {
-                    tdebug(DEVELOP, "db_insert sent: %s %d %d %e\n",entry->table,entry->iid,insert_val,rate);
+                    tdebug(DEVELOP, "db_insert sent: %s %d %llu %.15f\n", entry->table, entry->iid, insert_val, rate);
                     /* insert into the database */
-                    db_status = db_insert(entry->table, entry->iid, insert_val, rate);
-
-                    if (db_status) {
+                    if (db_insert(entry->table, entry->iid, insert_val, rate)) {
                         PT_MUTEX_LOCK(&stats.mutex);
                         stats.db_inserts++;
                         PT_MUTEX_UNLOCK(&stats.mutex);
-                    } 
-                } /* insert_val > 0 or withzeros */	
+                    } else {
+                        PT_MUTEX_LOCK(&stats.mutex);
+                        stats.db_errors++;
+                        PT_MUTEX_UNLOCK(&stats.mutex);
+                        /* try and reconnect on the next poll */
+                        if (!db_status()) {
+                            /* first disconnect to close the handle */
+                            db_disconnect();
+                            db_reconnect = TRUE;
+                        }
+                    }
+                } else {
+                    /* TODO check that we have a valid db connection so we can retry next time */
+                }
             } /* !dboff */
-	} /* STAT_SUCCESS */
+        } /* STAT_SUCCESS */
 
 /*
         tdebug(HIGH, "doing commit\n");
         db_status = db_commit();
 */
 
+cleanup:
         if (sessp != NULL) {
             snmp_sess_close(sessp);
             if (response != NULL) snmp_free_pdu(response);
         }
 
-	tdebug(DEVELOP, "locking (update work_count)\n");
-	PT_MUTEX_LOCK(&crew->mutex);
-	crew->work_count--;
-	/* Only if we received a positive result back do we update the
-            last_value object */
-	if (poll_status == STAT_SUCCESS) {
+        tdebug(DEVELOP, "locking (update work_count)\n");
+        PT_MUTEX_LOCK(&crew->mutex);
+        crew->work_count--;
+
+        /* update the time */
+        if (!db_reconnect)
+            entry->last_time = current_time;	
+
+        /* Only if we received a positive result back do we update the last_value object */
+        if (poll_status == STAT_SUCCESS && !db_reconnect) {
             entry->last_value = result;
             if (init == NEW) entry->init = LIVE;
-	}
+        }
 
-	/* always update the time */
-	entry->last_time = current_time;	
-
-	if (crew->work_count <= 0) {
+        if (crew->work_count <= 0) {
             tdebug(HIGH, "Queue processed. Broadcasting thread done condition.\n");
             PT_COND_BROAD(&crew->done);
-	}
+        }
         tdebug(DEVELOP, "unlocking (update work_count)\n");
 
         PT_MUTEX_UNLOCK(&crew->mutex);

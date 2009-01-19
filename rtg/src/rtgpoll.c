@@ -10,7 +10,7 @@
 
 /* Yes.  Globals. */
 stats_t stats =
-{PTHREAD_MUTEX_INITIALIZER, 0, 0, 0, 0, 0, 0, 0, 0, 0.0};
+{PTHREAD_MUTEX_INITIALIZER, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0};
 char *target_file = NULL;
 target_t *current = NULL;
 char *pid_file = PIDFILE;
@@ -19,8 +19,12 @@ int entries = 0;
 /* Globals */
 config_t config;
 config_t *set = &config;
-int lock;
-int waiting;
+
+/* for signal handler */
+volatile sig_atomic_t waiting;
+volatile sig_atomic_t quitting;
+volatile sig_atomic_t quit_signal;
+
 char config_paths[CONFIG_PATHS][BUFSIZE];
 
 /* dfp is a debug file pointer.  Points to stderr unless debug=level is set */
@@ -38,6 +42,9 @@ int main(int argc, char *argv[]) {
     char errstr[BUFSIZE];
     int ch, i;
     struct timespec ts;
+    waiting = FALSE;
+    quitting = FALSE;
+    quit_signal = 0;
 
     dfp = stderr;
 
@@ -100,7 +107,7 @@ int main(int argc, char *argv[]) {
         checkPID(pid_file, set);
 
     if (pthread_sigmask(SIG_BLOCK, &signal_set, NULL) != 0)
-        printf("pthread_sigmask error\n");
+        fatal("pthread_sigmask error\n");
 
     /* Read configuration file to establish local environment */
     if (conf_file) {
@@ -122,21 +129,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    /* hash list of targets to be polled */
-    init_hash();
-    entries = hash_target_file(target_file);
-    if (entries <= 0) 
-        fatal("Error updating target list.");
-
     debug(LOW, "Initializing threads (%d).\n", set->threads);
     pthread_mutex_init(&(crew.mutex), NULL);
     pthread_cond_init(&(crew.done), NULL);
     pthread_cond_init(&(crew.go), NULL);
     crew.work_count = 0;
-
-    /* Initialize the SNMP session */
-    debug(LOW, "Initializing SNMP (port %d).\n", set->snmp_port);
-    init_snmp("RTG");
 
     debug(HIGH, "Starting threads...");
     crew.running = 0;
@@ -164,11 +161,32 @@ int main(int argc, char *argv[]) {
     end_time = now.tv_sec * 1000 + now.tv_usec / 1000; /* convert to milliseconds */
     debug(HIGH, "Waited %d milliseconds for thread startup.\n", end_time - begin_time);
 
+    /* Initialize the SNMP session */
+    debug(LOW, "Initializing SNMP (port %d).\n", set->snmp_port);
+    init_snmp("RTG");
+
+    /* hash list of targets to be polled */
+    init_hash();
+    entries = hash_target_file(target_file);
+    if (entries <= 0) 
+        fatal("Error updating target list.");
+
     debug(LOW, "RTG Ready.\n");
 
     /* Loop Forever Polling Target List */
     while (1) {
-	lock = TRUE;
+	/* check if we've been signalled */
+	if (quitting) {
+            debug(LOW, "Quitting: received signal %i.\n", quit_signal);
+            print_stats(stats, set);
+            unlink(pid_file);
+            exit(1);
+	} else if (waiting) {
+            debug(HIGH, "Processing pending SIGHUP.\n");
+            entries = hash_target_file(target_file);
+            waiting = FALSE;
+	}
+
 	gettimeofday(&now, NULL);
 	begin_time = (double) now.tv_usec / 1000000 + now.tv_sec;
 
@@ -189,21 +207,13 @@ int main(int argc, char *argv[]) {
 	PT_MUTEX_UNLOCK(&(crew.mutex));
 
 	gettimeofday(&now, NULL);
-	lock = FALSE;
 	end_time = (double) now.tv_usec / 1000000 + now.tv_sec;
 	stats.poll_time = end_time - begin_time;
         stats.round++;
 	sleep_time = set->interval - stats.poll_time;
 
-	if (waiting) {
-            debug(HIGH, "Processing pending SIGHUP.\n");
-            entries = hash_target_file(target_file);
-            waiting = FALSE;
-	}
-
 	debug(LOW, "Poll round %d complete.\n", stats.round);
 	if (set->verbose >= LOW) {
-	    /* TODO inline */
             print_stats(stats, set);
         }
 
@@ -216,7 +226,8 @@ int main(int argc, char *argv[]) {
 }
 
 
-/* Signal Handler.  USR1 increases verbosity, USR2 decreases verbosity. 
+/*
+ * Signal Handler.  USR1 increases verbosity, USR2 decreases verbosity. 
  * HUP re-reads target list
  */
 void *sig_handler(void *arg)
@@ -228,13 +239,7 @@ void *sig_handler(void *arg)
 	sigwait(signal_set, &sig_number);
 	switch (sig_number) {
             case SIGHUP:
-                if(lock) {
-                    waiting = TRUE;
-                }
-                else {
-                    entries = hash_target_file(target_file);
-                    waiting = FALSE;
-                }
+                waiting = TRUE;
                 break;
             case SIGUSR1:
                 set->verbose++;
@@ -245,12 +250,11 @@ void *sig_handler(void *arg)
             case SIGTERM:
             case SIGINT:
             case SIGQUIT:
-		debug(LOW, "Quiting: received signal %d.\n", sig_number);
-                unlink(pid_file);
-                exit(1);
+                quit_signal = sig_number;
+                quitting = TRUE;
                 break;
         }
-   }
+    }
 }
 
 
@@ -265,7 +269,7 @@ void usage(char *prog)
     printf("  -t <file>   Specify target file\n");
     printf("  -v          Increase verbosity\n");
     printf("  -m          Allow multiple instances\n");
-    printf("  -p <file>	  Specify PID file [default /var/run/rtgpoll.pid]\n"); 
+    printf("  -p <file>   Specify PID file [default /var/run/rtgpoll.pid]\n"); 
     printf("  -z          Database zero delta inserts\n");
     printf("  -h          Help\n");
     exit(-1);

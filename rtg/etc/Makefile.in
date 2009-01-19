@@ -40,8 +40,7 @@ build_triplet = @build@
 host_triplet = @host@
 subdir = etc
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
-	$(srcdir)/common.php.in $(srcdir)/createdb.in \
-	$(srcdir)/rtgtargmkr.pl.in
+	$(srcdir)/createdb.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
@@ -49,7 +48,7 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(SHELL) $(top_srcdir)/config/mkinstalldirs
 CONFIG_HEADER = $(top_builddir)/config/config.h
-CONFIG_CLEAN_FILES = createdb rtgtargmkr.pl common.php
+CONFIG_CLEAN_FILES = createdb
 SOURCES =
 DIST_SOURCES =
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -154,17 +153,8 @@ sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 etcdir = /etc
-webdir = /web
-reportsdir = /bin
-ETC = rtg.conf rtgtargmkr.pl routers createdb BER.pm \
-               SNMP_Session.pm SNMP_util.pm
-
-WEB = rtg.php 95.php view.php common.php rtg.png rtgback.png
-REPORTS = report.pl 95.pl
-EXTRA_DIST = rtgtargmkr.pl.in report.pl 95.pl createdb.in \
-               BER.pm SNMP_Session.pm SNMP_util.pm rtg.conf \
-	       routers rtg.php 95.php view.php common.php.in rtg.png rtgback.png
-
+ETC = rtg.conf routers createdb
+EXTRA_DIST = createdb.in rtg.conf routers rtg.png rtgback.png
 all: all-am
 
 .SUFFIXES:
@@ -198,10 +188,6 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 createdb: $(top_builddir)/config.status $(srcdir)/createdb.in
-	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
-rtgtargmkr.pl: $(top_builddir)/config.status $(srcdir)/rtgtargmkr.pl.in
-	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
-common.php: $(top_builddir)/config.status $(srcdir)/common.php.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 
 mostlyclean-libtool:
@@ -334,13 +320,9 @@ all:
 
 install: installdirs
 	@for i in $(ETC) ; do $(INSTALL) $(srcdir)/$$i $(prefix)$(etcdir) ; echo "install: installed $$i in $(prefix)$(etcdir)" ; done
-	@for i in $(WEB) ; do $(INSTALL) $(srcdir)/$$i $(prefix)$(webdir) ; echo "install: installed $$i in $(prefix)$(webdir)" ; done
-	@for i in $(REPORTS) ; do $(INSTALL) $(srcdir)/$$i $(prefix)$(reportsdir) ; echo "install: installed $$i in $(prefix)$(reportsdir)" ; done
 
 installdirs:
 	$(mkinstalldirs) $(prefix)$(etcdir)
-	$(mkinstalldirs) $(prefix)$(webdir)
-	$(mkinstalldirs) $(prefix)$(reportsdir)
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:
