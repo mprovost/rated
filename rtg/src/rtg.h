@@ -124,7 +124,6 @@ typedef struct config_struct {
 typedef struct target_struct {
     struct host_struct *host;
     char *objoid;
-    char *description;
     char *table;
     unsigned short bits;
     unsigned int iid;

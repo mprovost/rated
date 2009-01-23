@@ -42,8 +42,6 @@ bits          { return TGT_BITS; }
 table         { return TGT_TBL; }
 id            { return TGT_ID; }
 speed         { return TGT_SPEED; }
-descr         { return TGT_DESCR; }
-rate          { return TGT_RATE; }
 
 {token}               { return yytext[0]; }
 {number}      {

@@ -103,7 +103,6 @@ tgt_directive : bits_directive
               | table_directive
               | id_directive
               | speed_directive
-              | descr_directive
               ;
 
 bits_directive        : TGT_BITS L_NUMBER
@@ -124,11 +123,6 @@ id_directive  : TGT_ID L_NUMBER
 speed_directive       : TGT_SPEED L_NUMBER
 {
       ttgt->maxspeed = $2;
-};
-
-descr_directive       : TGT_DESCR L_STRING
-{
-      ttgt->description = $2;
 };
 
 %%
