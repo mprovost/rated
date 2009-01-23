@@ -128,7 +128,6 @@ typedef struct target_struct {
     char *table;
     unsigned short bits;
     unsigned int iid;
-    int rate;
 #ifdef HAVE_STRTOLL
     unsigned long long maxspeed;
 #else

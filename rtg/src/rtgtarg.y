@@ -89,7 +89,6 @@ target_entry  : HST_TRGT L_OID
       ttgt->objoid = $2;
       ttgt->host = thst;
       ttgt->maxspeed = DEFAULT_OUT_OF_RANGE;
-      ttgt->rate = FALSE;
 }
 '{' tgt_directives '}'
 {
@@ -105,7 +104,6 @@ tgt_directive : bits_directive
               | id_directive
               | speed_directive
               | descr_directive
-	      | rate_directive
               ;
 
 bits_directive        : TGT_BITS L_NUMBER
@@ -131,12 +129,6 @@ speed_directive       : TGT_SPEED L_NUMBER
 descr_directive       : TGT_DESCR L_STRING
 {
       ttgt->description = $2;
-};
-
-rate_directive        : TGT_RATE L_BOOLEAN
-{
-	printf("rate = %i\n", $2);
-      ttgt->rate = $2;
 };
 
 %%

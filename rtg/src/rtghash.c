@@ -133,10 +133,9 @@ void walk_target_hash() {
 	for (i=0;i<HASHSIZE;i++) {
 		p = hash.table[i];
 		while (p) {
-			printf("[%d/%d]: %s %s %d %s %s %d %i\n", targets, i,
+			printf("[%d/%d]: %s %s %d %s %s %d\n", targets, i,
 				p->host->host, p->objoid, p->bits,
-				p->host->community, p->table, p->iid,
-				p->rate);
+				p->host->community, p->table, p->iid);
 			targets++;
 			p = p->next;
 		}
