@@ -27,7 +27,7 @@
 #define BUFSIZE 512
 #define BITSINBYTE 8
 #define THIRTYTWO 4294967295ul
-#ifdef HAVE_STRTOLL
+#ifdef HAVE_STRTOULL
 # define SIXTYFOUR 18446744073709551615ull
 #else
 # define SIXTYFOUR 18446744073709551615ul
@@ -127,7 +127,7 @@ typedef struct target_struct {
     char *table;
     unsigned short bits;
     unsigned int iid;
-#ifdef HAVE_STRTOLL
+#ifdef HAVE_STRTOULL
     unsigned long long maxspeed;
 #else
     unsigned long maxspeed;

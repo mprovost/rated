@@ -121,7 +121,7 @@ int __db_test() {
    return TRUE;
 }
 
-#ifdef STRTOLL
+#ifdef STRTOULL
 long long __db_intSpeed(char *query) {
 #else
 long __db_intSpeed(char *query) {

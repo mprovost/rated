@@ -214,6 +214,7 @@ void *poller(void *thread_args)
 	    switch (vars->type) {
 		/*
 		 * Switch over vars->type and modify/assign result accordingly.
+                 * TODO should we handle negative numbers?
 		 */
 		case ASN_COUNTER64:
 		    result = vars->val.counter64->high;
@@ -236,10 +237,11 @@ void *poller(void *thread_args)
 		    result = (unsigned long) *(vars->val.integer);
 		    break;
 		case ASN_OCTET_STR:
-#ifdef HAVE_STRTOLL
-		    result = strtoll(vars->val.string, NULL, 0);
+                    /* TODO check for negatives */
+#ifdef HAVE_STRTOULL
+		    result = strtoull(vars->val.string, NULL, 0);
 #else
-		    result = strtol(vars->val.string, NULL, 0);
+		    result = strtoul(vars->val.string, NULL, 0);
 #endif
 		    break;
 		default:

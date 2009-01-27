@@ -45,10 +45,10 @@ speed         { return TGT_SPEED; }
 
 {token}               { return yytext[0]; }
 {number}      {
-#ifdef HAVE_STRTOLL
-                yylval.number = strtoll(yytext, NULL, 0);
+#ifdef HAVE_STRTOULL
+                yylval.number = strtoull(yytext, NULL, 0);
 #else
-                yylval.number = strtol(yytext, NULL, 0);
+                yylval.number = strtoul(yytext, NULL, 0);
 #endif
                 return L_NUMBER;
               }
