@@ -23,6 +23,8 @@
 
 #if STDC_HEADERS
 #  include <stdlib.h>
+#  include <errno.h>
+#  include <limits.h>
 #  include <string.h>
 #  include <stdarg.h>
 #elif HAVE_STRINGS_H

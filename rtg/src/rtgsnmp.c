@@ -237,12 +237,16 @@ void *poller(void *thread_args)
 		    result = (unsigned long) *(vars->val.integer);
 		    break;
 		case ASN_OCTET_STR:
-                    /* TODO check for negatives */
 #ifdef HAVE_STRTOULL
 		    result = strtoull(vars->val.string, NULL, 0);
+                    if (result == ULLONG_MAX && errno == ERANGE) {
 #else
 		    result = strtoul(vars->val.string, NULL, 0);
+                    if (result == ULONG_MAX && errno == ERANGE) {
 #endif
+                        tdebug(LOW, "Negative number found: %s\n", vars->val.string);
+                        goto cleanup;
+                    }
 		    break;
 		default:
 		    /* no result that we can use, restart the polling loop */
