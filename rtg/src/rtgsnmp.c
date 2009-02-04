@@ -64,6 +64,7 @@ void *poller(void *thread_args)
     struct timeval current_time;
     struct timeval last_time;
     int db_reconnect = FALSE;
+    int db_error = FALSE;
 
     /* for thread settings */
     int oldstate, oldtype;
@@ -214,7 +215,6 @@ void *poller(void *thread_args)
 	    switch (vars->type) {
 		/*
 		 * Switch over vars->type and modify/assign result accordingly.
-                 * TODO should we handle negative numbers?
 		 */
 		case ASN_COUNTER64:
 		    result = vars->val.counter64->high;
@@ -237,6 +237,7 @@ void *poller(void *thread_args)
 		    result = (unsigned long) *(vars->val.integer);
 		    break;
 		case ASN_OCTET_STR:
+                /* TODO should we handle negative numbers? */
 #ifdef HAVE_STRTOULL
 		    result = strtoull(vars->val.string, NULL, 0);
                     if (result == ULLONG_MAX && errno == ERANGE) {
@@ -311,6 +312,8 @@ void *poller(void *thread_args)
                     /* try and reconnect */
                     if (db_connect(set))
                         db_reconnect = FALSE;
+                    else
+                        goto cleanup;
                 }
                 if ( (insert_val > 0) || (set->withzeros) ) {
                     tdebug(DEVELOP, "db_insert sent: %s %d %llu %.15f\n", entry->table, entry->iid, insert_val, rate);
@@ -319,6 +322,7 @@ void *poller(void *thread_args)
                         PT_MUTEX_LOCK(&stats.mutex);
                         stats.db_inserts++;
                         PT_MUTEX_UNLOCK(&stats.mutex);
+                        db_error = FALSE;
                     } else {
                         PT_MUTEX_LOCK(&stats.mutex);
                         stats.db_errors++;
@@ -328,11 +332,12 @@ void *poller(void *thread_args)
                             /* first disconnect to close the handle */
                             db_disconnect();
                             db_reconnect = TRUE;
+                        } else {
+                            /* we have a db connection but got some other error */
+                            db_error = TRUE;
                         }
                     }
-                } else {
-                    /* TODO check that we have a valid db connection so we can retry next time */
-                }
+                } /* zero */
             } /* !dboff */
         } /* STAT_SUCCESS */
 
@@ -351,12 +356,12 @@ cleanup:
         PT_MUTEX_LOCK(&crew->mutex);
         crew->work_count--;
 
-        /* update the time */
-        if (!db_reconnect)
+        /* update the time if we inserted ok */
+        if (!(db_reconnect || db_error))
             entry->last_time = current_time;	
 
         /* Only if we received a positive result back do we update the last_value object */
-        if (poll_status == STAT_SUCCESS && !db_reconnect) {
+        if (poll_status == STAT_SUCCESS && !(db_reconnect || db_error)) {
             entry->last_value = result;
             if (init == NEW) entry->init = LIVE;
         }
