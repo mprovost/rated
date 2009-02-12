@@ -25,6 +25,8 @@
 /* Constants */
 #define MAX_THREADS 100
 #define BUFSIZE 512
+/* enough buffer for a 64 bit value plus one for the NUL */
+#define BUFFER64 21
 #define BITSINBYTE 8
 #define THIRTYTWO 4294967295ul
 #ifdef HAVE_STRTOULL

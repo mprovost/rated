@@ -52,10 +52,10 @@ void *poller(void *thread_args)
     unsigned long long last_value = 0;
     unsigned long long insert_val = 0;
     int poll_status = 0, init = 0;
+    int oid_len = 0;
     int bits = 0;
-    char query[BUFSIZE];
-    char storedoid[BUFSIZE];
-    char result_string[BUFSIZE];
+    char *storedoid;
+    char *result_string;
     int cur_work = 0;
     int prev_work = 99999999;
     int loop_count = 0;
@@ -95,6 +95,7 @@ void *poller(void *thread_args)
         /* reset variables */
 	result = insert_val = 0;
 	rate = 0;
+	anOID_len = MAX_OID_LEN;
 
 /*
         if(loop_count >= POLLS_PER_TRANSACTION) {
@@ -118,15 +119,15 @@ void *poller(void *thread_args)
             PT_COND_WAIT(&crew->go, &crew->mutex);
 	}
 	tdebug(DEVELOP, "done waiting, received go (work cnt: %d)\n", crew->work_count);
-        cur_work = crew->work_count;
 /*
+        cur_work = crew->work_count;
         if(cur_work > prev_work) {
             tdebug(HIGH, "doing commit at %d\n", time(NULL));
             db_status = db_commit(); 
             loop_count = 0;
         }
-*/
         prev_work = cur_work;
+*/
 
 	if (current != NULL) {
             tdebug(DEVELOP, "processing %s@%s (%d work units remain in queue)\n",
@@ -142,23 +143,27 @@ void *poller(void *thread_args)
 
             session.peername = current->host->host;
             session.community = current->host->community;
-            session.remote_port = set->snmp_port;
+            /* TODO move this into struct so we're not calculating it every time */
             session.community_len = strlen(session.community);
+            session.remote_port = set->snmp_port;
 
 	    sessp = snmp_sess_open(&session);
 
-	    anOID_len = MAX_OID_LEN;
-	    pdu = snmp_pdu_create(SNMP_MSG_GET);
+            /* TODO check return status */
 	    read_objid(current->objoid, anOID, &anOID_len);
+
 	    entry = current;
 	    last_value = current->last_value;
-
 	    /* save the time so we can calculate rate */
 	    last_time = current->last_time;
-
 	    init = current->init;
 	    bits = current->bits;
-	    strncpy(storedoid, current->objoid, sizeof(storedoid));
+
+            oid_len = strlen(current->objoid);
+            /* TODO check malloc return status */
+            storedoid = (char*)malloc(oid_len + 1);
+	    strncpy(storedoid, current->objoid, oid_len + 1);
+
             current = getNext();
 	}
 
@@ -168,6 +173,7 @@ void *poller(void *thread_args)
 	/* take the unlock off the cancel stack */
 	pthread_cleanup_pop(FALSE);
 
+        pdu = snmp_pdu_create(SNMP_MSG_GET);
 	snmp_add_null_var(pdu, anOID, anOID_len);
 	if (sessp != NULL) 
             poll_status = snmp_sess_synch_response(sessp, pdu, &response);
@@ -205,12 +211,15 @@ void *poller(void *thread_args)
 	if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR && response->variables->type != SNMP_NOSUCHINSTANCE) {
 	    vars = response->variables;
             if (set->verbose >= DEBUG) {
+                /* we only do this if we're printing out debug, so don't allocate memory unless we need it */
+                result_string = (char*)malloc(BUFFER64);
 #ifdef OLD_UCD_SNMP
                 sprint_value(result_string, anOID, anOID_len, vars);
 #else
-                snprint_value(result_string, BUFSIZE, anOID, anOID_len, vars);
+                snprint_value(result_string, BUFFER64, anOID, anOID_len, vars);
 #endif
                 tdebug(DEBUG, "(%s@%s) %s\n", storedoid, session.peername, result_string);
+                free(result_string);
             }
 	    switch (vars->type) {
 		/*
@@ -351,6 +360,8 @@ cleanup:
             snmp_sess_close(sessp);
             if (response != NULL) snmp_free_pdu(response);
         }
+
+        free(storedoid);
 
         tdebug(DEVELOP, "locking (update work_count)\n");
         PT_MUTEX_LOCK(&crew->mutex);
