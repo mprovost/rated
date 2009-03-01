@@ -212,13 +212,19 @@ void *poller(void *thread_args)
 	    vars = response->variables;
             if (set->verbose >= DEBUG) {
                 /* we only do this if we're printing out debug, so don't allocate memory unless we need it */
-                result_string = (char*)malloc(BUFFER64);
+                /* this seems like a waste but it's difficult to predict the length of the result string
+                 * maybe use sprint_realloc_value but it's a PITA */
+                /* TODO check return value */
+                result_string = (char*)malloc(BUFSIZE);
 #ifdef OLD_UCD_SNMP
                 sprint_value(result_string, anOID, anOID_len, vars);
 #else
-                snprint_value(result_string, BUFFER64, anOID, anOID_len, vars);
+                /* this results in something like 'Counter64: 11362777584380' */
+                /* TODO check return value */
+                snprint_value(result_string, BUFSIZE, anOID, anOID_len, vars);
 #endif
-                tdebug(DEBUG, "(%s@%s) %s\n", storedoid, session.peername, result_string);
+                /* don't use tdebug because there's a signal race between when we malloc the memory and here */
+                tdebug_all("(%s@%s) %s\n", storedoid, session.peername, result_string);
                 free(result_string);
             }
 	    switch (vars->type) {

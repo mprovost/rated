@@ -25,8 +25,6 @@
 /* Constants */
 #define MAX_THREADS 100
 #define BUFSIZE 512
-/* enough buffer for a 64 bit value plus one for the NUL */
-#define BUFFER64 21
 #define BITSINBYTE 8
 #define THIRTYTWO 4294967295ul
 #ifdef HAVE_STRTOULL
@@ -90,6 +88,7 @@ enum debugLevel {OFF, LOW, HIGH, DEBUG, DEVELOP};
 #define syslogcrit(x...) syslog(LOG_CRIT |  LOG_LOCAL2, x) // replace with conf'g facility
 #define debug(level,x...) do {if (set->verbose >= level) {if (set->daemon) sysloginfo(x); else fprintf(stdout,x);} } while (0)
 #define tdebug(level,x...) do {if (set->verbose >= level) {if (set->daemon) sysloginfo(x); else {fprintf(stdout, "Thread [%d]: ", worker->index); fprintf(stdout,x);} } } while (0)
+#define tdebug_all(x...) do {if (set->daemon) sysloginfo(x); else {fprintf(stdout, "Thread [%d]: ", worker->index); fprintf(stdout,x);} } while (0)
 #define debugfile(dfp,level,x...) do {if (set->verbose >= level) {if (set->daemon) sysloginfo(x); else fprintf(dfp,x);} } while (0)
 #define fatal(x...) do { if (set->daemon) syslogcrit(x); else fprintf(stderr,x); exit(-1); } while (0)
 #define fatalfile(dfp,x...) do { fprintf(dfp,x); exit(-1); } while (0)
