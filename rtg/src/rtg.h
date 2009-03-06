@@ -156,10 +156,11 @@ typedef struct crew_struct {
 
 typedef struct poll_stats {
     pthread_mutex_t mutex;
+    unsigned int round;
+    /* TODO do these need to be long long? */
     unsigned long long polls;
     unsigned long long db_inserts;
     unsigned long long db_errors;
-    unsigned int round;
     unsigned int zero;
     unsigned int wraps;
     unsigned int no_resp;
