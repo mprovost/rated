@@ -735,8 +735,8 @@ PACKAGE_VERSION=
 PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 
-ac_unique_file="src/rtg.h"
-ac_default_prefix=/usr/local/rtg
+ac_unique_file="src/rated.h"
+ac_default_prefix=/usr/local/rated
 # Factoring default headers for most tests.
 ac_includes_default="\
 #include <stdio.h>
@@ -2239,7 +2239,7 @@ fi
 
 
 # Define the identity of the package.
- PACKAGE=rtg
+ PACKAGE=rated
  VERSION=0.9.0
 
 
@@ -10848,7 +10848,7 @@ done
 if test "x$prefix" != "xNONE"; then
     RTG_HOME=$prefix
 else
-    RTG_HOME=/usr/local/rtg
+    RTG_HOME=/usr/local/rated
 fi
 
 cat >>confdefs.h <<_ACEOF
