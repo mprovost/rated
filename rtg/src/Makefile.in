@@ -38,10 +38,10 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = rated$(EXEEXT)
+bin_PROGRAMS = rtgpoll$(EXEEXT)
 subdir = src
 DIST_COMMON = $(include_HEADERS) $(srcdir)/Makefile.am \
-	$(srcdir)/Makefile.in ratedgram.c ratedtarg.c ratedtarg.h
+	$(srcdir)/Makefile.in rtggram.c rtgtarg.c rtgtarg.h
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
@@ -69,12 +69,12 @@ am_librtgpgsql_la_OBJECTS = librtgpgsql_la-librtgpgsql.lo
 librtgpgsql_la_OBJECTS = $(am_librtgpgsql_la_OBJECTS)
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am_rated_OBJECTS = rated-ratedsnmp.$(OBJEXT) rated-rateddbi.$(OBJEXT) \
-	rated-rated.$(OBJEXT) rated-ratedutil.$(OBJEXT) \
-	rated-ratedtarg.$(OBJEXT) rated-ratedgram.$(OBJEXT) \
-	rated-ratedhash.$(OBJEXT)
-rated_OBJECTS = $(am_rated_OBJECTS)
-rated_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+am_rtgpoll_OBJECTS = rtgpoll-rtgsnmp.$(OBJEXT) \
+	rtgpoll-rtgdbi.$(OBJEXT) rtgpoll-rtgpoll.$(OBJEXT) \
+	rtgpoll-rtgutil.$(OBJEXT) rtgpoll-rtgtarg.$(OBJEXT) \
+	rtgpoll-rtggram.$(OBJEXT) rtgpoll-rtghash.$(OBJEXT)
+rtgpoll_OBJECTS = $(am_rtgpoll_OBJECTS)
+rtgpoll_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/config
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -92,9 +92,9 @@ YACCCOMPILE = $(YACC) $(YFLAGS) $(AM_YFLAGS)
 LTYACCCOMPILE = $(LIBTOOL) --mode=compile $(YACC) $(YFLAGS) \
 	$(AM_YFLAGS)
 SOURCES = $(librtgmysql_la_SOURCES) $(librtgpgsql_la_SOURCES) \
-	$(rated_SOURCES)
+	$(rtgpoll_SOURCES)
 DIST_SOURCES = $(librtgmysql_la_SOURCES) $(librtgpgsql_la_SOURCES) \
-	$(rated_SOURCES)
+	$(rtgpoll_SOURCES)
 includeHEADERS_INSTALL = $(INSTALL_HEADER)
 HEADERS = $(include_HEADERS)
 ETAGS = etags
@@ -206,8 +206,8 @@ sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 AM_YFLAGS = -d
-BUILT_SOURCES = ratedtarg.h ratedtarg.c
-CLEANFILES = ratedtarg.c ratedtarg.h
+BUILT_SOURCES = rtgtarg.h rtgtarg.c
+CLEANFILES = rtgtarg.c rtgtarg.h
 EXTRA_LTLIBRARIES = librtgmysql.la librtgpgsql.la
 # the ltlibraries variable is AC_SUBSTd from configure
 lib_LTLIBRARIES = $(ltlibraries)
@@ -219,11 +219,11 @@ librtgpgsql_la_SOURCES = librtgpgsql.c
 librtgpgsql_la_CPPFLAGS = $(PGSQL_CPPFLAGS)
 librtgpgsql_la_LDFLAGS = -rpath '$(libdir)'
 librtgpgsql_la_LIBADD = $(PGSQL_LIB)
-rated_SOURCES = ratedsnmp.c rateddbi.c rated.c ratedutil.c ratedtarg.y ratedgram.l ratedhash.c
-rated_CPPFLAGS = $(SNMP_CPPFLAGS)
-rated_LDFLAGS = -rpath '$(libdir)'
-rated_LDADD = $(LEXLIB) $(SNMP_LIB)
-include_HEADERS = rated.h common.h rateddbi.h
+rtgpoll_SOURCES = rtgsnmp.c rtgdbi.c rtgpoll.c rtgutil.c rtgtarg.y rtggram.l rtghash.c
+rtgpoll_CPPFLAGS = $(SNMP_CPPFLAGS)
+rtgpoll_LDFLAGS = -rpath '$(libdir)'
+rtgpoll_LDADD = $(LEXLIB) $(SNMP_LIB)
+include_HEADERS = rtg.h common.h rtgdbi.h
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -317,14 +317,14 @@ clean-binPROGRAMS:
 	  echo " rm -f $$p $$f"; \
 	  rm -f $$p $$f ; \
 	done
-ratedtarg.h: ratedtarg.c
+rtgtarg.h: rtgtarg.c
 	@if test ! -f $@; then \
-	  rm -f ratedtarg.c; \
-	  $(MAKE) ratedtarg.c; \
+	  rm -f rtgtarg.c; \
+	  $(MAKE) rtgtarg.c; \
 	else :; fi
-rated$(EXEEXT): $(rated_OBJECTS) $(rated_DEPENDENCIES) 
-	@rm -f rated$(EXEEXT)
-	$(LINK) $(rated_LDFLAGS) $(rated_OBJECTS) $(rated_LDADD) $(LIBS)
+rtgpoll$(EXEEXT): $(rtgpoll_OBJECTS) $(rtgpoll_DEPENDENCIES) 
+	@rm -f rtgpoll$(EXEEXT)
+	$(LINK) $(rtgpoll_LDFLAGS) $(rtgpoll_OBJECTS) $(rtgpoll_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -334,13 +334,13 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/librtgmysql_la-librtgmysql.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/librtgpgsql_la-librtgpgsql.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated-rated.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated-rateddbi.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated-ratedgram.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated-ratedhash.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated-ratedsnmp.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated-ratedtarg.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated-ratedutil.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgpoll-rtgdbi.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgpoll-rtggram.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgpoll-rtghash.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgpoll-rtgpoll.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgpoll-rtgsnmp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgpoll-rtgtarg.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtgpoll-rtgutil.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -377,103 +377,103 @@ librtgpgsql_la-librtgpgsql.lo: librtgpgsql.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(librtgpgsql_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o librtgpgsql_la-librtgpgsql.lo `test -f 'librtgpgsql.c' || echo '$(srcdir)/'`librtgpgsql.c
 
-rated-ratedsnmp.o: ratedsnmp.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedsnmp.o -MD -MP -MF "$(DEPDIR)/rated-ratedsnmp.Tpo" -c -o rated-ratedsnmp.o `test -f 'ratedsnmp.c' || echo '$(srcdir)/'`ratedsnmp.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rated-ratedsnmp.Tpo" "$(DEPDIR)/rated-ratedsnmp.Po"; else rm -f "$(DEPDIR)/rated-ratedsnmp.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedsnmp.c' object='rated-ratedsnmp.o' libtool=no @AMDEPBACKSLASH@
+rtgpoll-rtgsnmp.o: rtgsnmp.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgsnmp.o -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgsnmp.Tpo" -c -o rtgpoll-rtgsnmp.o `test -f 'rtgsnmp.c' || echo '$(srcdir)/'`rtgsnmp.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgsnmp.Tpo" "$(DEPDIR)/rtgpoll-rtgsnmp.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgsnmp.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgsnmp.c' object='rtgpoll-rtgsnmp.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedsnmp.o `test -f 'ratedsnmp.c' || echo '$(srcdir)/'`ratedsnmp.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgsnmp.o `test -f 'rtgsnmp.c' || echo '$(srcdir)/'`rtgsnmp.c
 
-rated-ratedsnmp.obj: ratedsnmp.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedsnmp.obj -MD -MP -MF "$(DEPDIR)/rated-ratedsnmp.Tpo" -c -o rated-ratedsnmp.obj `if test -f 'ratedsnmp.c'; then $(CYGPATH_W) 'ratedsnmp.c'; else $(CYGPATH_W) '$(srcdir)/ratedsnmp.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rated-ratedsnmp.Tpo" "$(DEPDIR)/rated-ratedsnmp.Po"; else rm -f "$(DEPDIR)/rated-ratedsnmp.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedsnmp.c' object='rated-ratedsnmp.obj' libtool=no @AMDEPBACKSLASH@
+rtgpoll-rtgsnmp.obj: rtgsnmp.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgsnmp.obj -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgsnmp.Tpo" -c -o rtgpoll-rtgsnmp.obj `if test -f 'rtgsnmp.c'; then $(CYGPATH_W) 'rtgsnmp.c'; else $(CYGPATH_W) '$(srcdir)/rtgsnmp.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgsnmp.Tpo" "$(DEPDIR)/rtgpoll-rtgsnmp.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgsnmp.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgsnmp.c' object='rtgpoll-rtgsnmp.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedsnmp.obj `if test -f 'ratedsnmp.c'; then $(CYGPATH_W) 'ratedsnmp.c'; else $(CYGPATH_W) '$(srcdir)/ratedsnmp.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgsnmp.obj `if test -f 'rtgsnmp.c'; then $(CYGPATH_W) 'rtgsnmp.c'; else $(CYGPATH_W) '$(srcdir)/rtgsnmp.c'; fi`
 
-rated-rateddbi.o: rateddbi.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-rateddbi.o -MD -MP -MF "$(DEPDIR)/rated-rateddbi.Tpo" -c -o rated-rateddbi.o `test -f 'rateddbi.c' || echo '$(srcdir)/'`rateddbi.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rated-rateddbi.Tpo" "$(DEPDIR)/rated-rateddbi.Po"; else rm -f "$(DEPDIR)/rated-rateddbi.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rateddbi.c' object='rated-rateddbi.o' libtool=no @AMDEPBACKSLASH@
+rtgpoll-rtgdbi.o: rtgdbi.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgdbi.o -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgdbi.Tpo" -c -o rtgpoll-rtgdbi.o `test -f 'rtgdbi.c' || echo '$(srcdir)/'`rtgdbi.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgdbi.Tpo" "$(DEPDIR)/rtgpoll-rtgdbi.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgdbi.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgdbi.c' object='rtgpoll-rtgdbi.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-rateddbi.o `test -f 'rateddbi.c' || echo '$(srcdir)/'`rateddbi.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgdbi.o `test -f 'rtgdbi.c' || echo '$(srcdir)/'`rtgdbi.c
 
-rated-rateddbi.obj: rateddbi.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-rateddbi.obj -MD -MP -MF "$(DEPDIR)/rated-rateddbi.Tpo" -c -o rated-rateddbi.obj `if test -f 'rateddbi.c'; then $(CYGPATH_W) 'rateddbi.c'; else $(CYGPATH_W) '$(srcdir)/rateddbi.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rated-rateddbi.Tpo" "$(DEPDIR)/rated-rateddbi.Po"; else rm -f "$(DEPDIR)/rated-rateddbi.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rateddbi.c' object='rated-rateddbi.obj' libtool=no @AMDEPBACKSLASH@
+rtgpoll-rtgdbi.obj: rtgdbi.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgdbi.obj -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgdbi.Tpo" -c -o rtgpoll-rtgdbi.obj `if test -f 'rtgdbi.c'; then $(CYGPATH_W) 'rtgdbi.c'; else $(CYGPATH_W) '$(srcdir)/rtgdbi.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgdbi.Tpo" "$(DEPDIR)/rtgpoll-rtgdbi.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgdbi.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgdbi.c' object='rtgpoll-rtgdbi.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-rateddbi.obj `if test -f 'rateddbi.c'; then $(CYGPATH_W) 'rateddbi.c'; else $(CYGPATH_W) '$(srcdir)/rateddbi.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgdbi.obj `if test -f 'rtgdbi.c'; then $(CYGPATH_W) 'rtgdbi.c'; else $(CYGPATH_W) '$(srcdir)/rtgdbi.c'; fi`
 
-rated-rated.o: rated.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-rated.o -MD -MP -MF "$(DEPDIR)/rated-rated.Tpo" -c -o rated-rated.o `test -f 'rated.c' || echo '$(srcdir)/'`rated.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rated-rated.Tpo" "$(DEPDIR)/rated-rated.Po"; else rm -f "$(DEPDIR)/rated-rated.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rated.c' object='rated-rated.o' libtool=no @AMDEPBACKSLASH@
+rtgpoll-rtgpoll.o: rtgpoll.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgpoll.o -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgpoll.Tpo" -c -o rtgpoll-rtgpoll.o `test -f 'rtgpoll.c' || echo '$(srcdir)/'`rtgpoll.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgpoll.Tpo" "$(DEPDIR)/rtgpoll-rtgpoll.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgpoll.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgpoll.c' object='rtgpoll-rtgpoll.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-rated.o `test -f 'rated.c' || echo '$(srcdir)/'`rated.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgpoll.o `test -f 'rtgpoll.c' || echo '$(srcdir)/'`rtgpoll.c
 
-rated-rated.obj: rated.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-rated.obj -MD -MP -MF "$(DEPDIR)/rated-rated.Tpo" -c -o rated-rated.obj `if test -f 'rated.c'; then $(CYGPATH_W) 'rated.c'; else $(CYGPATH_W) '$(srcdir)/rated.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rated-rated.Tpo" "$(DEPDIR)/rated-rated.Po"; else rm -f "$(DEPDIR)/rated-rated.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rated.c' object='rated-rated.obj' libtool=no @AMDEPBACKSLASH@
+rtgpoll-rtgpoll.obj: rtgpoll.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgpoll.obj -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgpoll.Tpo" -c -o rtgpoll-rtgpoll.obj `if test -f 'rtgpoll.c'; then $(CYGPATH_W) 'rtgpoll.c'; else $(CYGPATH_W) '$(srcdir)/rtgpoll.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgpoll.Tpo" "$(DEPDIR)/rtgpoll-rtgpoll.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgpoll.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgpoll.c' object='rtgpoll-rtgpoll.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-rated.obj `if test -f 'rated.c'; then $(CYGPATH_W) 'rated.c'; else $(CYGPATH_W) '$(srcdir)/rated.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgpoll.obj `if test -f 'rtgpoll.c'; then $(CYGPATH_W) 'rtgpoll.c'; else $(CYGPATH_W) '$(srcdir)/rtgpoll.c'; fi`
 
-rated-ratedutil.o: ratedutil.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedutil.o -MD -MP -MF "$(DEPDIR)/rated-ratedutil.Tpo" -c -o rated-ratedutil.o `test -f 'ratedutil.c' || echo '$(srcdir)/'`ratedutil.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rated-ratedutil.Tpo" "$(DEPDIR)/rated-ratedutil.Po"; else rm -f "$(DEPDIR)/rated-ratedutil.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedutil.c' object='rated-ratedutil.o' libtool=no @AMDEPBACKSLASH@
+rtgpoll-rtgutil.o: rtgutil.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgutil.o -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgutil.Tpo" -c -o rtgpoll-rtgutil.o `test -f 'rtgutil.c' || echo '$(srcdir)/'`rtgutil.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgutil.Tpo" "$(DEPDIR)/rtgpoll-rtgutil.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgutil.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgutil.c' object='rtgpoll-rtgutil.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedutil.o `test -f 'ratedutil.c' || echo '$(srcdir)/'`ratedutil.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgutil.o `test -f 'rtgutil.c' || echo '$(srcdir)/'`rtgutil.c
 
-rated-ratedutil.obj: ratedutil.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedutil.obj -MD -MP -MF "$(DEPDIR)/rated-ratedutil.Tpo" -c -o rated-ratedutil.obj `if test -f 'ratedutil.c'; then $(CYGPATH_W) 'ratedutil.c'; else $(CYGPATH_W) '$(srcdir)/ratedutil.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rated-ratedutil.Tpo" "$(DEPDIR)/rated-ratedutil.Po"; else rm -f "$(DEPDIR)/rated-ratedutil.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedutil.c' object='rated-ratedutil.obj' libtool=no @AMDEPBACKSLASH@
+rtgpoll-rtgutil.obj: rtgutil.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgutil.obj -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgutil.Tpo" -c -o rtgpoll-rtgutil.obj `if test -f 'rtgutil.c'; then $(CYGPATH_W) 'rtgutil.c'; else $(CYGPATH_W) '$(srcdir)/rtgutil.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgutil.Tpo" "$(DEPDIR)/rtgpoll-rtgutil.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgutil.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgutil.c' object='rtgpoll-rtgutil.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedutil.obj `if test -f 'ratedutil.c'; then $(CYGPATH_W) 'ratedutil.c'; else $(CYGPATH_W) '$(srcdir)/ratedutil.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgutil.obj `if test -f 'rtgutil.c'; then $(CYGPATH_W) 'rtgutil.c'; else $(CYGPATH_W) '$(srcdir)/rtgutil.c'; fi`
 
-rated-ratedtarg.o: ratedtarg.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedtarg.o -MD -MP -MF "$(DEPDIR)/rated-ratedtarg.Tpo" -c -o rated-ratedtarg.o `test -f 'ratedtarg.c' || echo '$(srcdir)/'`ratedtarg.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rated-ratedtarg.Tpo" "$(DEPDIR)/rated-ratedtarg.Po"; else rm -f "$(DEPDIR)/rated-ratedtarg.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedtarg.c' object='rated-ratedtarg.o' libtool=no @AMDEPBACKSLASH@
+rtgpoll-rtgtarg.o: rtgtarg.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgtarg.o -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgtarg.Tpo" -c -o rtgpoll-rtgtarg.o `test -f 'rtgtarg.c' || echo '$(srcdir)/'`rtgtarg.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgtarg.Tpo" "$(DEPDIR)/rtgpoll-rtgtarg.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgtarg.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgtarg.c' object='rtgpoll-rtgtarg.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedtarg.o `test -f 'ratedtarg.c' || echo '$(srcdir)/'`ratedtarg.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgtarg.o `test -f 'rtgtarg.c' || echo '$(srcdir)/'`rtgtarg.c
 
-rated-ratedtarg.obj: ratedtarg.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedtarg.obj -MD -MP -MF "$(DEPDIR)/rated-ratedtarg.Tpo" -c -o rated-ratedtarg.obj `if test -f 'ratedtarg.c'; then $(CYGPATH_W) 'ratedtarg.c'; else $(CYGPATH_W) '$(srcdir)/ratedtarg.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rated-ratedtarg.Tpo" "$(DEPDIR)/rated-ratedtarg.Po"; else rm -f "$(DEPDIR)/rated-ratedtarg.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedtarg.c' object='rated-ratedtarg.obj' libtool=no @AMDEPBACKSLASH@
+rtgpoll-rtgtarg.obj: rtgtarg.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtgtarg.obj -MD -MP -MF "$(DEPDIR)/rtgpoll-rtgtarg.Tpo" -c -o rtgpoll-rtgtarg.obj `if test -f 'rtgtarg.c'; then $(CYGPATH_W) 'rtgtarg.c'; else $(CYGPATH_W) '$(srcdir)/rtgtarg.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtgtarg.Tpo" "$(DEPDIR)/rtgpoll-rtgtarg.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtgtarg.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtgtarg.c' object='rtgpoll-rtgtarg.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedtarg.obj `if test -f 'ratedtarg.c'; then $(CYGPATH_W) 'ratedtarg.c'; else $(CYGPATH_W) '$(srcdir)/ratedtarg.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtgtarg.obj `if test -f 'rtgtarg.c'; then $(CYGPATH_W) 'rtgtarg.c'; else $(CYGPATH_W) '$(srcdir)/rtgtarg.c'; fi`
 
-rated-ratedgram.o: ratedgram.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedgram.o -MD -MP -MF "$(DEPDIR)/rated-ratedgram.Tpo" -c -o rated-ratedgram.o `test -f 'ratedgram.c' || echo '$(srcdir)/'`ratedgram.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rated-ratedgram.Tpo" "$(DEPDIR)/rated-ratedgram.Po"; else rm -f "$(DEPDIR)/rated-ratedgram.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedgram.c' object='rated-ratedgram.o' libtool=no @AMDEPBACKSLASH@
+rtgpoll-rtggram.o: rtggram.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtggram.o -MD -MP -MF "$(DEPDIR)/rtgpoll-rtggram.Tpo" -c -o rtgpoll-rtggram.o `test -f 'rtggram.c' || echo '$(srcdir)/'`rtggram.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtggram.Tpo" "$(DEPDIR)/rtgpoll-rtggram.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtggram.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtggram.c' object='rtgpoll-rtggram.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedgram.o `test -f 'ratedgram.c' || echo '$(srcdir)/'`ratedgram.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtggram.o `test -f 'rtggram.c' || echo '$(srcdir)/'`rtggram.c
 
-rated-ratedgram.obj: ratedgram.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedgram.obj -MD -MP -MF "$(DEPDIR)/rated-ratedgram.Tpo" -c -o rated-ratedgram.obj `if test -f 'ratedgram.c'; then $(CYGPATH_W) 'ratedgram.c'; else $(CYGPATH_W) '$(srcdir)/ratedgram.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rated-ratedgram.Tpo" "$(DEPDIR)/rated-ratedgram.Po"; else rm -f "$(DEPDIR)/rated-ratedgram.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedgram.c' object='rated-ratedgram.obj' libtool=no @AMDEPBACKSLASH@
+rtgpoll-rtggram.obj: rtggram.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtggram.obj -MD -MP -MF "$(DEPDIR)/rtgpoll-rtggram.Tpo" -c -o rtgpoll-rtggram.obj `if test -f 'rtggram.c'; then $(CYGPATH_W) 'rtggram.c'; else $(CYGPATH_W) '$(srcdir)/rtggram.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtggram.Tpo" "$(DEPDIR)/rtgpoll-rtggram.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtggram.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtggram.c' object='rtgpoll-rtggram.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedgram.obj `if test -f 'ratedgram.c'; then $(CYGPATH_W) 'ratedgram.c'; else $(CYGPATH_W) '$(srcdir)/ratedgram.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtggram.obj `if test -f 'rtggram.c'; then $(CYGPATH_W) 'rtggram.c'; else $(CYGPATH_W) '$(srcdir)/rtggram.c'; fi`
 
-rated-ratedhash.o: ratedhash.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedhash.o -MD -MP -MF "$(DEPDIR)/rated-ratedhash.Tpo" -c -o rated-ratedhash.o `test -f 'ratedhash.c' || echo '$(srcdir)/'`ratedhash.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rated-ratedhash.Tpo" "$(DEPDIR)/rated-ratedhash.Po"; else rm -f "$(DEPDIR)/rated-ratedhash.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedhash.c' object='rated-ratedhash.o' libtool=no @AMDEPBACKSLASH@
+rtgpoll-rtghash.o: rtghash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtghash.o -MD -MP -MF "$(DEPDIR)/rtgpoll-rtghash.Tpo" -c -o rtgpoll-rtghash.o `test -f 'rtghash.c' || echo '$(srcdir)/'`rtghash.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtghash.Tpo" "$(DEPDIR)/rtgpoll-rtghash.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtghash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtghash.c' object='rtgpoll-rtghash.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedhash.o `test -f 'ratedhash.c' || echo '$(srcdir)/'`ratedhash.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtghash.o `test -f 'rtghash.c' || echo '$(srcdir)/'`rtghash.c
 
-rated-ratedhash.obj: ratedhash.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedhash.obj -MD -MP -MF "$(DEPDIR)/rated-ratedhash.Tpo" -c -o rated-ratedhash.obj `if test -f 'ratedhash.c'; then $(CYGPATH_W) 'ratedhash.c'; else $(CYGPATH_W) '$(srcdir)/ratedhash.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rated-ratedhash.Tpo" "$(DEPDIR)/rated-ratedhash.Po"; else rm -f "$(DEPDIR)/rated-ratedhash.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedhash.c' object='rated-ratedhash.obj' libtool=no @AMDEPBACKSLASH@
+rtgpoll-rtghash.obj: rtghash.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rtgpoll-rtghash.obj -MD -MP -MF "$(DEPDIR)/rtgpoll-rtghash.Tpo" -c -o rtgpoll-rtghash.obj `if test -f 'rtghash.c'; then $(CYGPATH_W) 'rtghash.c'; else $(CYGPATH_W) '$(srcdir)/rtghash.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/rtgpoll-rtghash.Tpo" "$(DEPDIR)/rtgpoll-rtghash.Po"; else rm -f "$(DEPDIR)/rtgpoll-rtghash.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rtghash.c' object='rtgpoll-rtghash.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedhash.obj `if test -f 'ratedhash.c'; then $(CYGPATH_W) 'ratedhash.c'; else $(CYGPATH_W) '$(srcdir)/ratedhash.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rtgpoll_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rtgpoll-rtghash.obj `if test -f 'rtghash.c'; then $(CYGPATH_W) 'rtghash.c'; else $(CYGPATH_W) '$(srcdir)/rtghash.c'; fi`
 
 .l.c:
 	$(LEXCOMPILE) $<
@@ -639,9 +639,9 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
-	-rm -f ratedgram.c
-	-rm -f ratedtarg.c
-	-rm -f ratedtarg.h
+	-rm -f rtggram.c
+	-rm -f rtgtarg.c
+	-rm -f rtgtarg.h
 	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
 clean: clean-am
 

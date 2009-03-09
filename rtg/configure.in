@@ -3,14 +3,14 @@
 # Author: Rob Beverly <rbeverly@users.sourceforge.net>
 #
 
-AC_INIT(src/rated.h)
+AC_INIT(src/rtg.h)
 AC_CONFIG_AUX_DIR(config)
 AC_SUBST(ac_aux_dir)
-AM_INIT_AUTOMAKE(rated, 0.9.0)
+AM_INIT_AUTOMAKE(rtg, 0.9.0)
 AC_SUBST(VERSION)
 AM_CONFIG_HEADER(config/config.h)
 AC_CANONICAL_HOST
-AC_PREFIX_DEFAULT(/usr/local/rated)
+AC_PREFIX_DEFAULT(/usr/local/rtg)
 
 dnl Compilation Setup
 AC_ARG_WITH(mysql,
@@ -103,7 +103,7 @@ dnl Determine RTG home installation path for script substitution
 if test "x$prefix" != "xNONE"; then
     RTG_HOME=$prefix 
 else 
-    RTG_HOME=/usr/local/rated
+    RTG_HOME=/usr/local/rtg
 fi
 AC_DEFINE_UNQUOTED(RTG_HOME, "$RTG_HOME", RTG root installation prefix)
 

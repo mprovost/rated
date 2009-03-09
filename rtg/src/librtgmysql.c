@@ -2,8 +2,8 @@
  * RTG MySQL database driver
  */
 
-#include "rated.h"
-#include "rateddbi.h"
+#include "rtg.h"
+#include "rtgdbi.h"
 
 #include <mysql.h>
 
