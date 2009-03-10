@@ -5,8 +5,8 @@
 /* libtool */
 #include <ltdl.h>
 
-#include "rtg.h"
-#include "rtgdbi.h"
+#include "rated.h"
+#include "rateddbi.h"
 
 #include <sys/param.h>
 

@@ -1,5 +1,3 @@
-#include "rtg.h"
-
 /* function to determine the driver library and load it */
 int db_init(config_t *set);
 

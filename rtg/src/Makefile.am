@@ -1,28 +1,28 @@
 ## Makefile.am -- Process this file with automake to produce Makefile.in
 
 AM_YFLAGS= -d
-BUILT_SOURCES = rtgtarg.h rtgtarg.c
-CLEANFILES = rtgtarg.c rtgtarg.h
+BUILT_SOURCES = ratedtarg.h ratedtarg.c
+CLEANFILES = ratedtarg.c ratedtarg.h
 
-EXTRA_LTLIBRARIES = librtgmysql.la librtgpgsql.la
+EXTRA_LTLIBRARIES = libratedmysql.la libratedpgsql.la
 # the ltlibraries variable is AC_SUBSTd from configure
 lib_LTLIBRARIES = $(ltlibraries)
 
-librtgmysql_la_SOURCES  = librtgmysql.c
-librtgmysql_la_CPPFLAGS = $(MYSQL_CPPFLAGS)
-librtgmysql_la_LDFLAGS  = -rpath '$(libdir)'
-librtgmysql_la_LIBADD    = $(MYSQL_LIB)
+libratedmysql_la_SOURCES  = libratedmysql.c
+libratedmysql_la_CPPFLAGS = $(MYSQL_CPPFLAGS)
+libratedmysql_la_LDFLAGS  = -rpath '$(libdir)'
+libratedmysql_la_LIBADD    = $(MYSQL_LIB)
 
-librtgpgsql_la_SOURCES  = librtgpgsql.c
-librtgpgsql_la_CPPFLAGS = $(PGSQL_CPPFLAGS)
-librtgpgsql_la_LDFLAGS  = -rpath '$(libdir)'
-librtgpgsql_la_LIBADD    = $(PGSQL_LIB)
+libratedpgsql_la_SOURCES  = libratedpgsql.c
+libratedpgsql_la_CPPFLAGS = $(PGSQL_CPPFLAGS)
+libratedpgsql_la_LDFLAGS  = -rpath '$(libdir)'
+libratedpgsql_la_LIBADD    = $(PGSQL_LIB)
 
-rtgpoll_SOURCES  = rtgsnmp.c rtgdbi.c rtgpoll.c rtgutil.c rtgtarg.y rtggram.l rtghash.c
-rtgpoll_CPPFLAGS = $(SNMP_CPPFLAGS)
-rtgpoll_LDFLAGS  = -rpath '$(libdir)'
-rtgpoll_LDADD    = $(LEXLIB) $(SNMP_LIB)
+rated_SOURCES  = ratedsnmp.c rateddbi.c rated.c ratedutil.c ratedtarg.y ratedgram.l ratedhash.c
+rated_CPPFLAGS = $(SNMP_CPPFLAGS)
+rated_LDFLAGS  = -rpath '$(libdir)'
+rated_LDADD    = $(LEXLIB) $(SNMP_LIB)
 
-include_HEADERS = rtg.h common.h rtgdbi.h
+include_HEADERS = rated.h common.h rateddbi.h
 
-bin_PROGRAMS = rtgpoll
+bin_PROGRAMS = rated

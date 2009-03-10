@@ -6,7 +6,7 @@
 ****************************************************************************/
 
 #include "common.h"
-#include "rtg.h"
+#include "rated.h"
 
 extern quitting;
 

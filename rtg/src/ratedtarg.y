@@ -1,6 +1,6 @@
 %{
 #include "common.h"
-#include "rtg.h"
+#include "rated.h"
 
 int yyerror(const char *s);
 extern int yylineno, lineno;

@@ -3,14 +3,14 @@
 # Author: Rob Beverly <rbeverly@users.sourceforge.net>
 #
 
-AC_INIT(src/rtg.h)
+AC_INIT(src/rated.h)
 AC_CONFIG_AUX_DIR(config)
 AC_SUBST(ac_aux_dir)
-AM_INIT_AUTOMAKE(rtg, 0.9.0)
+AM_INIT_AUTOMAKE(rated, 0.9.0)
 AC_SUBST(VERSION)
 AM_CONFIG_HEADER(config/config.h)
 AC_CANONICAL_HOST
-AC_PREFIX_DEFAULT(/usr/local/rtg)
+AC_PREFIX_DEFAULT(/usr/local/rated)
 
 dnl Compilation Setup
 AC_ARG_WITH(mysql,
@@ -103,7 +103,7 @@ dnl Determine RTG home installation path for script substitution
 if test "x$prefix" != "xNONE"; then
     RTG_HOME=$prefix 
 else 
-    RTG_HOME=/usr/local/rtg
+    RTG_HOME=/usr/local/rated
 fi
 AC_DEFINE_UNQUOTED(RTG_HOME, "$RTG_HOME", RTG root installation prefix)
 
@@ -134,7 +134,7 @@ fi
 AC_CHECK_LIB(pq, PQconnectdb,
        [ AC_SUBST(PGSQL_LIB, "-lpq")
        AC_SUBST(PGSQL_CPPFLAGS, "-I${PGSQL_INC_DIR}")
-       ltlibraries="librtgpgsql.la $ltlibraries" ],
+       ltlibraries="libratedpgsql.la $ltlibraries" ],
        AC_MSG_WARN(Cannot link with Postgres libs! (libpq)))
 dnl ****************** End Postgres checking ***********************
 
@@ -167,7 +167,7 @@ fi
 AC_CHECK_LIB(mysqlclient_r, my_thread_init,
        [ AC_SUBST(MYSQL_LIB, "-lmysqlclient_r")
        AC_SUBST(MYSQL_CPPFLAGS, "-I${MYSQL_INC_DIR}")
-       ltlibraries="librtgmysql.la $ltlibraries" ],
+       ltlibraries="libratedmysql.la $ltlibraries" ],
        AC_MSG_WARN(Cannot link with thread-safe MySQL lib (libmysqlclient_r)))
 dnl ****************** End MySQL checking ***********************
 

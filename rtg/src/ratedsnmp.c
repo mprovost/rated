@@ -6,8 +6,8 @@
 ****************************************************************************/
 
 #include "common.h"
-#include "rtg.h"
-#include "rtgdbi.h"
+#include "rated.h"
+#include "rateddbi.h"
 
 #ifdef OLD_UCD_SNMP
  #include "asn1.h"

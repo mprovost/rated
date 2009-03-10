@@ -6,7 +6,7 @@
 ****************************************************************************/
 
 #define _REENTRANT
-#include "rtg.h"
+#include "rated.h"
 
 /* Yes.  Globals. */
 stats_t stats =

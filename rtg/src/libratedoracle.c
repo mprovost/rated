@@ -2,8 +2,8 @@
  * RTG Oracle OCI database driver
  */
 
-#include "rtg.h"
-#include "rtgplot.h"
+#include "rated.h"
+#include "ratedplot.h"
 #include <oci.h>
 #include <sys/param.h>
 

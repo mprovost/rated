@@ -735,8 +735,8 @@ PACKAGE_VERSION=
 PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 
-ac_unique_file="src/rtg.h"
-ac_default_prefix=/usr/local/rtg
+ac_unique_file="src/rated.h"
+ac_default_prefix=/usr/local/rated
 # Factoring default headers for most tests.
 ac_includes_default="\
 #include <stdio.h>
@@ -2239,7 +2239,7 @@ fi
 
 
 # Define the identity of the package.
- PACKAGE=rtg
+ PACKAGE=rated
  VERSION=0.9.0
 
 
@@ -10848,7 +10848,7 @@ done
 if test "x$prefix" != "xNONE"; then
     RTG_HOME=$prefix
 else
-    RTG_HOME=/usr/local/rtg
+    RTG_HOME=/usr/local/rated
 fi
 
 cat >>confdefs.h <<_ACEOF
@@ -10949,7 +10949,7 @@ if test $ac_cv_lib_pq_PQconnectdb = yes; then
 
        PGSQL_CPPFLAGS="-I${PGSQL_INC_DIR}"
 
-       ltlibraries="librtgpgsql.la $ltlibraries"
+       ltlibraries="libratedpgsql.la $ltlibraries"
 else
   { echo "$as_me:$LINENO: WARNING: Cannot link with Postgres libs! (libpq)" >&5
 echo "$as_me: WARNING: Cannot link with Postgres libs! (libpq)" >&2;}
@@ -11051,7 +11051,7 @@ if test $ac_cv_lib_mysqlclient_r_my_thread_init = yes; then
 
        MYSQL_CPPFLAGS="-I${MYSQL_INC_DIR}"
 
-       ltlibraries="librtgmysql.la $ltlibraries"
+       ltlibraries="libratedmysql.la $ltlibraries"
 else
   { echo "$as_me:$LINENO: WARNING: Cannot link with thread-safe MySQL lib (libmysqlclient_r)" >&5
 echo "$as_me: WARNING: Cannot link with thread-safe MySQL lib (libmysqlclient_r)" >&2;}

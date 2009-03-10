@@ -6,7 +6,7 @@
 ****************************************************************************/
 
 #include "common.h"
-#include "rtg.h"
+#include "rated.h"
 
 extern FILE *yyin;
 extern int yyparse(void);

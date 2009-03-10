@@ -3,8 +3,8 @@
 %{
 #include <stdio.h>
 #include <string.h>
-#include "rtg.h"
-#include "rtgtarg.h"
+#include "rated.h"
+#include "ratedtarg.h"
 
 
 unsigned int lineno = 1;
