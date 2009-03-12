@@ -62,6 +62,8 @@ void free_hash() {
 			if (f->host != NULL) {
 				free(f->host);
 			}
+			free(f->objoid);
+			free(f->table);
 			free(f);	
 		}	
 	}
@@ -149,7 +151,7 @@ void walk_target_hash() {
 void *in_hash(target_t *entry, target_t *list) {
 	while (list) {
 		if (compare_targets(entry, list)) {
-			debug(HIGH, "Found existing %s %s %s %d\n", list->host,
+			debug(HIGH, "Found existing %s %s %s %d\n", list->host->host,
 				list->objoid, list->table, list->iid);
 			return list;
 		}
@@ -201,7 +203,9 @@ int del_hash_entry(target_t *new) {
 				else 
 					hash.table[key] = NULL;
 			}
-			free (p);
+			free(p->objoid);
+			free(p->table);
+			free(p);
 			return TRUE;
 		}
 		prev = p;
@@ -220,6 +224,8 @@ int add_hash_entry(target_t *new) {
 	p = in_hash(new, hash.table[key]);
 	if (p) {
 		p->init = LIVE;
+		free(new->objoid);
+		free(new->table);
 		free(new);
 		return FALSE;
 	} 
@@ -246,7 +252,7 @@ int add_hash_entry(target_t *new) {
  * it removes said entries from hash via delete_targets().
  * The return values of the addition/deletion functions are then
  * added to/subtracted from the static integer 'entries' which keeps a running
- * count of the total number of targets being polled since the start of rtgpoll.
+ * count of the total number of targets being polled since the start of rated.
  */
 int hash_target_file(char *file) {
     unsigned int removed = 0;
@@ -256,7 +262,7 @@ int hash_target_file(char *file) {
 		fprintf(stderr, "\nCould not open %s for reading.\n", file);
 		return (-1);
 	} 
-	debug(LOW, "Reading RTG target list [%s].\n", file);
+	debug(LOW, "Reading target list [%s].\n", file);
 
 	mark_targets(STALE);
 	yyparse();
