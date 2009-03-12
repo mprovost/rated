@@ -2,7 +2,7 @@
    Program:     $Id: rtgutil.c,v 1.35 2008/01/19 03:01:32 btoneill Exp $
    Author:      $Author: btoneill $
    Date:        $Date: 2008/01/19 03:01:32 $
-   Description: RTG Routines
+   Description: rated Routines
 ****************************************************************************/
 
 #include "common.h"
@@ -13,7 +13,7 @@ extern quitting;
 extern FILE *dfp;
 
 /* read configuration file to establish local environment */
-int read_rtg_config(char *file, config_t * set)
+int read_rated_config(char *file, config_t * set)
 {
     FILE *fp;
     char buff[BUFSIZE];
@@ -25,9 +25,9 @@ int read_rtg_config(char *file, config_t * set)
     } else {
 		if (set->verbose >= LOW) {
 			if (set->daemon)
-				sysloginfo("Using RTG config file [%s].\n", file);
+				sysloginfo("Using rated config file [%s].\n", file);
 			else
-				fprintf(dfp, "Using RTG config file [%s].\n", file);
+				fprintf(dfp, "Using rated config file [%s].\n", file);
 		}
         while(!feof(fp)) {
            fgets(buff, BUFSIZE, fp);
@@ -57,7 +57,7 @@ int read_rtg_config(char *file, config_t * set)
 }
 
 
-int write_rtg_config(char *file, config_t * set)
+int write_rated_config(char *file, config_t * set)
 {
     FILE *fp;
 
@@ -191,18 +191,18 @@ double timediff(struct timeval tv1, struct timeval tv2) {
 
 int checkPID(char *pidfile, config_t *set) {
 	FILE *pidptr = NULL;
-	pid_t rtgpoll_pid;
+	pid_t rated_pid;
 
-	rtgpoll_pid = getpid();
+	rated_pid = getpid();
 	if ((pidptr = fopen(pidfile, "r")) != NULL) {
 		char temp_pid[BUFSIZE];
 		int verify = 0;
-		/* rtgpoll appears to already be running. */
+		/* rated appears to already be running. */
 		while (fgets(temp_pid,BUFSIZE,pidptr)) {
 			verify = atoi(temp_pid);
 			debug(LOW, "Checking another instance with pid %d.\n", verify);
 			if (kill(verify, 0) == 0) {
-				fatal("rtgpoll is already running. Exiting.\n");
+				fatal("rated is already running. Exiting.\n");
 			} else {
 				/* This process isn't really running */
 				debug(LOW, "PID %d is no longer running. Starting anyway.\n", verify);
@@ -211,9 +211,9 @@ int checkPID(char *pidfile, config_t *set) {
 		}
 	}
 
-	/* This is good, rtgpoll is not running. */
+	/* This is good, rated is not running. */
 	if ((pidptr = fopen(pidfile, "w")) != NULL) {
-		fprintf(pidptr, "%d\n", rtgpoll_pid);
+		fprintf(pidptr, "%d\n", rated_pid);
 		fclose(pidptr);
 		return(0);
 	}

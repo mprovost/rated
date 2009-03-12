@@ -31,7 +31,7 @@ char config_paths[CONFIG_PATHS][BUFSIZE];
 FILE *dfp = NULL;
 
 
-/* Main rtgpoll */
+/* Main rated */
 int main(int argc, char *argv[]) {
     crew_t crew;
     pthread_t sig_thread;
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
 	    break;
 	}
 
-    debug(LOW, "RTG version %s starting.\n", VERSION);
+    debug(LOW, "rated version %s starting.\n", VERSION);
 
     if (set->daemon) {
         if (daemon_init() < 0)
@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
 
     /* Read configuration file to establish local environment */
     if (conf_file) {
-        if ((read_rtg_config(conf_file, set)) < 0) 
+        if ((read_rated_config(conf_file, set)) < 0) 
             fatal("Could not read config file: %s\n", conf_file);
     } else {
         conf_file = malloc(BUFSIZE);
@@ -119,11 +119,11 @@ int main(int argc, char *argv[]) {
             fatal("Fatal malloc error!\n");
         for(i=0;i<CONFIG_PATHS;i++) {
             snprintf(conf_file, BUFSIZE, "%s%s", config_paths[i], DEFAULT_CONF_FILE); 
-            if (read_rtg_config(conf_file, set) >= 0)
+            if (read_rated_config(conf_file, set) >= 0)
                 break;
             if (i == CONFIG_PATHS-1) {
                 snprintf(conf_file, BUFSIZE, "%s%s", config_paths[0], DEFAULT_CONF_FILE); 
-                if ((write_rtg_config(conf_file, set)) < 0) 
+                if ((write_rated_config(conf_file, set)) < 0) 
                     fatal("Couldn't write config file.\n");
             }
         }
@@ -163,7 +163,7 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the SNMP session */
     debug(LOW, "Initializing SNMP (port %d).\n", set->snmp_port);
-    init_snmp("RTG");
+    init_snmp("rated");
 
     /* hash list of targets to be polled */
     init_hash();
@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
     if (entries <= 0) 
         fatal("Error updating target list.");
 
-    debug(LOW, "RTG Ready.\n");
+    debug(LOW, "rated ready.\n");
 
     /* Loop Forever Polling Target List */
     while (1) {
@@ -260,7 +260,7 @@ void *sig_handler(void *arg)
 
 void usage(char *prog)
 {
-    printf("rtgpoll - RTG v%s\n", VERSION);
+    printf("rated v%s\n", VERSION);
     printf("Usage: %s [-dDmz] [-vvv] [-c <file>] -t <file>\n", prog);
     printf("\nOptions:\n");
     printf("  -c <file>   Specify configuration file\n");
@@ -269,7 +269,7 @@ void usage(char *prog)
     printf("  -t <file>   Specify target file\n");
     printf("  -v          Increase verbosity\n");
     printf("  -m          Allow multiple instances\n");
-    printf("  -p <file>   Specify PID file [default /var/run/rtgpoll.pid]\n"); 
+    printf("  -p <file>   Specify PID file [default /var/run/rated.pid]\n"); 
     printf("  -z          Database zero delta inserts\n");
     printf("  -h          Help\n");
     exit(-1);

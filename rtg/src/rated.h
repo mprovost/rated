@@ -2,14 +2,14 @@
    Program:     $Id: rtg.h,v 1.43 2008/01/19 03:01:32 btoneill Exp $ 
    Author:      $Author: btoneill $
    Date:        $Date: 2008/01/19 03:01:32 $
-   Description: RTG headers
+   Description: rated headers
 ****************************************************************************/
 
 #include <common.h>
 #include <sys/param.h>
 
-#ifndef _RTG_H_
-#define _RTG_H_ 1
+#ifndef _RATED_H_
+#define _RATED_H_ 1
 
 /* Defines */ 
 #ifndef FALSE
@@ -40,30 +40,30 @@
 
 #define POLLS_PER_TRANSACTION 100
 
-/* Define CONFIG_PATHS places to search for the rtg.conf file.  Note
+/* Define CONFIG_PATHS places to search for the rated.conf file.  Note
    that RTG_HOME, as determined during autoconf is one path */
 #define CONFIG_PATHS 3
 #define CONFIG_PATH_1 ""
 #define CONFIG_PATH_2 "/etc/"
 
 /* Defaults */
-#define DEFAULT_CONF_FILE "rtg.conf"
+#define DEFAULT_CONF_FILE "rated.conf"
 #define DEFAULT_THREADS 5
 #define DEFAULT_INTERVAL 300
 #define DEFAULT_HIGHSKEWSLOP 3
 #define DEFAULT_LOWSKEWSLOP .5
 #define DEFAULT_OUT_OF_RANGE 93750000000ull
-#define DEFAULT_DB_DRIVER "librtgmysql.so"
+#define DEFAULT_DB_DRIVER "libratedmysql.so"
 #define DEFAULT_DB_HOST "localhost"
-#define DEFAULT_DB_DB "rtg"
+#define DEFAULT_DB_DB "rated"
 #define DEFAULT_DB_USER "snmp"
-#define DEFAULT_DB_PASS "rtgdefault"
+#define DEFAULT_DB_PASS "rateddefault"
 #define DEFAULT_SNMP_VER 1
 #define DEFAULT_SNMP_PORT 161
 #define DEFAULT_SYSLOG_FACILITY LOG_LOCAL2
 
 /* PID File */
-#define PIDFILE "/var/run/rtgpoll.pid"
+#define PIDFILE "/var/run/rated.pid"
 
 #define STAT_DESCRIP_ERROR 99
 #define HASHSIZE 5000
@@ -177,16 +177,16 @@ typedef struct hash_struct {
     target_t **table;
 } hash_t;
 
-/* Precasts: rtgpoll.c */
+/* Precasts: rated.c */
 void *sig_handler(void *);
 void usage(char *);
 
-/* Precasts: rtgpoll.c */
+/* Precasts: rated.c */
 void *poller(void *);
 
-/* Precasts: rtgutil.c */
-int read_rtg_config(char *, config_t *);
-int write_rtg_config(char *, config_t *);
+/* Precasts: ratedutil.c */
+int read_rated_config(char *, config_t *);
+int write_rated_config(char *, config_t *);
 void config_defaults(config_t *);
 void print_stats (stats_t, config_t *);
 int sleepy(float, config_t *);
@@ -195,7 +195,7 @@ double timediff(struct timeval, struct timeval);
 int checkPID(char *, config_t *);
 int daemon_init();
 
-/* Precasts: rtghash.c */
+/* Precasts: ratedhash.c */
 void init_hash();
 void init_hash_walk();
 target_t *getNext();
@@ -215,4 +215,4 @@ extern int lock;
 extern char config_paths[CONFIG_PATHS][BUFSIZE];
 extern FILE *dfp;
 
-#endif /* not _RTG_H_ */
+#endif /* not _RATED_H_ */
