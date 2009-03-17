@@ -14,10 +14,10 @@ AC_PREFIX_DEFAULT(/usr/local/rated)
 
 dnl Compilation Setup
 AC_ARG_WITH(mysql,
-   [  --with-mysql=PATH       MySQL path [default=/usr/local]],,)
+   [  --with-mysql=PATH       MySQL path [default=/usr/local]],,[with_mysql=check])
 
 AC_ARG_WITH(pgsql,
-   [  --with-pgsql=PATH       Postgres path [default=/usr/local]],,)
+   [  --with-pgsql=PATH       Postgres path [default=/usr/local]],,[with_pgsql=check])
 
 AC_ARG_WITH(snmp,
    [  --with-snmp=PATH        SNMP path [default=/usr/local]],,)
@@ -110,65 +110,93 @@ AC_DEFINE_UNQUOTED(RTG_HOME, "$RTG_HOME", RTG root installation prefix)
 
 dnl ****************** Begin Postgres checking ***********************
 AC_MSG_CHECKING(pgsql)
-if test "x$with_pgsql" != "xyes"; then
-  PGSQL_DIR=$with_pgsql
-else
-  for i in /usr /usr/local /usr/local/psql; do
-    test -f $i/bin/psql                         && PGSQL_DIR=$i
-  done
-fi
+AS_IF([test "x$with_pgsql" != "xno"],
+    [if test "x$with_pgsql" != "xcheck"; then
+        PGSQL_DIR=$with_pgsql
+    else
+        dnl try some standard locations
+        for i in /usr /usr/local /usr/local/psql; do
+            test -f $i/bin/psql && PGSQL_DIR=$i && break
+        done
+    fi
 
-for i in $PGSQL_DIR /usr /usr/local /usr/local/pgsql; do
-   test -f $i/include/libpq-fe.h                    && PGSQL_INC_DIR=$i/include
-   test -f $i/include/postgresql/libpq-fe.h         && PGSQL_INC_DIR=$i/include/postgresql
-done
-
-if test -z "$PGSQL_INC_DIR"; then
-  if test "x$with_pgsql" != "x"; then
-    AC_MSG_ERROR(Cannot find Postgres header files under $PGSQL_DIR)
-  else
-    AC_MSG_WARN(Cannot find Postgres headers.  Use --with-pgsql= to specify non-default path.)
-  fi
-fi
-
-AC_CHECK_LIB(pq, PQconnectdb,
-       [ AC_SUBST(PGSQL_LIB, "-lpq")
-       AC_SUBST(PGSQL_CPPFLAGS, "-I${PGSQL_INC_DIR}")
-       ltlibraries="libratedpgsql.la $ltlibraries" ],
-       AC_MSG_WARN(Cannot link with Postgres libs! (libpq)))
+    if test -n $PGSQL_DIR; then
+        OLD_CPPFLAGS=$CPPFLAGS
+        for i in include/postgresql include; do
+            if test -d ${PGSQL_DIR}/$i; then
+                PGSQL_INC_DIR=$i
+                break
+            fi
+        done
+        CPPFLAGS="$CPPFLAGS -I${PGSQL_DIR}/${PGSQL_INC_DIR}"
+        AC_CHECK_HEADER(libpq-fe.h,
+            [ CPPFLAGS=$OLD_CPPFLAGS
+            OLD_LDFLAGS=$LDFLAGS
+            LDFLAGS="$LDFLAGS -lpq"
+            AC_CHECK_LIB(pq, PQconnectdb,
+                [ LDFLAGS=$OLD_LDFLAGS
+                AC_SUBST(PGSQL_LIB, "-lpq")
+                AC_SUBST(PGSQL_CPPFLAGS, "-I${PGSQL_DIR}/${PGSQL_INC_DIR}")
+                ltlibraries="libratedpgsql.la $ltlibraries" ],
+                [ LDFLAGS=$OLD_LDFLAGS
+                if test "x$with_pgsql" != "xcheck"; then
+                    AC_MSG_ERROR(Cannot link with Postgres libs! (libpq))
+                else
+                    AC_MSG_WARN(Cannot link with Postgres libs! (libpq))
+                fi ]) ],
+            [ CPPFLAGS=$OLD_CPPFLAGS
+            if test "x$with_pgsql" != "xcheck"; then
+                AC_MSG_ERROR(["Cannot find Postgres headers in ${PGSQL_DIR}"])
+            else
+                AC_MSG_WARN(["Cannot find Postgres headers in ${PGSQL_DIR}. Use --with-pgsql to specify non-default path."])
+            fi ])
+    fi
+    ]
+)
 dnl ****************** End Postgres checking ***********************
 
 
 dnl ****************** Begin MySQL checking ***********************
 AC_MSG_CHECKING(mysql)
+AS_IF([test "x$with_mysql" != "xno"],
+    [if test "x$with_mysql" != "xcheck"; then
+        MYSQL_DIR=$with_mysql
+    else
+        dnl try some standard locations
+        for i in /usr /usr/local /usr/local/mysql; do
+            test -f $i/bin/mysql_config && MYSQL_DIR=$i && break
+        done
+    fi
 
-if test "x$with_mysql" != "xyes"; then
-  MYSQL_DIR=$with_mysql
-else
-  for i in /usr /usr/local /usr/local/mysql; do
-    test -f $i/bin/mysql                         && MYSQL_DIR=$i
-  done
-fi
-
-for i in $MYSQL_DIR /usr /usr/local /usr/local/mysql; do
-   test -f $i/include/mysql.h                    && MYSQL_INC_DIR=$i/include
-   test -f $i/include/mysql/mysql.h              && MYSQL_INC_DIR=$i/include/mysql
-   test -f $i/mysql/include/mysql.h              && MYSQL_INC_DIR=$i/mysql/include
-done
-
-if test -z "$MYSQL_INC_DIR"; then
-  if test "x$with_mysql" != "x"; then
-    AC_MSG_ERROR(Cannot find MySQL header files under $MYSQL_DIR)
-  else
-    AC_MSG_WARN(Cannot find MySQL headers.  Use --with-mysql= to specify non-default path.)
-  fi
-fi
-
-AC_CHECK_LIB(mysqlclient_r, my_thread_init,
-       [ AC_SUBST(MYSQL_LIB, "-lmysqlclient_r")
-       AC_SUBST(MYSQL_CPPFLAGS, "-I${MYSQL_INC_DIR}")
-       ltlibraries="libratedmysql.la $ltlibraries" ],
-       AC_MSG_WARN(Cannot link with thread-safe MySQL lib (libmysqlclient_r)))
+    if test -n $MYSQL_DIR -a -x ${MYSQL_DIR}/bin/mysql_config; then
+        MYSQL_CPPFLAGS=`${MYSQL_DIR}/bin/mysql_config --include`
+        OLD_CPPFLAGS=$CPPFLAGS
+        CPPFLAGS="$CPPFLAGS $MYSQL_CPPFLAGS"
+        AC_CHECK_HEADER(mysql.h,
+            [ CPPFLAGS=$OLD_CPPFLAGS
+            MYSQL_LIB=`${MYSQL_DIR}/bin/mysql_config --libs_r`
+            OLD_LDFLAGS=$LDFLAGS
+            LDFLAGS="$LDFLAGS $MYSQL_LIB"
+            AC_CHECK_LIB(mysqlclient_r, my_thread_init,
+                [ LDFLAGS=$OLD_LDFLAGS
+                AC_SUBST(MYSQL_LIB)
+                AC_SUBST(MYSQL_CPPFLAGS)
+                ltlibraries="libratedmysql.la $ltlibraries" ],
+                [ LDFLAGS=$OLD_LDFLAGS
+                if test "x$with_mysql" != "xcheck"; then
+                    AC_MSG_ERROR(Cannot link with thread-safe MySQL lib (libmysqlclient_r))
+                else
+                    AC_MSG_WARN(Cannot link with thread-safe MySQL lib (libmysqlclient_r))
+                fi ]) ],
+            [ CPPFLAGS=$OLD_CPPFLAGS
+            if test "x$with_mysql" != "xcheck"; then
+                AC_MSG_ERROR(["Cannot find MySQL headers in ${MYSQL_CPPFLAGS}"])
+            else
+                AC_MSG_WARN(["Cannot find MySQL headers in ${MYSQL_CPPFLAGS}.  Use --with-mysql= to specify non-default path."])
+            fi ])
+    fi
+    ]
+)
 dnl ****************** End MySQL checking ***********************
 
 
