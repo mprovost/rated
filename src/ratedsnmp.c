@@ -374,13 +374,13 @@ cleanup:
         crew->work_count--;
 
         /* update the time if we inserted ok */
-        if (!(db_reconnect || db_error))
+        if (!(db_reconnect || db_error)) {
             entry->last_time = current_time;	
-
-        /* Only if we received a positive result back do we update the last_value object */
-        if (poll_status == STAT_SUCCESS && !(db_reconnect || db_error)) {
-            entry->last_value = result;
-            if (init == NEW) entry->init = LIVE;
+            /* Only if we received a positive result back do we update the last_value object */
+            if (poll_status == STAT_SUCCESS) {
+                entry->last_value = result;
+                if (init == NEW) entry->init = LIVE;
+            }
         }
 
         if (crew->work_count <= 0) {
