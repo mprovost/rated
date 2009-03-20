@@ -97,6 +97,7 @@ int __db_connect(config_t *config) {
 		debug(LOW, "Postgres connected, PID: %u\n", PQbackendPID(pgsql));
 	} else {
 		debug(LOW, "Failed to connect to postgres server: %s", PQerrorMessage(pgsql));
+                PQfinish(pgsql);
 		return FALSE;
 	}
 
@@ -136,6 +137,11 @@ int __db_insert(char *table, int iid, unsigned long long insert_val, double inse
 	ExecStatusType status;
 
 	PGresult *result;
+
+        if (pgsql == NULL) {
+            debug(LOW, "No Postgres connection in db_insert\n");
+            return FALSE;
+        }
 
 	/* size_t PQescapeString (char *to, const char *from, size_t length); */
 	/* INSERT INTO %s (id,dtime,counter,rate) VALUES (%d, NOW(), %llu, %.6f) */

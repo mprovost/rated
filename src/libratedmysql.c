@@ -115,10 +115,12 @@ int __db_connect(config_t *config) {
 	mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "rtg");
 
 	/* MYSQL *mysql_real_connect(MYSQL *mysql, const char *host, const char *user, const char *passwd, const char *db, unsigned int port, const char *unix_socket, unsigned long client_flag) */
-	if (!mysql_real_connect(mysql, set->dbhost, set->dbuser, set->dbpass, set->dbdb, 0, NULL, 0)) {
-		debug(LOW, "Failed to connect to mysql server: %s\n", mysql_error(mysql));
-	} else {
+	if (mysql_real_connect(mysql, set->dbhost, set->dbuser, set->dbpass, set->dbdb, 0, NULL, 0)) {
 		debug(LOW, "Mysql connected, thread: %u\n", mysql_thread_id(mysql));
+	} else {
+		debug(LOW, "Failed to connect to mysql server: %s\n", mysql_error(mysql));
+                mysql_close(mysql);
+                return FALSE;
 	}
 
 	/* put the mysql connection back into the global var */
@@ -127,7 +129,7 @@ int __db_connect(config_t *config) {
 		return FALSE;
 	}
 
-	return __db_status();
+	return TRUE;
 }
 
 int __db_disconnect() {
@@ -153,6 +155,11 @@ int __db_insert(char *table, int iid, unsigned long long insert_val, double inse
 	char *table_esc;
 
 	int result;
+
+        if (mysql == NULL) {
+            debug(LOW, "No MySQL connection in db_insert\n");
+            return FALSE;
+        }
 
 	table_esc = escape_string(table_esc, table);
 

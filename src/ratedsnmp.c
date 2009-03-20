@@ -323,14 +323,14 @@ void *poller(void *thread_args)
             /* TODO do we need to check for zero values again? */
 
             if (!(set->dboff)) {
-                if (db_reconnect) {
-                    /* try and reconnect */
-                    if (db_connect(set))
-                        db_reconnect = FALSE;
-                    else
-                        goto cleanup;
-                }
                 if ( (insert_val > 0) || (set->withzeros) ) {
+                    if (db_reconnect) {
+                        /* try and reconnect */
+                        if (db_connect(set))
+                            db_reconnect = FALSE;
+                        else
+                            goto cleanup;
+                    }
                     tdebug(DEVELOP, "db_insert sent: %s %d %llu %.15f\n", entry->table, entry->iid, insert_val, rate);
                     /* insert into the database */
                     if (db_insert(entry->table, entry->iid, insert_val, rate)) {
@@ -342,10 +342,10 @@ void *poller(void *thread_args)
                         PT_MUTEX_LOCK(&stats.mutex);
                         stats.db_errors++;
                         PT_MUTEX_UNLOCK(&stats.mutex);
-                        /* try and reconnect on the next poll */
                         if (!db_status()) {
                             /* first disconnect to close the handle */
                             db_disconnect();
+                            /* try and reconnect on the next poll */
                             db_reconnect = TRUE;
                         } else {
                             /* we have a db connection but got some other error */
