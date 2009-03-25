@@ -63,7 +63,8 @@ void *poller(void *thread_args)
     struct timezone tzp;
     struct timeval current_time;
     struct timeval last_time;
-    int db_reconnect = FALSE;
+    /* this forces the db to connect on the first poll */
+    int db_reconnect = TRUE;
     int db_error = FALSE;
 
     /* for thread settings */
@@ -77,9 +78,6 @@ void *poller(void *thread_args)
 	/* load the database driver */
 	if (!(db_init(set)))
             fatal("** Database error - check configuration.\n");
-	/* connect to the database */
-	if (!(db_connect(set)))
-            fatal("server not responding.\n");
         /* set up cancel function for exit */
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
         pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &oldtype);
@@ -325,11 +323,16 @@ void *poller(void *thread_args)
             if (!(set->dboff)) {
                 if ( (insert_val > 0) || (set->withzeros) ) {
                     if (db_reconnect) {
-                        /* try and reconnect */
-                        if (db_connect(set))
+                        /* try and (re)connect */
+                        if (db_connect(set)) {
                             db_reconnect = FALSE;
-                        else
+                        } else {
+                            /* the db driver will print an error itself */
+                            PT_MUTEX_LOCK(&stats.mutex);
+                            stats.db_errors++;
+                            PT_MUTEX_UNLOCK(&stats.mutex);
                             goto cleanup;
+                        }
                     }
                     tdebug(DEVELOP, "db_insert sent: %s %d %llu %.15f\n", entry->table, entry->iid, insert_val, rate);
                     /* insert into the database */
