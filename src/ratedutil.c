@@ -34,8 +34,6 @@ int read_rated_config(char *file, config_t * set)
            if (!feof(fp) && *buff != '#' && *buff != ' ' && *buff != '\n') {
               sscanf(buff, "%20s %20s", p1, p2);
               if (!strcasecmp(p1, "Interval")) set->interval = atoi(p2);
-              else if (!strcasecmp(p1, "HighSkewSlop")) set->highskewslop = atof(p2);
-              else if (!strcasecmp(p1, "LowSkewSlop")) set->lowskewslop = atof(p2);
               else if (!strcasecmp(p1, "SNMP_Port")) set->snmp_port = atoi(p2);
               else if (!strcasecmp(p1, "Threads")) set->threads = atoi(p2);
               else if (!strcasecmp(p1, "DB_Driver")) strncpy(set->dbdriver, p2, sizeof(set->dbdriver));
@@ -69,8 +67,6 @@ int write_rated_config(char *file, config_t * set)
     } else {
         fprintf(fp, "#\n# RTG v%s Master Config\n#\n", VERSION);
         fprintf(fp, "Interval\t%d\n", set->interval);
-        fprintf(fp, "HighSkewSlop\t%f\n", set->highskewslop);
-        fprintf(fp, "LowSkewSlop\t%f\n", set->lowskewslop);
         fprintf(fp, "SNMP_Port\t%d\n", set->snmp_port);
         fprintf(fp, "DB_Driver\t%s\n", set->dbdriver);
         fprintf(fp, "DB_Host\t%s\n", set->dbhost);
@@ -88,8 +84,6 @@ int write_rated_config(char *file, config_t * set)
 void config_defaults(config_t * set)
 {
    set->interval = DEFAULT_INTERVAL;
-   set->highskewslop = DEFAULT_HIGHSKEWSLOP;
-   set->lowskewslop = DEFAULT_LOWSKEWSLOP;
    set->snmp_port = DEFAULT_SNMP_PORT;
    set->threads = DEFAULT_THREADS;
    strncpy(set->dbdriver, DEFAULT_DB_DRIVER, sizeof(set->dbdriver));
@@ -111,8 +105,8 @@ void config_defaults(config_t * set)
 /* Print RTG poll stats */
 void print_stats(stats_t stats, config_t *set)
 {
-  debug(OFF, "[Polls = %lld] [DBInserts = %lld] [DBErrors = %lld] [Zero = %d] [Wraps = %d] [OutOfRange = %d]\n",
-      stats.polls, stats.db_inserts, stats.db_errors, stats.zero, stats.wraps, stats.out_of_range);
+  debug(OFF, "[Polls = %lld] [DBInserts = %lld] [DBErrors = %lld] [Zero = %d] [Wraps = %d]\n",
+      stats.polls, stats.db_inserts, stats.db_errors, stats.zero, stats.wraps);
   debug(OFF, "[NoResp = %d] [SNMPErrors = %d] [Slow = %d] [PollTime = %2.3f%c]\n",
       stats.no_resp, stats.errors, stats.slow, stats.poll_time, 's');
   return;

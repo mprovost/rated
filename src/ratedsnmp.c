@@ -306,16 +306,6 @@ void *poller(void *thread_args)
                 goto cleanup;
             }
 
-            /* Check for bogus data, either negative or unrealistic */
-            if (insert_val > entry->maxspeed || result < 0) {
-                tdebug(LOW, "*** Out of Range (%s@%s) [insert_val: %llu] [oor: %lld]\n",
-                    storedoid, session.peername, insert_val, entry->maxspeed);
-                PT_MUTEX_LOCK(&stats.mutex);
-                stats.out_of_range++;
-                PT_MUTEX_UNLOCK(&stats.mutex);
-                goto cleanup;
-            }
-
             if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / %.15f = %.15f\n", result, last_value, insert_val, timediff(current_time, last_time), rate);
 
             /* TODO do we need to check for zero values again? */

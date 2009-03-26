@@ -41,7 +41,6 @@ target                { return HST_TRGT; }
 bits          { return TGT_BITS; }
 table         { return TGT_TBL; }
 id            { return TGT_ID; }
-speed         { return TGT_SPEED; }
 
 {token}               { return yytext[0]; }
 {number}      {

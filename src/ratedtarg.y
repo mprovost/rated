@@ -88,7 +88,6 @@ target_entry  : HST_TRGT L_OID
       bzero(ttgt, sizeof(target_t));
       ttgt->objoid = $2;
       ttgt->host = thst;
-      ttgt->maxspeed = DEFAULT_OUT_OF_RANGE;
 }
 '{' tgt_directives '}'
 {
@@ -102,7 +101,6 @@ tgt_directives        : tgt_directives tgt_directive
 tgt_directive : bits_directive
               | table_directive
               | id_directive
-              | speed_directive
               ;
 
 bits_directive        : TGT_BITS L_NUMBER
@@ -118,11 +116,6 @@ table_directive       : TGT_TBL L_IDENT
 id_directive  : TGT_ID L_NUMBER
 {
       ttgt->iid = $2;
-};
-
-speed_directive       : TGT_SPEED L_NUMBER
-{
-      ttgt->maxspeed = $2;
 };
 
 %%

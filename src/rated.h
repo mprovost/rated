@@ -50,9 +50,6 @@
 #define DEFAULT_CONF_FILE "rated.conf"
 #define DEFAULT_THREADS 5
 #define DEFAULT_INTERVAL 300
-#define DEFAULT_HIGHSKEWSLOP 3
-#define DEFAULT_LOWSKEWSLOP .5
-#define DEFAULT_OUT_OF_RANGE 93750000000ull
 #define DEFAULT_DB_DRIVER "libratedmysql.so"
 #define DEFAULT_DB_HOST "localhost"
 #define DEFAULT_DB_DB "rated"
@@ -118,8 +115,6 @@ typedef struct config_struct {
     unsigned short threads;
     unsigned short daemon;
     unsigned short syslog;
-    float highskewslop;
-    float lowskewslop;
 } config_t;
 
 typedef struct target_struct {
@@ -128,11 +123,6 @@ typedef struct target_struct {
     char *table;
     unsigned short bits;
     unsigned int iid;
-#ifdef HAVE_STRTOULL
-    unsigned long long maxspeed;
-#else
-    unsigned long maxspeed;
-#endif
     enum targetState init;
     unsigned long long last_value;
     struct timeval last_time;
@@ -164,7 +154,6 @@ typedef struct poll_stats {
     unsigned int zero;
     unsigned int wraps;
     unsigned int no_resp;
-    unsigned int out_of_range;
     unsigned int errors;
     unsigned int slow;
     unsigned int flat;
