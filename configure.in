@@ -97,7 +97,7 @@ AC_STRUCT_TM
 
 dnl Checks for library functions.
 AC_TYPE_SIGNAL
-AC_CHECK_FUNCS(gettimeofday strerror strtoull)
+AC_CHECK_FUNCS(asprintf gettimeofday strerror strtoull)
 
 dnl Determine RTG home installation path for script substitution
 if test "x$prefix" != "xNONE"; then
