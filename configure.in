@@ -168,7 +168,7 @@ AS_IF([test "x$with_mysql" != "xno"],
         done
     fi
 
-    if test -n $MYSQL_DIR -a -x ${MYSQL_DIR}/bin/mysql_config; then
+    if test -n "$MYSQL_DIR" -a -x "${MYSQL_DIR}/bin/mysql_config"; then
         MYSQL_CPPFLAGS=`${MYSQL_DIR}/bin/mysql_config --include`
         OLD_CPPFLAGS=$CPPFLAGS
         CPPFLAGS="$CPPFLAGS $MYSQL_CPPFLAGS"
@@ -181,7 +181,8 @@ AS_IF([test "x$with_mysql" != "xno"],
                 [ LDFLAGS=$OLD_LDFLAGS
                 AC_SUBST(MYSQL_LIB)
                 AC_SUBST(MYSQL_CPPFLAGS)
-                ltlibraries="libratedmysql.la $ltlibraries" ],
+                ltlibraries="libratedmysql.la $ltlibraries"
+                AC_MSG_RESULT(yes) ],
                 [ LDFLAGS=$OLD_LDFLAGS
                 if test "x$with_mysql" != "xcheck"; then
                     AC_MSG_ERROR(Cannot link with thread-safe MySQL lib (libmysqlclient_r))
@@ -194,6 +195,8 @@ AS_IF([test "x$with_mysql" != "xno"],
             else
                 AC_MSG_WARN(["Cannot find MySQL headers in ${MYSQL_CPPFLAGS}.  Use --with-mysql= to specify non-default path."])
             fi ])
+    else
+        AC_MSG_RESULT(no)
     fi
     ]
 )
