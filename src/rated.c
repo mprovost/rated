@@ -161,10 +161,6 @@ int main(int argc, char *argv[]) {
     end_time = now.tv_sec * 1000 + now.tv_usec / 1000; /* convert to milliseconds */
     debug(HIGH, "Waited %d milliseconds for thread startup.\n", end_time - begin_time);
 
-    /* Initialize the SNMP session */
-    debug(LOW, "Initializing SNMP (port %d).\n", set->snmp_port);
-    init_snmp("rated");
-
     /* hash list of targets to be polled */
     init_hash();
     entries = hash_target_file(target_file);

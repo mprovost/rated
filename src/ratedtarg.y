@@ -5,7 +5,7 @@
 int yyerror(const char *s);
 extern int yylineno, lineno;
 extern char *yytext;
-
+int yylex(void);
 
 static host_t *thst;
 static target_t *ttgt;

@@ -19,6 +19,7 @@
 # undef PACKAGE_VERSION
 #endif
 
+#define _GNU_SOURCE
 #include <stdio.h>
 
 #if STDC_HEADERS

@@ -8,7 +8,9 @@
 #include "common.h"
 #include "rated.h"
 
-extern quitting;
+#include <sys/stat.h>
+
+extern sig_atomic_t quitting;
 
 extern FILE *dfp;
 

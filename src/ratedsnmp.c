@@ -130,8 +130,6 @@ void *poller(void *thread_args)
 	if (current != NULL) {
             tdebug(DEVELOP, "processing %s@%s (%d work units remain in queue)\n",
                 current->objoid, current->host->host, crew->work_count);
-	    /* TODO only do this if we're debugging or not daemonised? */
-	    snmp_enable_stderrlog();
             snmp_sess_init(&session);
 
             if (current->host->snmp_ver == 2)
