@@ -49,7 +49,7 @@ AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_DISABLE_STATIC
-AC_PROG_LIBTOOL
+ifdef([LT_INIT], [LT_INIT], [AC_PROG_LIBTOOL])
 AC_PROG_YACC
 AM_PROG_LEX
 
@@ -74,20 +74,11 @@ AC_CHECK_LIB(rt, clock_gettime)
 AC_CHECK_LIB(z, deflate)
 AC_CHECK_LIB(crypto, CRYPTO_free,[],[AC_MSG_ERROR(libcrypto not found!)])
 dnl AC_CHECK_LIB(des, CRYPTO_free,[],[])
-
-dnl check for libtool
-AC_MSG_CHECKING(libtool)
-for i in /usr /usr/local; do
-	test -f $i/lib/libltdl.a -o -f $i/lib/libltdl.so && LT_LIBDIR=$i/lib
-	test -f $i/lib64/libltdl.a -o -f $i/lib64/libltdl.so && LT_LIBDIR=$i/lib64
-done
-LDFLAGS="-L$LT_LIBDIR $LDFLAGS"
-AC_CHECK_LIB(ltdl, lt_dlinit,,AC_MSG_ERROR(Cannot link with libtool libs! (libltdl)))
+AC_CHECK_LIB(ltdl, lt_dlopen,[],[AC_MSG_ERROR(Cannot link with libtool libs! (libltdl))])
 
 dnl Checks for header files.
 AC_HEADER_STDC
 AC_CHECK_HEADERS(malloc.h math.h syslog.h ctype.h sys/time.h netinet/in.h unistd.h)
-
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_TYPES([unsigned long long, long long])

@@ -10076,17 +10076,9 @@ echo "$as_me: error: libcrypto not found!" >&2;}
 fi
 
 
-{ echo "$as_me:$LINENO: checking libtool" >&5
-echo $ECHO_N "checking libtool... $ECHO_C" >&6; }
-for i in /usr /usr/local; do
-	test -f $i/lib/libltdl.a -o -f $i/lib/libltdl.so && LT_LIBDIR=$i/lib
-	test -f $i/lib64/libltdl.a -o -f $i/lib64/libltdl.so && LT_LIBDIR=$i/lib64
-done
-LDFLAGS="-L$LT_LIBDIR $LDFLAGS"
-
-{ echo "$as_me:$LINENO: checking for lt_dlinit in -lltdl" >&5
-echo $ECHO_N "checking for lt_dlinit in -lltdl... $ECHO_C" >&6; }
-if test "${ac_cv_lib_ltdl_lt_dlinit+set}" = set; then
+{ echo "$as_me:$LINENO: checking for lt_dlopen in -lltdl" >&5
+echo $ECHO_N "checking for lt_dlopen in -lltdl... $ECHO_C" >&6; }
+if test "${ac_cv_lib_ltdl_lt_dlopen+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
   ac_check_lib_save_LIBS=$LIBS
@@ -10104,11 +10096,11 @@ cat >>conftest.$ac_ext <<_ACEOF
 #ifdef __cplusplus
 extern "C"
 #endif
-char lt_dlinit ();
+char lt_dlopen ();
 int
 main ()
 {
-return lt_dlinit ();
+return lt_dlopen ();
   ;
   return 0;
 }
@@ -10131,21 +10123,21 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
 	 test ! -s conftest.err
        } && test -s conftest$ac_exeext &&
        $as_test_x conftest$ac_exeext; then
-  ac_cv_lib_ltdl_lt_dlinit=yes
+  ac_cv_lib_ltdl_lt_dlopen=yes
 else
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
 
-	ac_cv_lib_ltdl_lt_dlinit=no
+	ac_cv_lib_ltdl_lt_dlopen=no
 fi
 
 rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-{ echo "$as_me:$LINENO: result: $ac_cv_lib_ltdl_lt_dlinit" >&5
-echo "${ECHO_T}$ac_cv_lib_ltdl_lt_dlinit" >&6; }
-if test $ac_cv_lib_ltdl_lt_dlinit = yes; then
+{ echo "$as_me:$LINENO: result: $ac_cv_lib_ltdl_lt_dlopen" >&5
+echo "${ECHO_T}$ac_cv_lib_ltdl_lt_dlopen" >&6; }
+if test $ac_cv_lib_ltdl_lt_dlopen = yes; then
   cat >>confdefs.h <<_ACEOF
 #define HAVE_LIBLTDL 1
 _ACEOF
@@ -10478,7 +10470,6 @@ _ACEOF
 fi
 
 done
-
 
 
 { echo "$as_me:$LINENO: checking for unsigned long long" >&5
