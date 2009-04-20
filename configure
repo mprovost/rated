@@ -11322,8 +11322,6 @@ if test $ac_cv_lib_mysqlclient_r_my_thread_init = yes; then
 
 
                 ltlibraries="libratedmysql.la $ltlibraries"
-                { echo "$as_me:$LINENO: result: yes" >&5
-echo "${ECHO_T}yes" >&6; }
 else
    LDFLAGS=$OLD_LDFLAGS
                 if test "x$with_mysql" != "xcheck"; then
@@ -11349,9 +11347,6 @@ echo "$as_me: WARNING: \"Cannot find MySQL headers in ${MYSQL_CPPFLAGS}.  Use --
 fi
 
 
-    else
-        { echo "$as_me:$LINENO: result: no" >&5
-echo "${ECHO_T}no" >&6; }
     fi
 
 
