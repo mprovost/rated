@@ -33,7 +33,7 @@ static target_t *ttgt;
 %token HST_COMM HST_SVER HST_TRGT
 
 /* per-target */
-%token TGT_BITS TGT_TBL TGT_ID TGT_SPEED TGT_DESCR TGT_RATE
+%token TGT_BITS TGT_TBL TGT_ID TGT_SPEED TGT_DESCR
 
 %%
 
