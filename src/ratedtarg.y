@@ -6,9 +6,11 @@ int yyerror(const char *s);
 extern int yylineno, lineno;
 extern char *yytext;
 
+extern int entries;
+extern target_t *head;
 
 static host_t *thst;
-static target_t *ttgt;
+target_t *ttgt;
 
 #define YYDEBUG 1
 %}
@@ -87,12 +89,16 @@ target_entry  : HST_TRGT L_OID
       ttgt = malloc(sizeof(target_t));
       bzero(ttgt, sizeof(target_t));
       ttgt->objoid = $2;
+      ttgt->init = NEW;
       ttgt->host = thst;
+      ttgt->next = NULL;
 }
 '{' tgt_directives '}'
 {
-      add_hash_entry(ttgt);
-      ttgt = NULL;
+    entries++;
+    ttgt->next = head;
+    head = ttgt;
+      //ttgt = NULL;
 };
 tgt_directives        : tgt_directives tgt_directive
               | tgt_directive

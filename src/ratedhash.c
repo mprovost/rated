@@ -13,9 +13,9 @@ extern int yyparse(void);
 extern int yylex(void);
 extern config_t *set;
 
-static int entries = 0;
+int entries = 0;
 hash_t hash;
-
+target_t *head;
 
 /* Initialize hash table */
 void init_hash() {
@@ -254,24 +254,25 @@ int add_hash_entry(target_t *new) {
  * added to/subtracted from the static integer 'entries' which keeps a running
  * count of the total number of targets being polled since the start of rated.
  */
-int hash_target_file(char *file) {
-    unsigned int removed = 0;
+target_t *hash_target_file(char *file) {
+    target_t *ttgt;
 
     /* Open the target file */
-	if ((yyin = fopen(file, "r")) == NULL) {
-		fprintf(stderr, "\nCould not open %s for reading.\n", file);
-		return (-1);
-	} 
-	debug(LOW, "Reading target list [%s].\n", file);
+    if ((yyin = fopen(file, "r")) == NULL) {
+        fprintf(stderr, "\nCould not open %s for reading.\n", file);
+        return (NULL);
+    } 
+    debug(LOW, "Reading target list [%s].\n", file);
 
-	mark_targets(STALE);
-	yyparse();
-	fclose(yyin);
-	removed = delete_targets(STALE);
-	entries -= removed;
-	debug(LOW, "Successfully hashed [%d] targets, (%d bytes).\n",
-		entries, entries * sizeof(target_t));
-	if (removed > 0)
-		debug(LOW, "Removed [%d] stale targets from hash.\n", removed);
-	return (entries);
+    yyparse();
+    fclose(yyin);
+    ttgt = head;
+    while (ttgt) {
+        //entries++;
+        debug(LOW, "%s\n", ttgt->objoid);
+        ttgt = ttgt->next;
+    }
+    debug(LOW, "Successfully hashed [%d] targets, (%d bytes).\n",
+        entries, entries * sizeof(target_t));
+    return (head);
 }

@@ -142,6 +142,7 @@ typedef struct crew_struct {
     pthread_mutex_t mutex;
     pthread_cond_t done;
     pthread_cond_t go;
+    target_t *current;
 } crew_t;
 
 typedef struct poll_stats {
@@ -197,7 +198,7 @@ void *in_hash(target_t *, target_t *);
 int compare_targets(target_t *, target_t *);
 int del_hash_entry(target_t *);
 int add_hash_entry(target_t *);
-int hash_target_file(char *);
+target_t *hash_target_file(char *);
 
 /* extern config_t set; */
 extern int lock;

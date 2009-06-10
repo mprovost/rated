@@ -12,9 +12,9 @@
 stats_t stats =
 {PTHREAD_MUTEX_INITIALIZER, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0};
 char *target_file = NULL;
-target_t *current = NULL;
 char *pid_file = PIDFILE;
-int entries = 0;
+extern int entries;
+target_t *head = NULL;
 
 /* Globals */
 config_t config;
@@ -166,9 +166,8 @@ int main(int argc, char *argv[]) {
     init_snmp("rated");
 
     /* hash list of targets to be polled */
-    init_hash();
-    entries = hash_target_file(target_file);
-    if (entries <= 0) 
+    head = hash_target_file(target_file);
+    if (head == NULL)
         fatal("Error updating target list.");
 
     debug(LOW, "rated ready.\n");
@@ -183,7 +182,7 @@ int main(int argc, char *argv[]) {
             exit(1);
 	} else if (waiting) {
             debug(HIGH, "Processing pending SIGHUP.\n");
-            entries = hash_target_file(target_file);
+            head = hash_target_file(target_file);
             waiting = FALSE;
 	}
 
@@ -191,15 +190,16 @@ int main(int argc, char *argv[]) {
 	begin_time = (double) now.tv_usec / 1000000 + now.tv_sec;
 
 	PT_MUTEX_LOCK(&(crew.mutex));
-	init_hash_walk();
-	current = getNext();
+        /* TODO get rid of work_count */
 	crew.work_count = entries;
+        crew.current = head;
 	PT_MUTEX_UNLOCK(&(crew.mutex));
 	    
 	debug(LOW, "Queue ready, broadcasting thread go condition.\n");
 
 	PT_COND_BROAD(&(crew.go));
 	PT_MUTEX_LOCK(&(crew.mutex));
+        debug(DEBUG, "work count = %d\n", crew.work_count);
 
         while (crew.work_count > 0) {
             PT_COND_WAIT(&(crew.done), &(crew.mutex));
@@ -207,6 +207,7 @@ int main(int argc, char *argv[]) {
 	PT_MUTEX_UNLOCK(&(crew.mutex));
 
 	gettimeofday(&now, NULL);
+        /* TODO inline */
 	end_time = (double) now.tv_usec / 1000000 + now.tv_sec;
 	stats.poll_time = end_time - begin_time;
         stats.round++;
