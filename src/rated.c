@@ -182,6 +182,8 @@ int main(int argc, char *argv[]) {
             exit(1);
 	} else if (waiting) {
             debug(HIGH, "Processing pending SIGHUP.\n");
+            /* this just rebuilds the target list
+             * so all of the targets will reset to a first poll */
             head = hash_target_file(target_file);
             waiting = FALSE;
 	}
@@ -201,7 +203,7 @@ int main(int argc, char *argv[]) {
 	PT_MUTEX_LOCK(&(crew.mutex));
         debug(DEBUG, "work count = %d\n", crew.work_count);
 
-        while (crew.work_count > 0) {
+        while (crew.current) {
             PT_COND_WAIT(&(crew.done), &(crew.mutex));
         }
 	PT_MUTEX_UNLOCK(&(crew.mutex));

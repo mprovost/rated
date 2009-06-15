@@ -13,9 +13,11 @@ extern int yyparse(void);
 extern int yylex(void);
 extern config_t *set;
 
-int entries = 0;
 hash_t hash;
+
+/* globals for yacc */
 target_t *head;
+int entries = 0;
 
 /* Initialize hash table */
 void init_hash() {
@@ -258,17 +260,17 @@ target_t *hash_target_file(char *file) {
     target_t *ttgt;
 
     /* Open the target file */
+    debug(LOW, "Reading target list [%s].\n", file);
     if ((yyin = fopen(file, "r")) == NULL) {
         fprintf(stderr, "\nCould not open %s for reading.\n", file);
         return (NULL);
     } 
-    debug(LOW, "Reading target list [%s].\n", file);
 
     yyparse();
     fclose(yyin);
+
     ttgt = head;
     while (ttgt) {
-        //entries++;
         debug(LOW, "%s\n", ttgt->objoid);
         ttgt = ttgt->next;
     }

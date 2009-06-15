@@ -122,11 +122,17 @@ void *poller(void *thread_args)
         prev_work = cur_work;
 */
 
-	if (crew->current != NULL) {
+	if (crew->current) {
             tdebug(DEVELOP, "processing %s@%s (%d work units remain in queue)\n",
                 crew->current->objoid, crew->current->host->host, crew->work_count);
 	    entry = crew->current;
             crew->current = crew->current->next;
+            /* see if we took the last target off the list */
+            if (crew->current == NULL) {
+                tdebug(HIGH, "Queue processed. Broadcasting thread done condition.\n");
+                /* this will wake up the main thread which will start sleeping for the next round */
+                PT_COND_BROAD(&crew->done);
+            }
         }
 
 	tdebug(DEVELOP, "unlocking (done grabbing current)\n");
@@ -367,10 +373,6 @@ cleanup:
             tdebug(DEBUG, "db_reconnect = %i db_error = %i!\n", db_reconnect, db_error);
         }
 
-        if (crew->work_count <= 0) {
-            tdebug(HIGH, "Queue processed. Broadcasting thread done condition.\n");
-            PT_COND_BROAD(&crew->done);
-        }
         tdebug(DEVELOP, "unlocking (update work_count)\n");
 
         PT_MUTEX_UNLOCK(&crew->mutex);
