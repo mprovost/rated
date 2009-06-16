@@ -136,7 +136,6 @@ typedef struct host_struct {
 } host_t;
 
 typedef struct crew_struct {
-    int work_count;
     int running;
     worker_t member[MAX_THREADS];
     pthread_mutex_t mutex;

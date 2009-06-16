@@ -88,6 +88,7 @@ void *poller(void *thread_args)
         /* reset variables */
 	result = insert_val = 0;
 	rate = 0;
+        db_error = FALSE;
 	anOID_len = MAX_OID_LEN;
 
 /*
@@ -108,10 +109,11 @@ void *poller(void *thread_args)
 
 	/* TODO crew->running-- if we're cancelled */
 
+        /* wait for current to not be NULL */
 	while (crew->current == NULL) {
             PT_COND_WAIT(&crew->go, &crew->mutex);
 	}
-	tdebug(DEVELOP, "done waiting, received go (work cnt: %d)\n", crew->work_count);
+	tdebug(DEVELOP, "done waiting, received go\n");
 /*
         cur_work = crew->work_count;
         if(cur_work > prev_work) {
@@ -123,8 +125,8 @@ void *poller(void *thread_args)
 */
 
 	if (crew->current) {
-            tdebug(DEVELOP, "processing %s@%s (%d work units remain in queue)\n",
-                crew->current->objoid, crew->current->host->host, crew->work_count);
+            tdebug(DEVELOP, "processing %s@%s\n",
+                crew->current->objoid, crew->current->host->host);
 	    entry = crew->current;
             crew->current = crew->current->next;
             /* see if we took the last target off the list */
@@ -139,6 +141,9 @@ void *poller(void *thread_args)
 	PT_MUTEX_UNLOCK(&crew->mutex);
 	/* take the unlock off the cancel stack */
 	pthread_cleanup_pop(FALSE);
+
+        /* save the time so we can calculate rate */
+        last_time = entry->last_time;
 
         /* TODO only do this if we're debugging or not daemonised? */
         snmp_enable_stderrlog();
@@ -155,16 +160,14 @@ void *poller(void *thread_args)
         session.community_len = strlen(session.community);
         session.remote_port = set->snmp_port;
 
-        sessp = snmp_sess_open(&session);
-
+        /* TODO put the pdu into the entry, only do once */
+        pdu = snmp_pdu_create(SNMP_MSG_GET);
         /* TODO check return status */
         read_objid(entry->objoid, anOID, &anOID_len);
-
-        /* save the time so we can calculate rate */
-        last_time = entry->last_time;
-
-        pdu = snmp_pdu_create(SNMP_MSG_GET);
 	snmp_add_null_var(pdu, anOID, anOID_len);
+
+        sessp = snmp_sess_open(&session);
+
 	if (sessp != NULL) 
             poll_status = snmp_sess_synch_response(sessp, pdu, &response);
 	else
@@ -311,10 +314,10 @@ void *poller(void *thread_args)
                             db_reconnect = FALSE;
                         } else {
                             /* the db driver will print an error itself */
+                            db_error = TRUE;
                             PT_MUTEX_LOCK(&stats.mutex);
                             stats.db_errors++;
                             PT_MUTEX_UNLOCK(&stats.mutex);
-                            db_error = TRUE;
                             goto cleanup;
                         }
                     }
@@ -324,8 +327,8 @@ void *poller(void *thread_args)
                         PT_MUTEX_LOCK(&stats.mutex);
                         stats.db_inserts++;
                         PT_MUTEX_UNLOCK(&stats.mutex);
-                        db_error = FALSE;
                     } else {
+                        db_error = TRUE;
                         PT_MUTEX_LOCK(&stats.mutex);
                         stats.db_errors++;
                         PT_MUTEX_UNLOCK(&stats.mutex);
@@ -334,10 +337,6 @@ void *poller(void *thread_args)
                             db_disconnect();
                             /* try and reconnect on the next poll */
                             db_reconnect = TRUE;
-                            db_error = TRUE;
-                        } else {
-                            /* we have a db connection but got some other error */
-                            db_error = TRUE;
                         }
                     }
                 } /* zero */
@@ -355,10 +354,6 @@ cleanup:
             if (response != NULL) snmp_free_pdu(response);
         }
 
-        tdebug(DEVELOP, "locking (update work_count)\n");
-        PT_MUTEX_LOCK(&crew->mutex);
-        crew->work_count--;
-
         /* update the time if we inserted ok */
         if (!db_error) {
             entry->last_time = current_time;	
@@ -372,10 +367,6 @@ cleanup:
         } else {
             tdebug(DEBUG, "db_reconnect = %i db_error = %i!\n", db_reconnect, db_error);
         }
-
-        tdebug(DEVELOP, "unlocking (update work_count)\n");
-
-        PT_MUTEX_UNLOCK(&crew->mutex);
 
         loop_count++;
     } /* while(1) */

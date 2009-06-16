@@ -133,7 +133,6 @@ int main(int argc, char *argv[]) {
     pthread_mutex_init(&(crew.mutex), NULL);
     pthread_cond_init(&(crew.done), NULL);
     pthread_cond_init(&(crew.go), NULL);
-    crew.work_count = 0;
 
     debug(HIGH, "Starting threads...");
     crew.running = 0;
@@ -192,8 +191,6 @@ int main(int argc, char *argv[]) {
 	begin_time = (double) now.tv_usec / 1000000 + now.tv_sec;
 
 	PT_MUTEX_LOCK(&(crew.mutex));
-        /* TODO get rid of work_count */
-	crew.work_count = entries;
         crew.current = head;
 	PT_MUTEX_UNLOCK(&(crew.mutex));
 	    
@@ -201,7 +198,6 @@ int main(int argc, char *argv[]) {
 
 	PT_COND_BROAD(&(crew.go));
 	PT_MUTEX_LOCK(&(crew.mutex));
-        debug(DEBUG, "work count = %d\n", crew.work_count);
 
         while (crew.current) {
             PT_COND_WAIT(&(crew.done), &(crew.mutex));
