@@ -176,7 +176,6 @@ int main(int argc, char *argv[]) {
 	/* check if we've been signalled */
 	if (quitting) {
             debug(LOW, "Quitting: received signal %i.\n", quit_signal);
-            print_stats(stats, set);
             unlink(pid_file);
             exit(1);
 	} else if (waiting) {
