@@ -199,6 +199,7 @@ int main(int argc, char *argv[]) {
 	PT_COND_BROAD(&(crew.go));
 	PT_MUTEX_LOCK(&(crew.mutex));
 
+        /* wait for current to go NULL (end of target list) */
         while (crew.current) {
             PT_COND_WAIT(&(crew.done), &(crew.mutex));
         }
@@ -206,20 +207,21 @@ int main(int argc, char *argv[]) {
 
 	gettimeofday(&now, NULL);
         /* TODO inline */
+        /* this isn't accurate anymore since the final thread(s) will still be running */
 	end_time = (double) now.tv_usec / 1000000 + now.tv_sec;
 	stats.poll_time = end_time - begin_time;
         stats.round++;
 	sleep_time = set->interval - stats.poll_time;
 
-	debug(LOW, "Poll round %d complete.\n", stats.round);
-	if (set->verbose >= LOW) {
-            print_stats(stats, set);
-        }
-
 	if (sleep_time <= 0)
             stats.slow++;
 	else
             sleepy(sleep_time, set);
+
+	debug(LOW, "Poll round %d complete.\n", stats.round);
+	if (set->verbose >= LOW) {
+            print_stats(stats, set);
+        }
     } /* while */
     exit(0);
 }
