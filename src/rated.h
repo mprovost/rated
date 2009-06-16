@@ -160,12 +160,6 @@ typedef struct poll_stats {
     double poll_time; 
 } stats_t;
 
-typedef struct hash_struct {
-    int bucket;
-    target_t *target;
-    target_t **table;
-} hash_t;
-
 /* Precasts: rated.c */
 void *sig_handler(void *);
 void usage(char *);
@@ -185,18 +179,6 @@ int checkPID(char *, config_t *);
 int daemon_init();
 
 /* Precasts: ratedhash.c */
-void init_hash();
-void init_hash_walk();
-target_t *getNext();
-void free_hash();
-unsigned long make_key(const void *);
-void mark_targets(int);
-unsigned int delete_targets(int);
-void walk_target_hash();
-void *in_hash(target_t *, target_t *);
-int compare_targets(target_t *, target_t *);
-int del_hash_entry(target_t *);
-int add_hash_entry(target_t *);
 target_t *hash_target_file(char *);
 
 /* extern config_t set; */
