@@ -7,7 +7,7 @@ extern int yylineno, lineno;
 extern char *yytext;
 
 extern int entries;
-extern target_t *head;
+extern target_t *tail;
 
 static host_t *thst;
 target_t *ttgt;
@@ -96,9 +96,8 @@ target_entry  : HST_TRGT L_OID
 '{' tgt_directives '}'
 {
     entries++;
-    ttgt->next = head;
-    head = ttgt;
-      //ttgt = NULL;
+    tail->next = ttgt;
+    tail = tail->next;
 };
 tgt_directives        : tgt_directives tgt_directive
               | tgt_directive

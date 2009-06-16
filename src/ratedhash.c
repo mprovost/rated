@@ -16,7 +16,7 @@ extern config_t *set;
 hash_t hash;
 
 /* globals for yacc */
-target_t *head;
+target_t *tail;
 int entries = 0;
 
 /* Initialize hash table */
@@ -258,23 +258,28 @@ int add_hash_entry(target_t *new) {
  */
 target_t *hash_target_file(char *file) {
     target_t *ttgt;
+    /* dummy target so we can build the list in the correct order, from the tail */
+    target_t dummy;
 
     /* Open the target file */
     debug(LOW, "Reading target list [%s].\n", file);
     if ((yyin = fopen(file, "r")) == NULL) {
         fprintf(stderr, "\nCould not open %s for reading.\n", file);
         return (NULL);
-    } 
+    }
+
+    dummy.next = NULL;
+    tail = &dummy;
 
     yyparse();
     fclose(yyin);
 
-    ttgt = head;
+    ttgt = dummy.next;
     while (ttgt) {
         debug(LOW, "%s\n", ttgt->objoid);
         ttgt = ttgt->next;
     }
     debug(LOW, "Successfully hashed [%d] targets, (%d bytes).\n",
         entries, entries * sizeof(target_t));
-    return (head);
+    return (dummy.next);
 }
