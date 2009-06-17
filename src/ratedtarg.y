@@ -6,7 +6,7 @@ int yyerror(const char *s);
 extern int yylineno, lineno;
 extern char *yytext;
 
-extern int entries;
+extern unsigned int entries;
 extern target_t *tail;
 
 static host_t *thst;
