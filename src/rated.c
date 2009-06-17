@@ -12,9 +12,9 @@
 stats_t stats =
 {PTHREAD_MUTEX_INITIALIZER, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0};
 char *target_file = NULL;
-target_t *current = NULL;
 char *pid_file = PIDFILE;
-int entries = 0;
+extern int entries;
+target_t *head = NULL;
 
 /* Globals */
 config_t config;
@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
     double begin_time, end_time, sleep_time;
     char *conf_file = NULL;
     char errstr[BUFSIZE];
-    int ch, i;
+    int ch, i, freed;
     struct timespec ts;
     waiting = FALSE;
     quitting = FALSE;
@@ -133,7 +133,6 @@ int main(int argc, char *argv[]) {
     pthread_mutex_init(&(crew.mutex), NULL);
     pthread_cond_init(&(crew.done), NULL);
     pthread_cond_init(&(crew.go), NULL);
-    crew.work_count = 0;
 
     debug(HIGH, "Starting threads...");
     crew.running = 0;
@@ -162,9 +161,8 @@ int main(int argc, char *argv[]) {
     debug(HIGH, "Waited %d milliseconds for thread startup.\n", end_time - begin_time);
 
     /* hash list of targets to be polled */
-    init_hash();
-    entries = hash_target_file(target_file);
-    if (entries <= 0) 
+    head = hash_target_file(target_file);
+    if (head == NULL)
         fatal("Error updating target list.");
 
     debug(LOW, "rated ready.\n");
@@ -174,12 +172,16 @@ int main(int argc, char *argv[]) {
 	/* check if we've been signalled */
 	if (quitting) {
             debug(LOW, "Quitting: received signal %i.\n", quit_signal);
-            print_stats(stats, set);
             unlink(pid_file);
             exit(1);
 	} else if (waiting) {
             debug(HIGH, "Processing pending SIGHUP.\n");
-            entries = hash_target_file(target_file);
+            /* this just rebuilds the target list
+             * so all of the targets will reset to a first poll */
+            /* none of the threads should be running at this point so we shouldn't need a lock */
+            freed = free_target_list(head);
+            debug(HIGH, "Freed %i targets\n", freed);
+            head = hash_target_file(target_file);
             waiting = FALSE;
 	}
 
@@ -187,9 +189,7 @@ int main(int argc, char *argv[]) {
 	begin_time = (double) now.tv_usec / 1000000 + now.tv_sec;
 
 	PT_MUTEX_LOCK(&(crew.mutex));
-	init_hash_walk();
-	current = getNext();
-	crew.work_count = entries;
+        crew.current = head;
 	PT_MUTEX_UNLOCK(&(crew.mutex));
 	    
 	debug(LOW, "Queue ready, broadcasting thread go condition.\n");
@@ -197,26 +197,29 @@ int main(int argc, char *argv[]) {
 	PT_COND_BROAD(&(crew.go));
 	PT_MUTEX_LOCK(&(crew.mutex));
 
-        while (crew.work_count > 0) {
+        /* wait for current to go NULL (end of target list) */
+        while (crew.current) {
             PT_COND_WAIT(&(crew.done), &(crew.mutex));
         }
 	PT_MUTEX_UNLOCK(&(crew.mutex));
 
 	gettimeofday(&now, NULL);
+        /* TODO inline */
+        /* this isn't accurate anymore since the final thread(s) will still be running */
 	end_time = (double) now.tv_usec / 1000000 + now.tv_sec;
 	stats.poll_time = end_time - begin_time;
         stats.round++;
 	sleep_time = set->interval - stats.poll_time;
 
-	debug(LOW, "Poll round %d complete.\n", stats.round);
-	if (set->verbose >= LOW) {
-            print_stats(stats, set);
-        }
-
 	if (sleep_time <= 0)
             stats.slow++;
 	else
             sleepy(sleep_time, set);
+
+	debug(LOW, "Poll round %d complete.\n", stats.round);
+	if (set->verbose >= LOW) {
+            print_stats(stats, set);
+        }
     } /* while */
     exit(0);
 }

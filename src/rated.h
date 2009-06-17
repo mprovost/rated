@@ -136,12 +136,12 @@ typedef struct host_struct {
 } host_t;
 
 typedef struct crew_struct {
-    int work_count;
     int running;
     worker_t member[MAX_THREADS];
     pthread_mutex_t mutex;
     pthread_cond_t done;
     pthread_cond_t go;
+    target_t *current;
 } crew_t;
 
 typedef struct poll_stats {
@@ -159,12 +159,6 @@ typedef struct poll_stats {
     unsigned int flat;
     double poll_time; 
 } stats_t;
-
-typedef struct hash_struct {
-    int bucket;
-    target_t *target;
-    target_t **table;
-} hash_t;
 
 /* Precasts: rated.c */
 void *sig_handler(void *);
@@ -185,19 +179,8 @@ int checkPID(char *, config_t *);
 int daemon_init();
 
 /* Precasts: ratedhash.c */
-void init_hash();
-void init_hash_walk();
-target_t *getNext();
-void free_hash();
-unsigned long make_key(const void *);
-void mark_targets(int);
-unsigned int delete_targets(int);
-void walk_target_hash();
-void *in_hash(target_t *, target_t *);
-int compare_targets(target_t *, target_t *);
-int del_hash_entry(target_t *);
-int add_hash_entry(target_t *);
-int hash_target_file(char *);
+target_t *hash_target_file(char *);
+int free_target_list(target_t *);
 
 /* extern config_t set; */
 extern int lock;

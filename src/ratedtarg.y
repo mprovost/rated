@@ -5,10 +5,12 @@
 int yyerror(const char *s);
 extern int yylineno, lineno;
 extern char *yytext;
-int yylex(void);
+
+extern unsigned int entries;
+extern target_t *tail;
 
 static host_t *thst;
-static target_t *ttgt;
+target_t *ttgt;
 
 #define YYDEBUG 1
 %}
@@ -33,7 +35,7 @@ static target_t *ttgt;
 %token HST_COMM HST_SVER HST_TRGT
 
 /* per-target */
-%token TGT_BITS TGT_TBL TGT_ID TGT_SPEED TGT_DESCR TGT_RATE
+%token TGT_BITS TGT_TBL TGT_ID TGT_SPEED TGT_DESCR
 
 %%
 
@@ -87,12 +89,15 @@ target_entry  : HST_TRGT L_OID
       ttgt = malloc(sizeof(target_t));
       bzero(ttgt, sizeof(target_t));
       ttgt->objoid = $2;
+      ttgt->init = NEW;
       ttgt->host = thst;
+      ttgt->next = NULL;
 }
 '{' tgt_directives '}'
 {
-      add_hash_entry(ttgt);
-      ttgt = NULL;
+    entries++;
+    tail->next = ttgt;
+    tail = tail->next;
 };
 tgt_directives        : tgt_directives tgt_directive
               | tgt_directive
