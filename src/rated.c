@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
     double begin_time, end_time, sleep_time;
     char *conf_file = NULL;
     char errstr[BUFSIZE];
-    int ch, i;
+    int ch, i, freed;
     struct timespec ts;
     waiting = FALSE;
     quitting = FALSE;
@@ -182,6 +182,9 @@ int main(int argc, char *argv[]) {
             debug(HIGH, "Processing pending SIGHUP.\n");
             /* this just rebuilds the target list
              * so all of the targets will reset to a first poll */
+            /* none of the threads should be running at this point so we shouldn't need a lock */
+            freed = free_target_list(head);
+            debug(HIGH, "Freed %i targets\n", freed);
             head = hash_target_file(target_file);
             waiting = FALSE;
 	}

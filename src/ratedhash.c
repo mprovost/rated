@@ -15,7 +15,7 @@ extern config_t *set;
 
 /* globals for yacc */
 target_t *tail;
-int entries;
+unsigned int entries;
 
 /* Read a target file into a target_t singly linked list.
  * hash_target_file() can be called again to replace the target
@@ -41,12 +41,35 @@ target_t *hash_target_file(char *file) {
     yyparse();
     fclose(yyin);
 
-    ttgt = dummy.next;
-    while (ttgt) {
-        debug(LOW, "%s\n", ttgt->objoid);
-        ttgt = ttgt->next;
+    /* print out target OIDs */
+    if (set->verbose >= HIGH) {
+        ttgt = dummy.next;
+        while (ttgt) {
+            debug(HIGH, "%s@%s\n", ttgt->objoid, ttgt->host->host);
+            ttgt = ttgt->next;
+        }
     }
-    debug(LOW, "Successfully hashed [%d] targets, (%d bytes).\n",
+
+    debug(LOW, "Successfully created [%d] targets, (%d bytes).\n",
         entries, entries * sizeof(target_t));
     return (dummy.next);
+}
+
+int free_target_list(target_t *head) {
+    unsigned int count;
+    target_t *tmp;
+    target_t *tmp_next;
+
+    count = 0;
+
+    if (head) {
+        tmp = head;
+        do {
+            count++;
+            tmp_next = tmp->next;
+            free(tmp);
+            tmp = tmp_next;
+        } while (tmp);
+    }
+    return count;
 }
