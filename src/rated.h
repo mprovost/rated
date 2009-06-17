@@ -180,6 +180,7 @@ int daemon_init();
 
 /* Precasts: ratedhash.c */
 target_t *hash_target_file(char *);
+int free_target_list(target_t *);
 
 /* extern config_t set; */
 extern int lock;
