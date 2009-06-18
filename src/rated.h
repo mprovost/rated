@@ -63,7 +63,6 @@
 #define PIDFILE "/var/run/rated.pid"
 
 #define STAT_DESCRIP_ERROR 99
-#define HASHSIZE 5000
 
 /* pthread error messages */
 #define PML_ERR "pthread_mutex_lock error\n"
