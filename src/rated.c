@@ -14,7 +14,7 @@ stats_t stats =
 char *target_file = NULL;
 char *pid_file = PIDFILE;
 extern int entries;
-target_t *head = NULL;
+host_t *head = NULL;
 
 /* Globals */
 config_t config;
@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
     end_time = now.tv_sec * 1000 + now.tv_usec / 1000; /* convert to milliseconds */
     debug(HIGH, "Waited %d milliseconds for thread startup.\n", end_time - begin_time);
 
-    /* hash list of targets to be polled */
+    /* build list of hosts to be polled */
     head = hash_target_file(target_file);
     if (head == NULL)
         fatal("Error updating target list.");
@@ -197,7 +197,8 @@ int main(int argc, char *argv[]) {
 	PT_COND_BROAD(&(crew.go));
 	PT_MUTEX_LOCK(&(crew.mutex));
 
-        /* wait for current to go NULL (end of target list) */
+        /* wait for current to go NULL (end of host list) */
+        /* FIXME also wait for last target in last host */
         while (crew.current) {
             PT_COND_WAIT(&(crew.done), &(crew.mutex));
         }

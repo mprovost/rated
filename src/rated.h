@@ -118,7 +118,6 @@ typedef struct config_struct {
 } config_t;
 
 typedef struct target_struct {
-    struct host_struct *host;
     char *objoid;
     char *table;
     unsigned short bits;
@@ -133,6 +132,9 @@ typedef struct host_struct {
     char *host;
     char *community;
     unsigned short snmp_ver;
+    target_t *targets;
+    target_t *current;
+    struct host_struct *next;
 } host_t;
 
 typedef struct crew_struct {
@@ -141,7 +143,7 @@ typedef struct crew_struct {
     pthread_mutex_t mutex;
     pthread_cond_t done;
     pthread_cond_t go;
-    target_t *current;
+    host_t *current;
 } crew_t;
 
 typedef struct poll_stats {
@@ -179,7 +181,7 @@ int checkPID(char *, config_t *);
 int daemon_init();
 
 /* Precasts: ratedhash.c */
-target_t *hash_target_file(char *);
+host_t *hash_target_file(char *);
 int free_target_list(target_t *);
 
 /* extern config_t set; */

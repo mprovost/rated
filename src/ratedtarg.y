@@ -3,14 +3,18 @@
 #include "rated.h"
 
 int yyerror(const char *s);
+int yylex(void);
 extern int yylineno, lineno;
 extern char *yytext;
 
-extern unsigned int entries;
-extern target_t *tail;
+extern unsigned int hosts;
+extern unsigned int targets;
+extern host_t *hosts_tail;
 
 static host_t *thst;
 target_t *ttgt;
+target_t *targets_tail;
+target_t target_dummy;
 
 #define YYDEBUG 1
 %}
@@ -59,10 +63,17 @@ host_entry:   T_HOST L_IPADDR
       thst = malloc(sizeof(host_t));
       bzero(thst, sizeof(host_t));
       thst->host = $2;
+      thst->next = NULL;
+      target_dummy.next = NULL;
+      thst->targets = &target_dummy;
 }
 '{' host_directives '}'
 {
-      thst = NULL;
+    hosts++;
+    thst->targets = target_dummy.next;
+    thst->current = thst->targets;
+    hosts_tail->next = thst;
+    hosts_tail = hosts_tail->next;
 };
 
 host_directives       : host_directives host_directive
@@ -90,14 +101,13 @@ target_entry  : HST_TRGT L_OID
       bzero(ttgt, sizeof(target_t));
       ttgt->objoid = $2;
       ttgt->init = NEW;
-      ttgt->host = thst;
       ttgt->next = NULL;
 }
 '{' tgt_directives '}'
 {
-    entries++;
-    tail->next = ttgt;
-    tail = tail->next;
+    targets++;
+    thst->targets->next = ttgt;
+    thst->targets = thst->targets->next;
 };
 tgt_directives        : tgt_directives tgt_directive
               | tgt_directive

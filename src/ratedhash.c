@@ -14,19 +14,22 @@ extern int yylex(void);
 extern config_t *set;
 
 /* globals for yacc */
-target_t *tail;
-unsigned int entries;
+host_t *hosts_tail;
+unsigned int hosts;
+unsigned int targets;
 
 /* Read a target file into a target_t singly linked list.
  * hash_target_file() can be called again to replace the target
  * list. This will lose any state for existing targets however.
  */
-target_t *hash_target_file(char *file) {
+host_t *hash_target_file(char *file) {
+    host_t *host;
     target_t *ttgt;
     /* dummy target so we can build the list in the correct order, from the tail */
-    target_t dummy;
+    host_t host_dummy;
 
-    entries = 0;
+    hosts = 0;
+    targets = 0;
 
     /* Open the target file */
     debug(LOW, "Reading target list [%s].\n", file);
@@ -35,24 +38,29 @@ target_t *hash_target_file(char *file) {
         return (NULL);
     }
 
-    dummy.next = NULL;
-    tail = &dummy;
+    host_dummy.next = NULL;
+    hosts_tail = &host_dummy;
 
     yyparse();
     fclose(yyin);
 
     /* print out target OIDs */
     if (set->verbose >= HIGH) {
-        ttgt = dummy.next;
-        while (ttgt) {
-            debug(HIGH, "%s@%s\n", ttgt->objoid, ttgt->host->host);
-            ttgt = ttgt->next;
+        host = host_dummy.next;
+        while (host) {
+            debug(HIGH, "%s\n", host->host);
+            ttgt = host->targets;
+            while (ttgt) {
+                debug(HIGH, "\t%s\n", ttgt->objoid);
+                ttgt = ttgt->next;
+            }
+            host = host->next;
         }
     }
 
-    debug(LOW, "Successfully created [%d] targets, (%d bytes).\n",
-        entries, entries * sizeof(target_t));
-    return (dummy.next);
+    debug(LOW, "Successfully created [%i] hosts, [%i] targets, (%i bytes).\n",
+        hosts, targets, targets * sizeof(target_t));
+    return (host_dummy.next);
 }
 
 int free_target_list(target_t *head) {
