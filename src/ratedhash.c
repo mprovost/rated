@@ -63,21 +63,33 @@ host_t *hash_target_file(char *file) {
     return (host_dummy.next);
 }
 
-int free_target_list(target_t *head) {
+/* walk through the host/target list freeing everything */
+int free_target_list(host_t *head) {
     unsigned int count;
-    target_t *tmp;
-    target_t *tmp_next;
+    host_t *host;
+    host_t *host_next;
+    target_t *target;
+    target_t *target_next;
 
+    /* only count the targets */
     count = 0;
 
     if (head) {
-        tmp = head;
+        host = head;
         do {
-            count++;
-            tmp_next = tmp->next;
-            free(tmp);
-            tmp = tmp_next;
-        } while (tmp);
+            if (host->targets) {
+                target = host->targets;
+                do {
+                    count++;
+                    target_next = target->next;
+                    free(target);
+                    target = target_next;
+                } while (target);
+            }
+            host_next = host->next;
+            free(host);
+            host = host_next;
+        } while (host);
     }
     return count;
 }
