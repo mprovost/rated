@@ -165,7 +165,6 @@ void *poller(void *thread_args)
             session.community_len = strlen(session.community);
             session.remote_port = set->snmp_port;
 
-            /* TODO put the pdu into the entry, only do once */
             pdu = snmp_pdu_create(SNMP_MSG_GET);
             /* TODO check return status */
             read_objid(entry->objoid, anOID, &anOID_len);
@@ -174,6 +173,7 @@ void *poller(void *thread_args)
             sessp = snmp_sess_open(&session);
 
             if (sessp != NULL) {
+                /* this will free the pdu on error so we can't save them for reuse between rounds */
                 poll_status = snmp_sess_synch_response(sessp, pdu, &response);
             } else {
                 tdebug(DEBUG, "bad poll_status!\n");
