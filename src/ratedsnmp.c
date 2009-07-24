@@ -173,10 +173,12 @@ void *poller(void *thread_args)
 
             sessp = snmp_sess_open(&session);
 
-            if (sessp != NULL) 
+            if (sessp != NULL) {
                 poll_status = snmp_sess_synch_response(sessp, pdu, &response);
-            else
+            } else {
+                tdebug(DEBUG, "bad poll_status!\n");
                 poll_status = STAT_DESCRIP_ERROR;
+            }
 
             /* Collect response and process stats */
             PT_MUTEX_LOCK(&stats.mutex);
@@ -188,7 +190,7 @@ void *poller(void *thread_args)
                 tdebug(LOW, "*** SNMP No response: (%s@%s).\n", entry->objoid, session.peername);
             } else if (poll_status != STAT_SUCCESS) {
                 stats.errors++;
-                tdebug(LOW, "*** SNMP Error: (%s@%s) Unsuccessuful (%d).\n", entry->objoid, session.peername, poll_status);
+                tdebug(LOW, "*** SNMP Error: (%s@%s) Unsuccessful (%d).\n", entry->objoid, session.peername, poll_status);
             } else if (poll_status == STAT_SUCCESS && response->errstat != SNMP_ERR_NOERROR) {
                 stats.errors++;
                 tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", entry->objoid, session.peername, snmp_errstring(response->errstat));
