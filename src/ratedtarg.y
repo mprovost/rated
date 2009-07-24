@@ -1,6 +1,7 @@
 %{
 #include "common.h"
 #include "rated.h"
+#include "ratedsnmp.h"
 
 int yyerror(const char *s);
 int yylex(void);
@@ -66,6 +67,7 @@ host_entry:   T_HOST L_IPADDR
       thst->next = NULL;
       target_dummy.next = NULL;
       thst->targets = &target_dummy;
+      snmp_sess_init(&thst->session);
 }
 '{' host_directives '}'
 {
@@ -92,7 +94,10 @@ comm_directive        : HST_COMM L_IDENT
 
 sver_directive        : HST_SVER L_NUMBER
 {
-      thst->snmp_ver = (unsigned short)$2;
+      if ((unsigned short)$2 == 2)
+        thst->session.version = SNMP_VERSION_2c;
+      else
+        thst->session.version = SNMP_VERSION_1;
 };
 
 target_entry  : HST_TRGT L_OID

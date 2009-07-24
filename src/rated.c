@@ -7,6 +7,7 @@
 
 #define _REENTRANT
 #include "rated.h"
+#include "ratedsnmp.h"
 
 /* Yes.  Globals. */
 stats_t stats =

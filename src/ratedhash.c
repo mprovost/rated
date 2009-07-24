@@ -7,6 +7,7 @@
 
 #include "common.h"
 #include "rated.h"
+#include "ratedsnmp.h"
 
 extern FILE *yyin;
 extern int yyparse(void);

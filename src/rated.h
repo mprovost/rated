@@ -89,9 +89,6 @@ enum debugLevel {OFF, LOW, HIGH, DEBUG, DEVELOP};
 #define fatal(x...) do { if (set->daemon) syslogcrit(x); else fprintf(stderr,x); exit(-1); } while (0)
 #define fatalfile(dfp,x...) do { fprintf(dfp,x); exit(-1); } while (0)
 
-/* Target state */
-enum targetState {NEW, LIVE, STALE};
-
 /* Typedefs */
 typedef struct worker_struct {
     int index;
@@ -115,35 +112,6 @@ typedef struct config_struct {
     unsigned short daemon;
     unsigned short syslog;
 } config_t;
-
-typedef struct target_struct {
-    char *objoid;
-    char *table;
-    unsigned short bits;
-    unsigned int iid;
-    enum targetState init;
-    unsigned long long last_value;
-    struct timeval last_time;
-    struct target_struct *next;
-} target_t;
-
-typedef struct host_struct {
-    char *host;
-    char *community;
-    unsigned short snmp_ver;
-    target_t *targets;
-    target_t *current;
-    struct host_struct *next;
-} host_t;
-
-typedef struct crew_struct {
-    int running;
-    worker_t member[MAX_THREADS];
-    pthread_mutex_t mutex;
-    pthread_cond_t done;
-    pthread_cond_t go;
-    host_t *current;
-} crew_t;
 
 typedef struct poll_stats {
     pthread_mutex_t mutex;
@@ -178,10 +146,6 @@ void timestamp(char *);
 double timediff(struct timeval, struct timeval);
 int checkPID(char *, config_t *);
 int daemon_init();
-
-/* Precasts: ratedhash.c */
-host_t *hash_target_file(char *);
-int free_target_list(host_t *);
 
 /* extern config_t set; */
 extern int lock;
