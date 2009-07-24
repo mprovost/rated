@@ -131,6 +131,11 @@ void *poller(void *thread_args)
         /* open an snmp session once for all targets for this host for this round */
         sessp = snmp_sess_open(&host->session);
 
+        if (sessp == NULL) {
+            /* skip to next host */
+            continue;
+        }
+
         /* loop through the targets for this host */
         while (host->current) {
             entry = host->current;
@@ -141,19 +146,12 @@ void *poller(void *thread_args)
             /* save the time so we can calculate rate */
             last_time = entry->last_time;
 
-
             pdu = snmp_pdu_create(SNMP_MSG_GET);
             /* TODO check return status */
             read_objid(entry->objoid, anOID, &anOID_len);
             snmp_add_null_var(pdu, anOID, anOID_len);
-
-            if (sessp != NULL) {
-                /* this will free the pdu on error so we can't save them for reuse between rounds */
-                poll_status = snmp_sess_synch_response(sessp, pdu, &response);
-            } else {
-                tdebug(DEBUG, "bad sessp!\n");
-                poll_status = STAT_DESCRIP_ERROR;
-            }
+            /* this will free the pdu on error so we can't save them for reuse between rounds */
+            poll_status = snmp_sess_synch_response(sessp, pdu, &response);
 
             /* Collect response and process stats */
             PT_MUTEX_LOCK(&stats.mutex);
@@ -353,7 +351,8 @@ cleanup:
             /* move to next target */
             host->current = host->current->next;
         } /* while (host->current) */
-        snmp_sess_close(sessp);
+        if (sessp != NULL)
+            snmp_sess_close(sessp);
         /* reset back to start */
         host->current = head;
         /* done with targets for this host, check if it was the last host */
