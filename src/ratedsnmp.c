@@ -128,6 +128,9 @@ void *poller(void *thread_args)
 
         head = host->current;
 
+        /* open an snmp session once for all targets for this host for this round */
+        sessp = snmp_sess_open(&host->session);
+
         /* loop through the targets for this host */
         while (host->current) {
             entry = host->current;
@@ -138,29 +141,11 @@ void *poller(void *thread_args)
             /* save the time so we can calculate rate */
             last_time = entry->last_time;
 
-            /* TODO only do this if we're debugging or not daemonised? */
-            snmp_enable_stderrlog();
-            //snmp_sess_init(&session);
-
-            /*
-            if (host->snmp_ver == 2)
-                session.version = SNMP_VERSION_2c;
-            else
-                session.version = SNMP_VERSION_1;
-            */
-
-            //host->session.peername = host->host;
-            //host->session.community = host->community;
-            /* TODO move this into struct so we're not calculating it every time */
-            //host->session.community_len = strlen(host->session.community);
-            //host->session.remote_port = set->snmp_port;
 
             pdu = snmp_pdu_create(SNMP_MSG_GET);
             /* TODO check return status */
             read_objid(entry->objoid, anOID, &anOID_len);
             snmp_add_null_var(pdu, anOID, anOID_len);
-
-            sessp = snmp_sess_open(&host->session);
 
             if (sessp != NULL) {
                 /* this will free the pdu on error so we can't save them for reuse between rounds */
@@ -347,7 +332,6 @@ void *poller(void *thread_args)
 
 cleanup:
             if (sessp != NULL) {
-                snmp_sess_close(sessp);
                 if (response != NULL) snmp_free_pdu(response);
             }
 
@@ -369,6 +353,7 @@ cleanup:
             /* move to next target */
             host->current = host->current->next;
         } /* while (host->current) */
+        snmp_sess_close(sessp);
         /* reset back to start */
         host->current = head;
         /* done with targets for this host, check if it was the last host */

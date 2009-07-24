@@ -130,6 +130,10 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    /* this probably isn't thread safe*/
+    /* TODO only do this if we're debugging or not daemonised? */
+    snmp_enable_stderrlog();
+
     debug(LOW, "Initializing threads (%d).\n", set->threads);
     pthread_mutex_init(&(crew.mutex), NULL);
     pthread_cond_init(&(crew.done), NULL);
