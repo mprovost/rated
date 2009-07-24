@@ -11,6 +11,7 @@ extern char *yytext;
 extern unsigned int hosts;
 extern unsigned int targets;
 extern host_t *hosts_tail;
+extern config_t *set;
 
 static host_t *thst;
 target_t *ttgt;
@@ -67,7 +68,10 @@ host_entry:   T_HOST L_IPADDR
       thst->next = NULL;
       target_dummy.next = NULL;
       thst->targets = &target_dummy;
+      /* set up the snmp session */
       snmp_sess_init(&thst->session);
+      thst->session.peername = thst->host;
+      thst->session.remote_port = set->snmp_port;
 }
 '{' host_directives '}'
 {
@@ -89,7 +93,8 @@ host_directive        : comm_directive
 
 comm_directive        : HST_COMM L_IDENT
 {
-      thst->community = $2;
+      thst->session.community = $2;
+      thst->session.community_len = strlen($2);
 };
 
 sver_directive        : HST_SVER L_NUMBER

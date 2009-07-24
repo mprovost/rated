@@ -149,11 +149,11 @@ void *poller(void *thread_args)
                 session.version = SNMP_VERSION_1;
             */
 
-            host->session.peername = host->host;
-            host->session.community = host->community;
+            //host->session.peername = host->host;
+            //host->session.community = host->community;
             /* TODO move this into struct so we're not calculating it every time */
-            host->session.community_len = strlen(host->session.community);
-            host->session.remote_port = set->snmp_port;
+            //host->session.community_len = strlen(host->session.community);
+            //host->session.remote_port = set->snmp_port;
 
             pdu = snmp_pdu_create(SNMP_MSG_GET);
             /* TODO check return status */
