@@ -34,8 +34,6 @@ void *poller(void *thread_args)
     void *sessp;
     struct snmp_pdu *pdu = NULL;
     struct snmp_pdu *response = NULL;
-    oid anOID[MAX_OID_LEN];
-    size_t anOID_len = MAX_OID_LEN;
     struct variable_list *vars = NULL;
     unsigned long long result = 0;
     unsigned long long insert_val = 0;
@@ -79,7 +77,6 @@ void *poller(void *thread_args)
 	result = insert_val = 0;
 	rate = 0;
         db_error = FALSE;
-	anOID_len = MAX_OID_LEN;
 
 /*
         if(loop_count >= POLLS_PER_TRANSACTION) {
@@ -147,9 +144,7 @@ void *poller(void *thread_args)
             last_time = entry->last_time;
 
             pdu = snmp_pdu_create(SNMP_MSG_GET);
-            /* TODO check return status */
-            read_objid(entry->objoid, anOID, &anOID_len);
-            snmp_add_null_var(pdu, anOID, anOID_len);
+            snmp_add_null_var(pdu, entry->anOID, entry->anOID_len);
             /* this will free the pdu on error so we can't save them for reuse between rounds */
             poll_status = snmp_sess_synch_response(sessp, pdu, &response);
 
@@ -190,11 +185,11 @@ void *poller(void *thread_args)
                     /* TODO check return value */
                     result_string = (char*)malloc(BUFSIZE);
     #ifdef OLD_UCD_SNMP
-                    sprint_value(result_string, anOID, anOID_len, vars);
+                    sprint_value(result_string, entry->anOID, entry->anOID_len, vars);
     #else
                     /* this results in something like 'Counter64: 11362777584380' */
                     /* TODO check return value */
-                    snprint_value(result_string, BUFSIZE, anOID, anOID_len, vars);
+                    snprint_value(result_string, BUFSIZE, entry->anOID, entry->anOID_len, vars);
     #endif
                     /* don't use tdebug because there's a signal race between when we malloc the memory and here */
                     tdebug_all("(%s@%s) %s\n", entry->objoid, host->session.peername, result_string);

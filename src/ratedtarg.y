@@ -110,6 +110,12 @@ target_entry  : HST_TRGT L_OID
       ttgt = malloc(sizeof(target_t));
       bzero(ttgt, sizeof(target_t));
       ttgt->objoid = $2;
+
+      /* generate an internal oid from the string */
+      ttgt->anOID_len = MAX_OID_LEN;
+      /* TODO check return status */
+      read_objid($2, ttgt->anOID, &ttgt->anOID_len);
+
       ttgt->init = NEW;
       ttgt->next = NULL;
 }

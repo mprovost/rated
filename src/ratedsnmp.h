@@ -11,6 +11,8 @@ enum targetState {NEW, LIVE, STALE};
 
 typedef struct target_struct {
     char *objoid;
+    oid anOID[MAX_OID_LEN];
+    size_t anOID_len;
     char *table;
     unsigned short bits;
     unsigned int iid;
