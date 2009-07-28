@@ -24,12 +24,11 @@ void cleanup_db(void *arg)
     db_disconnect();
 }
 
-unsigned long long snmp_poll(void *sessp, host_t *host, target_t *entry) {
+int snmp_poll(void *sessp, host_t *host, target_t *entry, unsigned long long *result) {
     struct snmp_pdu *pdu = NULL;
     struct snmp_pdu *response = NULL;
     struct variable_list *vars = NULL;
     int poll_status = 0;
-    unsigned long long result = 0;
     char *result_string;
 
     pdu = snmp_pdu_create(SNMP_MSG_GET);
@@ -82,48 +81,48 @@ unsigned long long snmp_poll(void *sessp, host_t *host, target_t *entry) {
              * Switch over vars->type and modify/assign result accordingly.
              */
             case ASN_COUNTER64:
-                result = vars->val.counter64->high;
-                result = result << 32;
-                result = result + vars->val.counter64->low;
+                *result = vars->val.counter64->high;
+                *result = *result << 32;
+                *result = *result + vars->val.counter64->low;
                 break;
             case ASN_COUNTER:
-                result = (unsigned long) *(vars->val.integer);
+                *result = (unsigned long) *(vars->val.integer);
                 break;
             case ASN_INTEGER:
-                result = (unsigned long) *(vars->val.integer);
+                *result = (unsigned long) *(vars->val.integer);
                 break;
             case ASN_GAUGE:
-                result = (unsigned long) *(vars->val.integer);
+                *result = (unsigned long) *(vars->val.integer);
                 break;
             case ASN_TIMETICKS:
-                result = (unsigned long) *(vars->val.integer);
+                *result = (unsigned long) *(vars->val.integer);
                 break;
             case ASN_OPAQUE:
-                result = (unsigned long) *(vars->val.integer);
+                *result = (unsigned long) *(vars->val.integer);
                 break;
             case ASN_OCTET_STR:
             /* TODO should we handle negative numbers? */
 #ifdef HAVE_STRTOULL
-                result = strtoull(vars->val.string, NULL, 0);
-                if (result == ULLONG_MAX && errno == ERANGE) {
+                *result = strtoull(vars->val.string, NULL, 0);
+                if (*result == ULLONG_MAX && errno == ERANGE) {
 #else
-                result = strtoul(vars->val.string, NULL, 0);
-                if (result == ULONG_MAX && errno == ERANGE) {
+                *result = strtoul(vars->val.string, NULL, 0);
+                if (*result == ULONG_MAX && errno == ERANGE) {
 #endif
                     debug(LOW, "Negative number found: %s\n", vars->val.string);
-                    result = 0;
+                    return -1;
                 }
                 break;
             default:
                 /* no result that we can use, restart the polling loop */
                 /* TODO should we remove this target from the list? */
-                result = 0;
+                return 0;
         }
     }
     if (sessp != NULL) {
         if (response != NULL) snmp_free_pdu(response);
     }
-    return result;
+    return 1;
 }
 
 void *poller(void *thread_args)
@@ -208,6 +207,7 @@ void *poller(void *thread_args)
         prev_work = cur_work;
 */
 
+        /* TODO do we need this check at all? */
 	if (crew->current) {
             host = crew->current;
             crew->current = crew->current->next;
@@ -240,98 +240,99 @@ void *poller(void *thread_args)
             /* save the time so we can calculate rate */
             last_time = entry->last_time;
 
-        result = snmp_poll(sessp, host, entry);
+            /* do the actual snmp poll */
+            /* TODO check return value */
+            snmp_poll(sessp, host, entry, &result);
 
-        /* Get the current time */
-        gettimeofday(&current_time, &tzp);
+            /* Get the current time */
+            gettimeofday(&current_time, &tzp);
 
-        tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi, init = %i\n", result, entry->last_value, entry->bits, entry->init);
+            tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi, init = %i\n", result, entry->last_value, entry->bits, entry->init);
 
-                /* zero delta */
-                if (result == entry->last_value) {
-                    tdebug(DEBUG, "zero delta: %llu = %llu\n", result, entry->last_value);
-                    PT_MUTEX_LOCK(&stats.mutex);
-                    stats.zero++;
-                    PT_MUTEX_UNLOCK(&stats.mutex);
-                    if (set->withzeros) {
-                        insert_val = result;
-                    } else {
-                        goto cleanup;
-                    }
-                /* gauges */
-                } else if (entry->bits == 0) {
+            /* zero delta */
+            if (result == entry->last_value) {
+                tdebug(DEBUG, "zero delta: %llu = %llu\n", result, entry->last_value);
+                PT_MUTEX_LOCK(&stats.mutex);
+                stats.zero++;
+                PT_MUTEX_UNLOCK(&stats.mutex);
+                if (set->withzeros) {
                     insert_val = result;
-                /* treat all other values as counters */
-                /* Counter Wrap Condition */
-                } else if (result < entry->last_value) {
-                    PT_MUTEX_LOCK(&stats.mutex);
-                    stats.wraps++;
-                    PT_MUTEX_UNLOCK(&stats.mutex);
-
-                    if (entry->bits == 32) insert_val = (THIRTYTWO - entry->last_value) + result;
-                    else if (entry->bits == 64) insert_val = (SIXTYFOUR - entry->last_value) + result;
-
-                    rate = insert_val / timediff(current_time, last_time);
-
-                    tdebug(LOW, "*** Counter Wrap (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
-                        entry->objoid, host->session.peername, result, entry->last_value, insert_val);
-                /* Not a counter wrap and this is not the first poll */
-                } else if ((entry->last_value >= 0) && (entry->init != NEW)) {
-                    insert_val = result - entry->last_value;
-                    rate = insert_val / timediff(current_time, last_time);
-                /* entry->last_value < 0, so this must be the first poll */
                 } else {
-                    tdebug(HIGH, "First Poll, Normalizing\n");
                     goto cleanup;
                 }
+            /* gauges */
+            } else if (entry->bits == 0) {
+                insert_val = result;
+            /* treat all other values as counters */
+            /* Counter Wrap Condition */
+            } else if (result < entry->last_value) {
+                PT_MUTEX_LOCK(&stats.mutex);
+                stats.wraps++;
+                PT_MUTEX_UNLOCK(&stats.mutex);
 
-                if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / %.15f = %.15f\n", result, entry->last_value, insert_val, timediff(current_time, last_time), rate);
+                if (entry->bits == 32) insert_val = (THIRTYTWO - entry->last_value) + result;
+                else if (entry->bits == 64) insert_val = (SIXTYFOUR - entry->last_value) + result;
 
-                /* TODO do we need to check for zero values again? */
+                rate = insert_val / timediff(current_time, last_time);
 
-                if (!(set->dboff)) {
-                    if ( (insert_val > 0) || (set->withzeros) ) {
-                        if (db_reconnect) {
-                            /* try and (re)connect */
-                            if (db_connect(set)) {
-                                db_reconnect = FALSE;
-                            } else {
-                                /* the db driver will print an error itself */
-                                db_error = TRUE;
-                                PT_MUTEX_LOCK(&stats.mutex);
-                                stats.db_errors++;
-                                PT_MUTEX_UNLOCK(&stats.mutex);
-                                goto cleanup;
-                            }
-                        }
-                        tdebug(DEVELOP, "db_insert sent: %s %d %llu %.15f\n", entry->table, entry->iid, insert_val, rate);
-                        /* insert into the database */
-                        if (db_insert(entry->table, entry->iid, insert_val, rate)) {
-                            PT_MUTEX_LOCK(&stats.mutex);
-                            stats.db_inserts++;
-                            PT_MUTEX_UNLOCK(&stats.mutex);
+                tdebug(LOW, "*** Counter Wrap (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
+                    entry->objoid, host->session.peername, result, entry->last_value, insert_val);
+            /* Not a counter wrap and this is not the first poll */
+            } else if ((entry->last_value >= 0) && (entry->init != NEW)) {
+                insert_val = result - entry->last_value;
+                rate = insert_val / timediff(current_time, last_time);
+            /* entry->last_value < 0, so this must be the first poll */
+            } else {
+                tdebug(HIGH, "First Poll, Normalizing\n");
+                goto cleanup;
+            }
+
+            if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / %.15f = %.15f\n", result, entry->last_value, insert_val, timediff(current_time, last_time), rate);
+
+            /* TODO do we need to check for zero values again? */
+
+            if (!(set->dboff)) {
+                if ( (insert_val > 0) || (set->withzeros) ) {
+                    if (db_reconnect) {
+                        /* try and (re)connect */
+                        if (db_connect(set)) {
+                            db_reconnect = FALSE;
                         } else {
+                            /* the db driver will print an error itself */
                             db_error = TRUE;
                             PT_MUTEX_LOCK(&stats.mutex);
                             stats.db_errors++;
                             PT_MUTEX_UNLOCK(&stats.mutex);
-                            if (!db_status()) {
-                                /* first disconnect to close the handle */
-                                db_disconnect();
-                                /* try and reconnect on the next poll */
-                                db_reconnect = TRUE;
-                            }
+                            goto cleanup;
                         }
-                    } /* zero */
-                } /* !dboff */
+                    }
+                    tdebug(DEVELOP, "db_insert sent: %s %d %llu %.15f\n", entry->table, entry->iid, insert_val, rate);
+                    /* insert into the database */
+                    if (db_insert(entry->table, entry->iid, insert_val, rate)) {
+                        PT_MUTEX_LOCK(&stats.mutex);
+                        stats.db_inserts++;
+                        PT_MUTEX_UNLOCK(&stats.mutex);
+                    } else {
+                        db_error = TRUE;
+                        PT_MUTEX_LOCK(&stats.mutex);
+                        stats.db_errors++;
+                        PT_MUTEX_UNLOCK(&stats.mutex);
+                        if (!db_status()) {
+                            /* first disconnect to close the handle */
+                            db_disconnect();
+                            /* try and reconnect on the next poll */
+                            db_reconnect = TRUE;
+                        }
+                    }
+                } /* zero */
+            } /* !dboff */
 
-    /*
-            tdebug(HIGH, "doing commit\n");
-            db_status = db_commit();
-    */
+        /*
+                tdebug(HIGH, "doing commit\n");
+                db_status = db_commit();
+        */
 
 cleanup:
-
             /* update the time if we inserted ok */
             if (!db_error) {
                 entry->last_time = current_time;	
@@ -363,5 +364,4 @@ cleanup:
         }
     } /* while(1) */
     pthread_cleanup_pop(FALSE);
-/* Not reached */
-}
+} /* Not reached */
