@@ -83,6 +83,7 @@ enum debugLevel {OFF, LOW, HIGH, DEBUG, DEVELOP};
 #define sysloginfo(x...) syslog(LOG_INFO |  LOG_LOCAL2, x) // replace with conf'g facility
 #define syslogcrit(x...) syslog(LOG_CRIT |  LOG_LOCAL2, x) // replace with conf'g facility
 #define debug(level,x...) do {if (set->verbose >= level) {if (set->daemon) sysloginfo(x); else fprintf(stdout,x);} } while (0)
+#define debug_all(x...) do {if (set->daemon) sysloginfo(x); else fprintf(stdout,x);} while (0)
 #define tdebug(level,x...) do {if (set->verbose >= level) {if (set->daemon) sysloginfo(x); else {fprintf(stdout, "Thread [%d]: ", worker->index); fprintf(stdout,x);} } } while (0)
 #define tdebug_all(x...) do {if (set->daemon) sysloginfo(x); else {fprintf(stdout, "Thread [%d]: ", worker->index); fprintf(stdout,x);} } while (0)
 #define debugfile(dfp,level,x...) do {if (set->verbose >= level) {if (set->daemon) sysloginfo(x); else fprintf(dfp,x);} } while (0)

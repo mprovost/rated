@@ -24,6 +24,108 @@ void cleanup_db(void *arg)
     db_disconnect();
 }
 
+unsigned long long snmp_poll(void *sessp, host_t *host, target_t *entry) {
+    struct snmp_pdu *pdu = NULL;
+    struct snmp_pdu *response = NULL;
+    struct variable_list *vars = NULL;
+    int poll_status = 0;
+    unsigned long long result = 0;
+    char *result_string;
+
+    pdu = snmp_pdu_create(SNMP_MSG_GET);
+    snmp_add_null_var(pdu, entry->anOID, entry->anOID_len);
+    /* this will free the pdu on error so we can't save them for reuse between rounds */
+    poll_status = snmp_sess_synch_response(sessp, pdu, &response);
+
+    /* Collect response and process stats */
+    PT_MUTEX_LOCK(&stats.mutex);
+    if (poll_status == STAT_DESCRIP_ERROR) {
+        stats.errors++;
+        debug(LOW, "*** SNMP Error: (%s) Bad descriptor.\n", host->session.peername);
+    } else if (poll_status == STAT_TIMEOUT) {
+        stats.no_resp++;
+        debug(LOW, "*** SNMP No response: (%s@%s).\n", entry->objoid, host->session.peername);
+    } else if (poll_status != STAT_SUCCESS) {
+        stats.errors++;
+        debug(LOW, "*** SNMP Error: (%s@%s) Unsuccessful (%d).\n", entry->objoid, host->session.peername, poll_status);
+    } else if (poll_status == STAT_SUCCESS && response->errstat != SNMP_ERR_NOERROR) {
+        stats.errors++;
+        debug(LOW, "*** SNMP Error: (%s@%s) %s\n", entry->objoid, host->session.peername, snmp_errstring(response->errstat));
+    } else if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR && response->variables->type == SNMP_NOSUCHINSTANCE) {
+        stats.errors++;
+        debug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", entry->objoid, host->session.peername);
+    } else if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
+        stats.polls++;
+    }
+    PT_MUTEX_UNLOCK(&stats.mutex);
+
+    /*
+     * Liftoff, successful poll, process it
+     */
+    if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR && response->variables->type != SNMP_NOSUCHINSTANCE) {
+        vars = response->variables;
+        if (set->verbose >= DEBUG) {
+            /* we only do this if we're printing out debug, so don't allocate memory unless we need it */
+            /* this seems like a waste but it's difficult to predict the length of the result string
+             * maybe use sprint_realloc_value but it's a PITA */
+            /* TODO check return value */
+            result_string = (char*)malloc(BUFSIZE);
+            /* this results in something like 'Counter64: 11362777584380' */
+            /* TODO check return value */
+            snprint_value(result_string, BUFSIZE, entry->anOID, entry->anOID_len, vars);
+            /* don't use tdebug because there's a signal race between when we malloc the memory and here */
+            debug_all("(%s@%s) %s\n", entry->objoid, host->session.peername, result_string);
+            free(result_string);
+        }
+        switch (vars->type) {
+            /*
+             * Switch over vars->type and modify/assign result accordingly.
+             */
+            case ASN_COUNTER64:
+                result = vars->val.counter64->high;
+                result = result << 32;
+                result = result + vars->val.counter64->low;
+                break;
+            case ASN_COUNTER:
+                result = (unsigned long) *(vars->val.integer);
+                break;
+            case ASN_INTEGER:
+                result = (unsigned long) *(vars->val.integer);
+                break;
+            case ASN_GAUGE:
+                result = (unsigned long) *(vars->val.integer);
+                break;
+            case ASN_TIMETICKS:
+                result = (unsigned long) *(vars->val.integer);
+                break;
+            case ASN_OPAQUE:
+                result = (unsigned long) *(vars->val.integer);
+                break;
+            case ASN_OCTET_STR:
+            /* TODO should we handle negative numbers? */
+#ifdef HAVE_STRTOULL
+                result = strtoull(vars->val.string, NULL, 0);
+                if (result == ULLONG_MAX && errno == ERANGE) {
+#else
+                result = strtoul(vars->val.string, NULL, 0);
+                if (result == ULONG_MAX && errno == ERANGE) {
+#endif
+                    debug(LOW, "Negative number found: %s\n", vars->val.string);
+                    result = 0;
+                }
+                break;
+            default:
+                /* no result that we can use, restart the polling loop */
+                /* TODO should we remove this target from the list? */
+                result = 0;
+        }
+    }
+    if (sessp != NULL) {
+        if (response != NULL) snmp_free_pdu(response);
+    }
+    return result;
+}
+
 void *poller(void *thread_args)
 {
     worker_t *worker = (worker_t *) thread_args;
@@ -32,13 +134,8 @@ void *poller(void *thread_args)
     target_t *head;
     target_t *entry = NULL;
     void *sessp;
-    struct snmp_pdu *pdu = NULL;
-    struct snmp_pdu *response = NULL;
-    struct variable_list *vars = NULL;
     unsigned long long result = 0;
     unsigned long long insert_val = 0;
-    int poll_status = 0;
-    char *result_string;
     int cur_work = 0;
     int prev_work = 99999999;
     int loop_count = 0;
@@ -143,102 +240,13 @@ void *poller(void *thread_args)
             /* save the time so we can calculate rate */
             last_time = entry->last_time;
 
-            pdu = snmp_pdu_create(SNMP_MSG_GET);
-            snmp_add_null_var(pdu, entry->anOID, entry->anOID_len);
-            /* this will free the pdu on error so we can't save them for reuse between rounds */
-            poll_status = snmp_sess_synch_response(sessp, pdu, &response);
+        result = snmp_poll(sessp, host, entry);
 
-            /* Collect response and process stats */
-            PT_MUTEX_LOCK(&stats.mutex);
-            if (poll_status == STAT_DESCRIP_ERROR) {
-                stats.errors++;
-                tdebug(LOW, "*** SNMP Error: (%s) Bad descriptor.\n", host->session.peername);
-            } else if (poll_status == STAT_TIMEOUT) {
-                stats.no_resp++;
-                tdebug(LOW, "*** SNMP No response: (%s@%s).\n", entry->objoid, host->session.peername);
-            } else if (poll_status != STAT_SUCCESS) {
-                stats.errors++;
-                tdebug(LOW, "*** SNMP Error: (%s@%s) Unsuccessful (%d).\n", entry->objoid, host->session.peername, poll_status);
-            } else if (poll_status == STAT_SUCCESS && response->errstat != SNMP_ERR_NOERROR) {
-                stats.errors++;
-                tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", entry->objoid, host->session.peername, snmp_errstring(response->errstat));
-            } else if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR && response->variables->type == SNMP_NOSUCHINSTANCE) {
-                stats.errors++;
-                tdebug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", entry->objoid, host->session.peername);
-            } else if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
-                stats.polls++;
-            }
-            PT_MUTEX_UNLOCK(&stats.mutex);
+        /* Get the current time */
+        gettimeofday(&current_time, &tzp);
 
-            /*
-             * Liftoff, successful poll, process it
-             */
-            /* Get the current time */
-            gettimeofday(&current_time, &tzp);
+        tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi, init = %i\n", result, entry->last_value, entry->bits, entry->init);
 
-            if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR && response->variables->type != SNMP_NOSUCHINSTANCE) {
-                vars = response->variables;
-                if (set->verbose >= DEBUG) {
-                    /* we only do this if we're printing out debug, so don't allocate memory unless we need it */
-                    /* this seems like a waste but it's difficult to predict the length of the result string
-                     * maybe use sprint_realloc_value but it's a PITA */
-                    /* TODO check return value */
-                    result_string = (char*)malloc(BUFSIZE);
-    #ifdef OLD_UCD_SNMP
-                    sprint_value(result_string, entry->anOID, entry->anOID_len, vars);
-    #else
-                    /* this results in something like 'Counter64: 11362777584380' */
-                    /* TODO check return value */
-                    snprint_value(result_string, BUFSIZE, entry->anOID, entry->anOID_len, vars);
-    #endif
-                    /* don't use tdebug because there's a signal race between when we malloc the memory and here */
-                    tdebug_all("(%s@%s) %s\n", entry->objoid, host->session.peername, result_string);
-                    free(result_string);
-                }
-                switch (vars->type) {
-                    /*
-                     * Switch over vars->type and modify/assign result accordingly.
-                     */
-                    case ASN_COUNTER64:
-                        result = vars->val.counter64->high;
-                        result = result << 32;
-                        result = result + vars->val.counter64->low;
-                        break;
-                    case ASN_COUNTER:
-                        result = (unsigned long) *(vars->val.integer);
-                        break;
-                    case ASN_INTEGER:
-                        result = (unsigned long) *(vars->val.integer);
-                        break;
-                    case ASN_GAUGE:
-                        result = (unsigned long) *(vars->val.integer);
-                        break;
-                    case ASN_TIMETICKS:
-                        result = (unsigned long) *(vars->val.integer);
-                        break;
-                    case ASN_OPAQUE:
-                        result = (unsigned long) *(vars->val.integer);
-                        break;
-                    case ASN_OCTET_STR:
-                    /* TODO should we handle negative numbers? */
-    #ifdef HAVE_STRTOULL
-                        result = strtoull(vars->val.string, NULL, 0);
-                        if (result == ULLONG_MAX && errno == ERANGE) {
-    #else
-                        result = strtoul(vars->val.string, NULL, 0);
-                        if (result == ULONG_MAX && errno == ERANGE) {
-    #endif
-                            tdebug(LOW, "Negative number found: %s\n", vars->val.string);
-                            goto cleanup;
-                        }
-                        break;
-                    default:
-                        /* no result that we can use, restart the polling loop */
-                        /* TODO should we remove this target from the list? */
-                        goto cleanup;
-                }
-
-                tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi, init = %i\n", result, entry->last_value, entry->bits, entry->init);
                 /* zero delta */
                 if (result == entry->last_value) {
                     tdebug(DEBUG, "zero delta: %llu = %llu\n", result, entry->last_value);
@@ -316,7 +324,6 @@ void *poller(void *thread_args)
                         }
                     } /* zero */
                 } /* !dboff */
-            } /* STAT_SUCCESS */
 
     /*
             tdebug(HIGH, "doing commit\n");
@@ -324,20 +331,17 @@ void *poller(void *thread_args)
     */
 
 cleanup:
-            if (sessp != NULL) {
-                if (response != NULL) snmp_free_pdu(response);
-            }
 
             /* update the time if we inserted ok */
             if (!db_error) {
                 entry->last_time = current_time;	
                 /* Only if we received a positive result back do we update the entry->last_value object */
-                if (poll_status == STAT_SUCCESS) {
+                //if (poll_status == STAT_SUCCESS) {
                     entry->last_value = result;
                     if (entry->init == NEW) entry->init = LIVE;
-                } else {
-                    tdebug(DEBUG, "no success!\n");
-                }
+                //} else {
+                    //tdebug(DEBUG, "no success!\n");
+                //}
             } else {
                 tdebug(DEBUG, "db_reconnect = %i db_error = %i!\n", db_reconnect, db_error);
             }
