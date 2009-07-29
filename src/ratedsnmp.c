@@ -24,37 +24,44 @@ void cleanup_db(void *arg)
     db_disconnect();
 }
 
-int snmp_poll(void *sessp, host_t *host, target_t *entry, unsigned long long *result) {
+int snmp_poll(void *sessp, oid *anOID, size_t anOID_len, unsigned long long *result) {
     netsnmp_pdu *pdu;
     netsnmp_pdu *response;
     netsnmp_variable_list *vars;
+    netsnmp_session *session;
     int poll_status = 0;
     int return_status = 1;
     char *oid_string;
     char *result_string;
 
+    /* convert the opaque session pointer back into a session struct for debug output */
+    /* TODO only do this on error? */
+    session = snmp_sess_session(sessp);
+
     pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
-    snmp_add_null_var(pdu, entry->anOID, entry->anOID_len);
+    snmp_add_null_var(pdu, anOID, anOID_len);
     /* this will free the pdu on error so we can't save them for reuse between rounds */
     poll_status = snmp_sess_synch_response(sessp, pdu, &response);
 
     /* Collect response and process stats */
+    oid_string = (char*)malloc(BUFSIZE);
+    snprint_objid(oid_string, BUFSIZE, anOID, anOID_len);
     PT_MUTEX_LOCK(&stats.mutex);
     if (poll_status == STAT_DESCRIP_ERROR) {
         stats.errors++;
-        debug(LOW, "*** SNMP Error: (%s) Bad descriptor.\n", host->session.peername);
+        debug(LOW, "*** SNMP Error: (%s) Bad descriptor.\n", session->peername);
     } else if (poll_status == STAT_TIMEOUT) {
         stats.no_resp++;
-        debug(LOW, "*** SNMP No response: (%s@%s).\n", entry->objoid, host->session.peername);
+        tdebug(LOW, "*** SNMP No response: (%s@%s).\n", oid_string, session->peername);
     } else if (poll_status != STAT_SUCCESS) {
         stats.errors++;
-        debug(LOW, "*** SNMP Error: (%s@%s) Unsuccessful (%d).\n", entry->objoid, host->session.peername, poll_status);
+        debug(LOW, "*** SNMP Error: (%s@%s) Unsuccessful (%d).\n", oid_string, session->peername, poll_status);
     } else if (poll_status == STAT_SUCCESS && response->errstat != SNMP_ERR_NOERROR) {
         stats.errors++;
-        debug(LOW, "*** SNMP Error: (%s@%s) %s\n", entry->objoid, host->session.peername, snmp_errstring(response->errstat));
+        debug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, snmp_errstring(response->errstat));
     } else if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR && response->variables->type == SNMP_NOSUCHINSTANCE) {
         stats.errors++;
-        debug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", entry->objoid, host->session.peername);
+        debug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", oid_string, session->peername);
     } else if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
         stats.polls++;
     }
@@ -78,7 +85,7 @@ int snmp_poll(void *sessp, host_t *host, target_t *entry, unsigned long long *re
             snprint_value(result_string, BUFSIZE, vars->name, vars->name_length, vars);
             snprint_objid(oid_string, BUFSIZE, vars->name, vars->name_length);
             /* don't use tdebug because there's a signal race between when we malloc the memory and here */
-            debug_all("(%s@%s) %s\n", oid_string, host->session.peername, result_string);
+            debug_all("(%s@%s) %s\n", oid_string, session->peername, result_string);
 
             free(result_string);
             free(oid_string);
@@ -138,7 +145,7 @@ void *poller(void *thread_args)
     host_t *host = NULL;
     target_t *head;
     target_t *entry = NULL;
-    void *sessp;
+    netsnmp_session *sessp;
     int poll_status = 0;
     unsigned long long result = 0;
     unsigned long long insert_val = 0;
@@ -248,7 +255,7 @@ void *poller(void *thread_args)
             last_time = entry->last_time;
 
             /* do the actual snmp poll */
-            poll_status = snmp_poll(sessp, host, entry, &result);
+            poll_status = snmp_poll(sessp, entry->anOID, entry->anOID_len, &result);
 
             if (!poll_status) {
                 /* skip to next target */
