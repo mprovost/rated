@@ -29,7 +29,7 @@ int snmp_poll(void *sessp, host_t *host, target_t *entry, unsigned long long *re
     struct snmp_pdu *response = NULL;
     struct variable_list *vars = NULL;
     int poll_status = 0;
-    int return_status = 0;
+    int return_status = 1;
     char *result_string;
 
     pdu = snmp_pdu_create(SNMP_MSG_GET);
@@ -64,7 +64,6 @@ int snmp_poll(void *sessp, host_t *host, target_t *entry, unsigned long long *re
      */
     if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR && response->variables->type != SNMP_NOSUCHINSTANCE) {
         vars = response->variables;
-        return_status = 1;
         if (set->verbose >= DEBUG) {
             /* we only do this if we're printing out debug, so don't allocate memory unless we need it */
             /* this seems like a waste but it's difficult to predict the length of the result string
@@ -121,9 +120,8 @@ int snmp_poll(void *sessp, host_t *host, target_t *entry, unsigned long long *re
                 return_status = 0;
         } /* switch (vars->type) */
     }
-    if (sessp != NULL) {
-        if (response != NULL) snmp_free_pdu(response);
-    }
+    if (response)
+        snmp_free_pdu(response);
     return return_status;
 }
 
@@ -247,7 +245,9 @@ void *poller(void *thread_args)
             poll_status = snmp_poll(sessp, host, entry, &result);
 
             if (!poll_status) {
-                goto next;
+                /* skip to next target */
+                host->current = host->current->next;
+                continue;
             }
 
             /* Get the current time */
@@ -352,7 +352,6 @@ cleanup:
             } else {
                 tdebug(DEBUG, "db_reconnect = %i db_error = %i!\n", db_reconnect, db_error);
             }
-next:
             /* loop_count++; */
             /* move to next target */
             host->current = host->current->next;
