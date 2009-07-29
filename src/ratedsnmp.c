@@ -25,14 +25,15 @@ void cleanup_db(void *arg)
 }
 
 int snmp_poll(void *sessp, host_t *host, target_t *entry, unsigned long long *result) {
-    struct snmp_pdu *pdu = NULL;
-    struct snmp_pdu *response = NULL;
-    struct variable_list *vars = NULL;
+    netsnmp_pdu *pdu;
+    netsnmp_pdu *response;
+    netsnmp_variable_list *vars;
     int poll_status = 0;
     int return_status = 1;
+    char *oid_string;
     char *result_string;
 
-    pdu = snmp_pdu_create(SNMP_MSG_GET);
+    pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
     snmp_add_null_var(pdu, entry->anOID, entry->anOID_len);
     /* this will free the pdu on error so we can't save them for reuse between rounds */
     poll_status = snmp_sess_synch_response(sessp, pdu, &response);
@@ -64,18 +65,23 @@ int snmp_poll(void *sessp, host_t *host, target_t *entry, unsigned long long *re
      */
     if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR && response->variables->type != SNMP_NOSUCHINSTANCE) {
         vars = response->variables;
+
         if (set->verbose >= DEBUG) {
             /* we only do this if we're printing out debug, so don't allocate memory unless we need it */
             /* this seems like a waste but it's difficult to predict the length of the result string
              * maybe use sprint_realloc_value but it's a PITA */
             /* TODO check return value */
             result_string = (char*)malloc(BUFSIZE);
+            oid_string = (char*)malloc(BUFSIZE);
             /* this results in something like 'Counter64: 11362777584380' */
             /* TODO check return value */
-            snprint_value(result_string, BUFSIZE, entry->anOID, entry->anOID_len, vars);
+            snprint_value(result_string, BUFSIZE, vars->name, vars->name_length, vars);
+            snprint_objid(oid_string, BUFSIZE, vars->name, vars->name_length);
             /* don't use tdebug because there's a signal race between when we malloc the memory and here */
-            debug_all("(%s@%s) %s\n", entry->objoid, host->session.peername, result_string);
+            debug_all("(%s@%s) %s\n", oid_string, host->session.peername, result_string);
+
             free(result_string);
+            free(oid_string);
         }
         switch (vars->type) {
             /*
@@ -296,7 +302,9 @@ void *poller(void *thread_args)
             if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / %.15f = %.15f\n", result, entry->last_value, insert_val, timediff(current_time, last_time), rate);
 
             /* TODO do we need to check for zero values again? */
-
+            /*
+             * insert into the db
+             */
             if (!(set->dboff)) {
                 if ( (insert_val > 0) || (set->withzeros) ) {
                     if (db_reconnect) {
