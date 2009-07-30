@@ -30,13 +30,9 @@ int snmp_poll(void *sessp, oid *anOID, size_t anOID_len, unsigned long long *res
     netsnmp_variable_list *vars;
     netsnmp_session *session;
     int poll_status = 0;
-    int return_status = 1;
+    int return_status = 0;
     char *oid_string;
     char *result_string;
-
-    /* convert the opaque session pointer back into a session struct for debug output */
-    /* TODO only do this on error? */
-    session = snmp_sess_session(sessp);
 
     pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
     snmp_add_null_var(pdu, anOID, anOID_len);
@@ -44,26 +40,42 @@ int snmp_poll(void *sessp, oid *anOID, size_t anOID_len, unsigned long long *res
     poll_status = snmp_sess_synch_response(sessp, pdu, &response);
 
     /* Collect response and process stats */
-    oid_string = (char*)malloc(BUFSIZE);
-    snprint_objid(oid_string, BUFSIZE, anOID, anOID_len);
     PT_MUTEX_LOCK(&stats.mutex);
-    if (poll_status == STAT_DESCRIP_ERROR) {
-        stats.errors++;
-        debug(LOW, "*** SNMP Error: (%s) Bad descriptor.\n", session->peername);
-    } else if (poll_status == STAT_TIMEOUT) {
-        stats.no_resp++;
-        tdebug(LOW, "*** SNMP No response: (%s@%s).\n", oid_string, session->peername);
-    } else if (poll_status != STAT_SUCCESS) {
-        stats.errors++;
-        debug(LOW, "*** SNMP Error: (%s@%s) Unsuccessful (%d).\n", oid_string, session->peername, poll_status);
-    } else if (poll_status == STAT_SUCCESS && response->errstat != SNMP_ERR_NOERROR) {
-        stats.errors++;
-        debug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, snmp_errstring(response->errstat));
-    } else if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR && response->variables->type == SNMP_NOSUCHINSTANCE) {
-        stats.errors++;
-        debug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", oid_string, session->peername);
-    } else if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
+    if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
         stats.polls++;
+    } else {
+        /* convert the opaque session pointer back into a session struct for debug output */
+        session = snmp_sess_session(sessp);
+        oid_string = (char*)malloc(SPRINT_MAX_LEN);
+        snprint_objid(oid_string, SPRINT_MAX_LEN, anOID, anOID_len);
+
+        switch (poll_status) {
+            case STAT_DESCRIP_ERROR:
+                stats.errors++;
+                debug(LOW, "*** SNMP Error: (%s) Bad descriptor.\n", session->peername);
+                break;
+            case STAT_TIMEOUT:
+                stats.no_resp++;
+                debug(LOW, "*** SNMP No response: (%s@%s).\n", oid_string, session->peername);
+                break;
+            case STAT_SUCCESS:
+                stats.errors++;
+                if (response->variables->type == SNMP_NOSUCHINSTANCE) {
+                    debug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", oid_string, session->peername);
+                } else {
+                    debug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, snmp_errstring(response->errstat));
+                }
+                break;
+            default:
+                stats.errors++;
+                debug(LOW, "*** SNMP Error: (%s@%s) Unsuccessful (%i).\n", oid_string, session->peername, poll_status);
+                break;
+        }
+        PT_MUTEX_UNLOCK(&stats.mutex);
+        free(oid_string);
+        if (response)
+            snmp_free_pdu(response);
+        return return_status;
     }
     PT_MUTEX_UNLOCK(&stats.mutex);
 
@@ -72,18 +84,22 @@ int snmp_poll(void *sessp, oid *anOID, size_t anOID_len, unsigned long long *res
      */
     if (poll_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR && response->variables->type != SNMP_NOSUCHINSTANCE) {
         vars = response->variables;
+        return_status = 1;
 
         if (set->verbose >= DEBUG) {
+            /* convert the opaque session pointer back into a session struct for debug output */
+            session = snmp_sess_session(sessp);
+
             /* we only do this if we're printing out debug, so don't allocate memory unless we need it */
             /* this seems like a waste but it's difficult to predict the length of the result string
              * maybe use sprint_realloc_value but it's a PITA */
-            /* TODO check return value */
-            result_string = (char*)malloc(BUFSIZE);
-            oid_string = (char*)malloc(BUFSIZE);
+            result_string = (char*)malloc(SPRINT_MAX_LEN);
             /* this results in something like 'Counter64: 11362777584380' */
             /* TODO check return value */
-            snprint_value(result_string, BUFSIZE, vars->name, vars->name_length, vars);
-            snprint_objid(oid_string, BUFSIZE, vars->name, vars->name_length);
+            snprint_value(result_string, SPRINT_MAX_LEN, vars->name, vars->name_length, vars);
+            oid_string = (char*)malloc(SPRINT_MAX_LEN);
+            /* TODO check return value */
+            snprint_objid(oid_string, SPRINT_MAX_LEN, vars->name, vars->name_length);
             /* don't use tdebug because there's a signal race between when we malloc the memory and here */
             debug_all("(%s@%s) %s\n", oid_string, session->peername, result_string);
 
@@ -130,6 +146,7 @@ int snmp_poll(void *sessp, oid *anOID, size_t anOID_len, unsigned long long *res
             default:
                 /* no result that we can use, restart the polling loop */
                 /* TODO should we remove this target from the list? */
+                *result = 0;
                 return_status = 0;
         } /* switch (vars->type) */
     }
