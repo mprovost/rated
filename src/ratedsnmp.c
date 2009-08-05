@@ -24,7 +24,7 @@ void cleanup_db(void *arg)
     db_disconnect();
 }
 
-int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, unsigned long long *result) {
+int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, unsigned long long *result, struct timeval *current_time) {
     netsnmp_pdu *pdu;
     netsnmp_pdu *response;
     netsnmp_variable_list *vars;
@@ -45,6 +45,9 @@ int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, unsigned long long 
 
     /* this will free the pdu on error so we can't save them for reuse between rounds */
     getnext_status = snmp_sess_synch_response(sessp, pdu, &response);
+
+    /* Get the current time */
+    gettimeofday(current_time, NULL);
 
     /* Collect response and process stats */
     PT_MUTEX_LOCK(&stats.mutex);
@@ -184,7 +187,6 @@ void *poller(void *thread_args)
     int loop_count = 0;
     */
     double rate = 0;
-    struct timezone tzp;
     struct timeval current_time;
     struct timeval last_time;
     struct timeval now;
@@ -311,7 +313,7 @@ void *poller(void *thread_args)
                     break;
                 }
                 /* do the actual snmp poll */
-                getnext_status = snmp_getnext(sessp, anOID, anOID_len, &result);
+                getnext_status = snmp_getnext(sessp, anOID, anOID_len, &result, &current_time);
 
                 if (!getnext_status) {
                     /* skip to next target */
@@ -322,8 +324,6 @@ void *poller(void *thread_args)
 
                 getnexts++;
 
-                /* Get the current time */
-                gettimeofday(&current_time, &tzp);
 
                 tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi, init = %i\n", result, entry->last_value, entry->bits, entry->init);
 
