@@ -130,9 +130,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    /* this probably isn't thread safe*/
+    /* these probably aren't thread safe*/
     /* TODO only do this if we're debugging or not daemonised? */
     snmp_enable_stderrlog();
+    /* output oids numerically - this is equivalent to -On in the snmp tools */
+    netsnmp_ds_set_int(NETSNMP_DS_LIBRARY_ID, NETSNMP_DS_LIB_OID_OUTPUT_FORMAT, NETSNMP_OID_OUTPUT_NUMERIC);
 
     debug(LOW, "Initializing threads (%d).\n", set->threads);
     pthread_mutex_init(&(crew.mutex), NULL);
@@ -163,7 +165,7 @@ int main(int argc, char *argv[]) {
     }
     gettimeofday(&now, NULL);
     end_time = now.tv_sec * 1000 + now.tv_usec / 1000; /* convert to milliseconds */
-    debug(HIGH, "Waited %d milliseconds for thread startup.\n", end_time - begin_time);
+    debug(HIGH, "Waited %.0f milliseconds for thread startup.\n", end_time - begin_time);
 
     /* build list of hosts to be polled */
     head = hash_target_file(target_file);
