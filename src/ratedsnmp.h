@@ -9,6 +9,15 @@
 /* Target state */
 enum targetState {NEW, LIVE, STALE};
 
+typedef struct getnext_struct {
+    char *objoid;
+    oid anOID[MAX_OID_LEN];
+    size_t anOID_len;
+    unsigned long long last_value;
+    struct timeval last_time;
+    struct getnext_struct *next;
+} getnext_t;
+
 typedef struct target_struct {
     char *objoid;
     oid anOID[MAX_OID_LEN];
@@ -19,6 +28,8 @@ typedef struct target_struct {
     enum targetState init;
     unsigned long long last_value;
     struct timeval last_time;
+    struct getnext_struct *getnexts;
+    struct getnext_struct *current;
     struct target_struct *next;
 } target_t;
 

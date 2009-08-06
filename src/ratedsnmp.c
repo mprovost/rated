@@ -288,9 +288,11 @@ void *poller(void *thread_args)
         /* loop through the targets for this host */
         while (host->current) {
             entry = host->current;
+            entry->current = entry->getnexts;
 
             tdebug(DEVELOP, "processing %s@%s\n", entry->objoid, host->host);
 
+            /* set up the variables for the first poll */
             memmove(anOID, entry->anOID, entry->anOID_len * sizeof(oid));
             *anOID_len = head->anOID_len;
 
@@ -302,30 +304,59 @@ void *poller(void *thread_args)
             gettimeofday(&now, NULL);
             begin_time = now.tv_sec * 1000 + now.tv_usec / 1000; /* convert to milliseconds */
 
+            /* keep doing getnexts */
             while (anOID) {
+                /* do the actual snmp poll */
+                getnext_status = snmp_getnext(sessp, anOID, anOID_len, &result, &current_time);
+
+                if (!getnext_status) {
+                    /* skip to next oid */
+                    tdebug(DEBUG, "!getnext_status\n");
+                    continue;
+                }
+
+                getnexts++;
+
+                /*
+                 * checks to see if the getnexts are finished
+                 */
+                /* check to see if the new oid is smaller than the original target */
                 if (*anOID_len < entry->anOID_len) {
                     tdebug(DEBUG, "snmpgetnext done <\n");
                     break;
+                /* match against the original target to see if we're going into a different part of the oid tree */
                 } else if ((memcmp(&entry->anOID, anOID, entry->anOID_len * sizeof(oid)) != 0)) {
                     print_objid(entry->anOID, entry->anOID_len);
                     print_objid(anOID, *anOID_len);
                     tdebug(DEBUG, "snmpgetnext done memcmp\n");
                     break;
                 }
-                /* do the actual snmp poll */
-                getnext_status = snmp_getnext(sessp, anOID, anOID_len, &result, &current_time);
-
-                if (!getnext_status) {
-                    /* skip to next target */
-                    //host->current = host->current->next;
-                    tdebug(DEBUG, "!getnext_status\n");
-                    break;
-                }
-
-                getnexts++;
-
 
                 tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi, init = %i\n", result, entry->last_value, entry->bits, entry->init);
+
+                if (entry->getnexts) {
+                    debug(DEBUG, "entry->getnexts\n");
+                    /* memcmp to next getnext, see if we're equal, if so continue processing */
+                    /* else snmp_oid_compare to see if it's lesser or greater */
+                        /* if greater, then create and insert a new getnext, this is the first poll for a new oid */
+                        /* if lesser, then that must be an abandoned oid, so delete it and start the memcmp over again */
+                    entry->current->next = malloc(sizeof(getnext_t));
+                    entry->current->next->next = NULL;
+                    //entry->current->next->anOID = anOID;
+                    memmove(entry->current->next->anOID, anOID, *anOID_len * sizeof(oid));
+                    entry->current->next->anOID_len = *anOID_len;
+                    entry->current = entry->current->next;
+                /* first poll */
+                } else {
+                    debug(DEBUG, "entry->getnexts == NULL\n");
+                    entry->getnexts = malloc(sizeof(getnext_t));
+                    entry->getnexts->next = NULL;
+                    //entry->getnexts->anOID = anOID;
+                    memmove(entry->getnexts->anOID, anOID, *anOID_len * sizeof(oid));
+                    entry->getnexts->anOID_len = *anOID_len;
+                    //entry->getnexts = entry->getnexts->next;
+                    entry->current = entry->getnexts;
+                }
 
                 /* zero delta */
                 /* TODO zero result on first poll */
@@ -432,8 +463,19 @@ cleanup:
             end_time = now.tv_sec * 1000 + now.tv_usec / 1000; /* convert to milliseconds */
             debug(HIGH, "%u getnexts in %.0f ms (%.0f/s)\n", getnexts, end_time - begin_time, (1000 / (end_time - begin_time)) * getnexts);
             /* loop_count++; */
+
+            if (set->verbose >= HIGH) {
+                //host = host_dummy.next;
+                entry->current = entry->getnexts;
+                while (entry->current) {
+                    print_objid(entry->current->anOID, entry->current->anOID_len);
+                    entry->current = entry->current->next;
+                }
+            }
+
             /* move to next target */
             host->current = host->current->next;
+
         } /* while (host->current) */
         if (sessp != NULL)
             snmp_sess_close(sessp);
