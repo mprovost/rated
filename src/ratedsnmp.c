@@ -269,7 +269,7 @@ void *poller(void *thread_args)
         /* take the unlock off the cancel stack */
         pthread_cleanup_pop(FALSE);
 
-        /* TODO get rid of this it's the same as entry */
+        /* keep the first entry in the target list */
         head = host->current;
 
         /* open an snmp session once for all targets for this host for this round */
