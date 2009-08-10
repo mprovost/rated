@@ -189,7 +189,6 @@ void *poller(void *thread_args)
     */
     double rate = 0;
     struct timeval current_time;
-    struct timeval last_time;
     struct timeval now;
     double begin_time, end_time;
     /* this forces the db to connect on the first poll (that we have something to insert) */
@@ -290,9 +289,6 @@ void *poller(void *thread_args)
             /* set up the variables for the first poll */
             memmove(anOID, entry->anOID, entry->anOID_len * sizeof(oid));
             *anOID_len = head->anOID_len;
-
-            /* save the time so we can calculate rate */
-            last_time = entry->last_time;
 
             getnexts = 0;
 

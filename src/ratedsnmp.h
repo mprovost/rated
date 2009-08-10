@@ -26,8 +26,6 @@ typedef struct target_struct {
     unsigned short bits;
     unsigned int iid;
     enum targetState init;
-    unsigned long long last_value;
-    struct timeval last_time;
     struct getnext_struct *getnexts;
     struct getnext_struct *current;
     struct target_struct *next;
