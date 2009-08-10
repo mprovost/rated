@@ -179,6 +179,7 @@ void *poller(void *thread_args)
     netsnmp_session *sessp;
     int getnext_status = 0;
     unsigned int getnexts;
+    getnext_t *getnext_scratch;
     unsigned long long result = 0;
     unsigned long long insert_val = 0;
     /*
@@ -222,12 +223,6 @@ void *poller(void *thread_args)
     anOID_len = malloc(sizeof(size_t));
 
     while (1) {
-
-        /* reset variables */
-	result = insert_val = 0;
-	rate = 0;
-        db_error = FALSE;
-
 /*
         if(loop_count >= POLLS_PER_TRANSACTION) {
             tdebug(HIGH, "doing commit on %d\n", POLLS_PER_TRANSACTION);
@@ -306,6 +301,11 @@ void *poller(void *thread_args)
 
             /* keep doing getnexts */
             while (anOID) {
+                /* reset variables */
+                result = insert_val = 0;
+                rate = 0;
+                db_error = FALSE;
+
                 /* do the actual snmp poll */
                 getnext_status = snmp_getnext(sessp, anOID, anOID_len, &result, &current_time);
 
@@ -326,42 +326,67 @@ void *poller(void *thread_args)
                     break;
                 /* match against the original target to see if we're going into a different part of the oid tree */
                 } else if ((memcmp(&entry->anOID, anOID, entry->anOID_len * sizeof(oid)) != 0)) {
+                    tdebug(DEBUG, "snmpgetnext done memcmp\n");
                     print_objid(entry->anOID, entry->anOID_len);
                     print_objid(anOID, *anOID_len);
-                    tdebug(DEBUG, "snmpgetnext done memcmp\n");
                     break;
                 }
 
-                tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi, init = %i\n", result, entry->last_value, entry->bits, entry->init);
-
                 if (entry->getnexts) {
-                    debug(DEBUG, "entry->getnexts\n");
-                    /* memcmp to next getnext, see if we're equal, if so continue processing */
-                    /* else snmp_oid_compare to see if it's lesser or greater */
-                        /* if greater, then create and insert a new getnext, this is the first poll for a new oid */
-                        /* if lesser, then that must be an abandoned oid, so delete it and start the memcmp over again */
-                    entry->current->next = malloc(sizeof(getnext_t));
-                    entry->current->next->next = NULL;
-                    //entry->current->next->anOID = anOID;
-                    memmove(entry->current->next->anOID, anOID, *anOID_len * sizeof(oid));
-                    entry->current->next->anOID_len = *anOID_len;
-                    entry->current = entry->current->next;
-                /* first poll */
+                    tdebug(DEBUG, "entry->getnexts\n");
+getnext:
+                    if (entry->current->next) {
+                        if (*anOID_len == entry->current->next->anOID_len) {
+                            /* memcmp to next getnext, see if we're equal, if so continue processing */
+                            if (memcmp(anOID, entry->current->next->anOID, *anOID_len * sizeof(oid)) == 0) {
+                                tdebug(DEBUG, "next memcmp equal\n");
+                                entry->current = entry->current->next;
+                            /* else snmp_oid_compare to see if it's lesser or greater */
+                            } else {
+                                /* if greater, then create and insert a new getnext, this is the first poll for a new oid */
+                                if (snmp_oid_compare(anOID, *anOID_len, entry->current->next->anOID, entry->current->next->anOID_len) > 0) {
+                                    tdebug(DEBUG, "insert next\n");
+                                    getnext_scratch = malloc(sizeof(getnext_t));
+                                    getnext_scratch->next = entry->current;
+                                    memmove(getnext_scratch->anOID, anOID, *anOID_len * sizeof(oid));
+                                    getnext_scratch->anOID_len = *anOID_len;
+                                    entry->current = getnext_scratch;
+                                /* if lesser, then that must be an abandoned oid, so delete it and start the comparison over again */
+                                /* we already checked for equality above so we can ignore that case */
+                                } else {
+                                    tdebug(DEBUG, "delete next\n");
+                                    getnext_scratch = entry->current->next;
+                                    entry->current->next = entry->current->next->next;
+                                    free(getnext_scratch);
+                                    goto getnext;
+                                }
+                            }
+                        }
+                    /* end of list, append a new one */
+                    } else {
+                        tdebug(DEBUG, "appending getnext\n");
+                        entry->current->next = malloc(sizeof(getnext_t));
+                        entry->current->next->next = NULL;
+                        memmove(entry->current->next->anOID, anOID, *anOID_len * sizeof(oid));
+                        entry->current->next->anOID_len = *anOID_len;
+                        entry->current = entry->current->next;
+                    }
+                /* first target of first poll */
                 } else {
-                    debug(DEBUG, "entry->getnexts == NULL\n");
+                    tdebug(DEBUG, "entry->getnexts == NULL\n");
                     entry->getnexts = malloc(sizeof(getnext_t));
                     entry->getnexts->next = NULL;
-                    //entry->getnexts->anOID = anOID;
                     memmove(entry->getnexts->anOID, anOID, *anOID_len * sizeof(oid));
                     entry->getnexts->anOID_len = *anOID_len;
-                    //entry->getnexts = entry->getnexts->next;
                     entry->current = entry->getnexts;
                 }
 
+                tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi, init = %i\n", result, entry->current->last_value, entry->bits, entry->init);
+
                 /* zero delta */
                 /* TODO zero result on first poll */
-                if (result == entry->last_value) {
-                    tdebug(DEBUG, "zero delta: %llu = %llu\n", result, entry->last_value);
+                if (result == entry->current->last_value) {
+                    tdebug(DEBUG, "zero delta: %llu = %llu\n", result, entry->current->last_value);
                     PT_MUTEX_LOCK(&stats.mutex);
                     stats.zero++;
                     PT_MUTEX_UNLOCK(&stats.mutex);
@@ -375,29 +400,29 @@ void *poller(void *thread_args)
                     insert_val = result;
                 /* treat all other values as counters */
                 /* Counter Wrap Condition */
-                } else if (result < entry->last_value) {
+                } else if (result < entry->current->last_value) {
                     PT_MUTEX_LOCK(&stats.mutex);
                     stats.wraps++;
                     PT_MUTEX_UNLOCK(&stats.mutex);
 
-                    if (entry->bits == 32) insert_val = (THIRTYTWO - entry->last_value) + result;
-                    else if (entry->bits == 64) insert_val = (SIXTYFOUR - entry->last_value) + result;
+                    if (entry->bits == 32) insert_val = (THIRTYTWO - entry->current->last_value) + result;
+                    else if (entry->bits == 64) insert_val = (SIXTYFOUR - entry->current->last_value) + result;
 
-                    rate = insert_val / timediff(current_time, last_time);
+                    rate = insert_val / timediff(current_time, entry->current->last_time);
 
                     tdebug(LOW, "*** Counter Wrap (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
-                        entry->objoid, host->session.peername, result, entry->last_value, insert_val);
+                        entry->objoid, host->session.peername, result, entry->current->last_value, insert_val);
                 /* Not a counter wrap and this is not the first poll */
-                } else if ((entry->last_value >= 0) && (entry->init != NEW)) {
-                    insert_val = result - entry->last_value;
-                    rate = insert_val / timediff(current_time, last_time);
-                /* entry->last_value < 0, so this must be the first poll */
+                } else if ((entry->current->last_value >= 0) && (entry->init != NEW)) {
+                    insert_val = result - entry->current->last_value;
+                    rate = insert_val / timediff(current_time, entry->current->last_time);
+                /* entry->current->last_value < 0, so this must be the first poll */
                 } else {
                     tdebug(HIGH, "First Poll, Normalizing\n");
                     goto cleanup;
                 }
 
-                if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / %.15f = %.15f\n", result, entry->last_value, insert_val, timediff(current_time, last_time), rate);
+                if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / %.15f = %.15f\n", result, entry->current->last_value, insert_val, timediff(current_time, entry->current->last_time), rate);
 
                 /* TODO do we need to check for zero values again? */
                 /*
@@ -447,10 +472,10 @@ void *poller(void *thread_args)
 cleanup:
                 /* update the time if we inserted ok */
                 if (!db_error) {
-                    entry->last_time = current_time;	
-                    /* Only if we received a positive result back do we update the entry->last_value object */
+                    entry->current->last_time = current_time;	
+                    /* Only if we received a positive result back do we update the entry->current->last_value */
                     if (getnext_status) {
-                        entry->last_value = result;
+                        entry->current->last_value = result;
                         if (entry->init == NEW) entry->init = LIVE;
                     } else {
                         tdebug(DEBUG, "no success:%i!\n", getnext_status);
@@ -461,7 +486,7 @@ cleanup:
             } /* while (anOID) */
             gettimeofday(&now, NULL);
             end_time = now.tv_sec * 1000 + now.tv_usec / 1000; /* convert to milliseconds */
-            debug(HIGH, "%u getnexts in %.0f ms (%.0f/s)\n", getnexts, end_time - begin_time, (1000 / (end_time - begin_time)) * getnexts);
+            tdebug(HIGH, "%u getnexts in %.0f ms (%.0f/s)\n", getnexts, end_time - begin_time, (1000 / (end_time - begin_time)) * getnexts);
             /* loop_count++; */
 
             if (set->verbose >= HIGH) {
