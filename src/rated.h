@@ -145,6 +145,8 @@ void print_stats (stats_t, config_t *);
 int sleepy(float, config_t *);
 void timestamp(char *);
 double timediff(struct timeval, struct timeval);
+unsigned long tv2ms(struct timeval);
+struct timeval ms2tv(unsigned long);
 int checkPID(char *, config_t *);
 int daemon_init();
 

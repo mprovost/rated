@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     pthread_t sig_thread;
     sigset_t signal_set;
     struct timeval now;
-    double begin_time, end_time, sleep_time;
+    unsigned long begin_time, end_time, sleep_time;
     char *conf_file = NULL;
     char errstr[BUFSIZE];
     int ch, i, freed;
@@ -159,13 +159,13 @@ int main(int argc, char *argv[]) {
     ts.tv_sec = 0;
     ts.tv_nsec = 10000000; /* 10 ms */
     gettimeofday(&now, NULL);
-    begin_time = now.tv_sec * 1000 + now.tv_usec / 1000; /* convert to milliseconds */
+    begin_time = tv2ms(now); /* convert to milliseconds */
     while (crew.running < set->threads) {
 	nanosleep(&ts, NULL);
     }
     gettimeofday(&now, NULL);
-    end_time = now.tv_sec * 1000 + now.tv_usec / 1000; /* convert to milliseconds */
-    debug(HIGH, "Waited %.0f milliseconds for thread startup.\n", end_time - begin_time);
+    end_time = tv2ms(now); /* convert to milliseconds */
+    debug(HIGH, "Waited %ul milliseconds for thread startup.\n", end_time - begin_time);
 
     /* build list of hosts to be polled */
     head = hash_target_file(target_file);
@@ -193,7 +193,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	gettimeofday(&now, NULL);
-	begin_time = (double) now.tv_usec / 1000000 + now.tv_sec;
+	begin_time = tv2ms(now);
 
 	PT_MUTEX_LOCK(&(crew.mutex));
         crew.current = head;
@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
 	gettimeofday(&now, NULL);
         /* TODO inline */
         /* this isn't accurate anymore since the final thread(s) will still be running */
-	end_time = (double) now.tv_usec / 1000000 + now.tv_sec;
+	end_time = tv2ms(now);
 	stats.poll_time = end_time - begin_time;
         stats.round++;
 	sleep_time = set->interval - stats.poll_time;

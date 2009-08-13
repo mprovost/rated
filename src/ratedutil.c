@@ -133,6 +133,7 @@ int sleepy(float sleep_time, config_t *set)
                 debug(LOW, "%d...", i);
 		fflush(NULL);
             }
+            /* TODO replace with nanosleep */
             usleep((unsigned int) (sleep_time*MEGA/ chunks));
         }
         if (!set->daemon)
@@ -184,6 +185,19 @@ double timediff(struct timeval tv1, struct timeval tv2) {
 	return (result);
 }
 
+/* convert a timeval to milliseconds */
+unsigned long tv2ms(struct timeval tv) {
+    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
+
+/* convert milliseconds to a timeval */
+struct timeval ms2tv(unsigned long ms) {
+    struct timeval tv;
+
+    tv.tv_sec = ms / 1000;
+    tv.tv_usec = (ms % 1000) * 1000;
+    return tv;
+}
 
 int checkPID(char *pidfile, config_t *set) {
 	FILE *pidptr = NULL;
