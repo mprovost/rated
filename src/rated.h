@@ -142,7 +142,7 @@ int read_rated_config(char *, config_t *);
 int write_rated_config(char *, config_t *);
 void config_defaults(config_t *);
 void print_stats (stats_t, config_t *);
-int sleepy(float, config_t *);
+int sleepy(unsigned int, config_t *);
 void timestamp(char *);
 double timediff(struct timeval, struct timeval);
 unsigned long tv2ms(struct timeval);

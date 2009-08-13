@@ -35,7 +35,7 @@ int read_rated_config(char *file, config_t * set)
            fgets(buff, BUFSIZE, fp);
            if (!feof(fp) && *buff != '#' && *buff != ' ' && *buff != '\n') {
               sscanf(buff, "%20s %20s", p1, p2);
-              if (!strcasecmp(p1, "Interval")) set->interval = atoi(p2);
+              if (!strcasecmp(p1, "Interval")) set->interval = atoi(p2) * 1000; /* convert to milliseconds */
               else if (!strcasecmp(p1, "SNMP_Port")) set->snmp_port = atoi(p2);
               else if (!strcasecmp(p1, "Threads")) set->threads = atoi(p2);
               else if (!strcasecmp(p1, "DB_Driver")) strncpy(set->dbdriver, p2, sizeof(set->dbdriver));
@@ -116,32 +116,35 @@ void print_stats(stats_t stats, config_t *set)
 
 
 /* A fancy sleep routine */
-int sleepy(float sleep_time, config_t *set)
+/* sleep time is in milliseconds */
+int sleepy(unsigned int sleep_time, config_t *set)
 {
-    int chunks = 10;
     int i;
+    struct timespec ts;
+
+    /* convert to seconds */
+    sleep_time = sleep_time / 1000;
+
+    ts.tv_sec = 1;
+    ts.tv_nsec = 0;
+
+    debug(LOW, "Sleeping for %u seconds\n", sleep_time);
 
     /* always sleep in chunks so we can quit if signalled */
-    if (sleep_time > chunks) {
-        if (!set->daemon)
-            debug(LOW, "Next Poll: ");
-        for (i = chunks; i > 0; i--) {
-	    /* check if we've been signalled */
-            if (quitting)
-                break;
-            if (!set->daemon) {
-                debug(LOW, "%d...", i);
-		fflush(NULL);
-            }
-            /* TODO replace with nanosleep */
-            usleep((unsigned int) (sleep_time*MEGA/ chunks));
+    if (!set->daemon)
+        debug(LOW, "Next Poll: ");
+    for (i = 0; i < sleep_time; i++) {
+        /* check if we've been signalled */
+        if (quitting)
+            break;
+        if (!set->daemon) {
+            debug(LOW, "%d...", i);
+            fflush(NULL);
         }
-        if (!set->daemon)
-            debug(LOW, "\n");
-    } else {
-        sleep_time*=MEGA;
-        usleep((unsigned int) sleep_time);
+        nanosleep(&ts, NULL);
     }
+    if (!set->daemon)
+        debug(LOW, "\n");
     return (0);
 }
 
