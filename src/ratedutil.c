@@ -109,8 +109,8 @@ void print_stats(stats_t stats, config_t *set)
 {
   debug(OFF, "[Polls = %lld] [DBInserts = %lld] [DBErrors = %lld] [Zero = %d] [Wraps = %d]\n",
       stats.polls, stats.db_inserts, stats.db_errors, stats.zero, stats.wraps);
-  debug(OFF, "[NoResp = %d] [SNMPErrors = %d] [Slow = %d] [PollTime = %2.4f%c]\n",
-      stats.no_resp, stats.errors, stats.slow, stats.poll_time, 's');
+  debug(OFF, "[NoResp = %d] [SNMPErrors = %d] [Slow = %d] [PollTime = %u ms]\n",
+      stats.no_resp, stats.errors, stats.slow, stats.poll_time);
   return;
 }
 
@@ -138,7 +138,7 @@ int sleepy(unsigned int sleep_time, config_t *set)
         if (quitting)
             break;
         if (!set->daemon) {
-            debug(LOW, "%d...", i);
+            debug(LOW, "%d...", i + 1);
             fflush(NULL);
         }
         nanosleep(&ts, NULL);
