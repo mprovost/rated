@@ -6,9 +6,6 @@
 #ifndef _RATEDSNMP_H_
 #define _RATEDSNMP_H_ 1
 
-/* Target state */
-enum targetState {NEW, LIVE, STALE};
-
 typedef struct getnext_struct {
     char *objoid;
     oid anOID[MAX_OID_LEN];
@@ -25,7 +22,6 @@ typedef struct target_struct {
     char *table;
     unsigned short bits;
     unsigned int iid;
-    enum targetState init;
     struct getnext_struct *getnexts;
     struct getnext_struct *current;
     struct target_struct *next;

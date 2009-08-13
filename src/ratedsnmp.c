@@ -328,38 +328,52 @@ void *poller(void *thread_args)
                     break;
                 }
 
+                /*
+                 * Walk through the list of getnexts, peeking ahead to the next one.
+                 * We do it this way instead of moving the pointer ahead at the end of each
+                 * poll so you can insert a new one without needing a doubly linked list.
+                 */
                 if (entry->getnexts) {
                     tdebug(DEBUG, "entry->getnexts\n");
-getnext:
-                    if (entry->current->next) {
-                        if (*anOID_len == entry->current->next->anOID_len) {
-                            /* memcmp to next getnext, see if we're equal, if so continue processing */
-                            if (memcmp(anOID, entry->current->next->anOID, *anOID_len * sizeof(oid)) == 0) {
+                    while(entry->current->next) {
+                        /* first check against the next entry, this should be the most common case */
+                        if (*anOID_len == entry->current->next->anOID_len
+                            && memcmp(anOID, entry->current->next->anOID, *anOID_len * sizeof(oid)) == 0) {
                                 tdebug(DEBUG, "next memcmp equal\n");
                                 entry->current = entry->current->next;
-                            /* else snmp_oid_compare to see if it's lesser or greater */
+                                break;
+                        /* then check against the current entry, this happens in the first loop */
+                        } else if (*anOID_len == entry->current->anOID_len
+                            && memcmp(anOID, entry->current->anOID, *anOID_len * sizeof(oid)) == 0) {
+                                tdebug(DEBUG, "memcmp equal\n");
+                                break;
+                        /* else snmp_oid_compare to the next one to see if it's lesser or greater */
+                        } else {
+                            /* if greater, then create and insert a new getnext, this is the first poll for a new oid */
+                            if (snmp_oid_compare(anOID, *anOID_len, entry->current->next->anOID, entry->current->next->anOID_len) > 0) {
+                                tdebug(DEBUG, "insert next\n");
+                                getnext_scratch = malloc(sizeof(getnext_t));
+                                getnext_scratch->next = entry->current->next;
+                                memmove(getnext_scratch->anOID, anOID, *anOID_len * sizeof(oid));
+                                getnext_scratch->anOID_len = *anOID_len;
+                                entry->current->next = getnext_scratch;
+                                entry->current = getnext_scratch;
+                                break;
+                            /* if lesser, then that must be an abandoned oid, so delete it and start the comparison over again */
+                            /* we already checked for equality above so we can ignore that case */
                             } else {
-                                /* if greater, then create and insert a new getnext, this is the first poll for a new oid */
-                                if (snmp_oid_compare(anOID, *anOID_len, entry->current->next->anOID, entry->current->next->anOID_len) > 0) {
-                                    tdebug(DEBUG, "insert next\n");
-                                    getnext_scratch = malloc(sizeof(getnext_t));
-                                    getnext_scratch->next = entry->current;
-                                    memmove(getnext_scratch->anOID, anOID, *anOID_len * sizeof(oid));
-                                    getnext_scratch->anOID_len = *anOID_len;
-                                    entry->current = getnext_scratch;
-                                /* if lesser, then that must be an abandoned oid, so delete it and start the comparison over again */
-                                /* we already checked for equality above so we can ignore that case */
-                                } else {
-                                    tdebug(DEBUG, "delete next\n");
-                                    getnext_scratch = entry->current->next;
-                                    entry->current->next = entry->current->next->next;
-                                    free(getnext_scratch);
-                                    goto getnext;
-                                }
+                                tdebug(DEBUG, "delete next\n");
+                                print_objid(anOID, *anOID_len);
+                                print_objid(entry->current->next->anOID, entry->current->next->anOID_len);
+                                getnext_scratch = entry->current->next;
+                                entry->current->next = entry->current->next->next;
+                                free(getnext_scratch);
+                                continue;
                             }
                         }
+                    }
                     /* end of list, append a new one */
-                    } else {
+                    if (entry->current->next == NULL) {
                         tdebug(DEBUG, "appending getnext\n");
                         entry->current->next = malloc(sizeof(getnext_t));
                         entry->current->next->next = NULL;
@@ -377,7 +391,7 @@ getnext:
                     entry->current = entry->getnexts;
                 }
 
-                tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi, init = %i\n", result, entry->current->last_value, entry->bits, entry->init);
+                tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi\n", result, entry->current->last_value, entry->bits);
 
                 /* zero delta */
                 /* TODO zero result on first poll */
@@ -408,8 +422,9 @@ getnext:
 
                     tdebug(LOW, "*** Counter Wrap (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
                         entry->objoid, host->session.peername, result, entry->current->last_value, insert_val);
-                /* Not a counter wrap and this is not the first poll */
-                } else if ((entry->current->last_value >= 0) && (entry->init != NEW)) {
+                /* Not a counter wrap and this is not the first poll 
+                 * the last_time should be 0 on the first poll */
+                } else if ((entry->current->last_value >= 0) && (entry->current->last_time.tv_sec > 0)) {
                     insert_val = result - entry->current->last_value;
                     rate = insert_val / timediff(current_time, entry->current->last_time);
                 /* entry->current->last_value < 0, so this must be the first poll */
@@ -418,7 +433,10 @@ getnext:
                     goto cleanup;
                 }
 
-                if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / %.15f = %.15f\n", result, entry->current->last_value, insert_val, timediff(current_time, entry->current->last_time), rate);
+                //(double) tv1.tv_usec / MEGA + tv1.tv_sec
+
+                if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / (%d - %d = %.15f) = %.15f\n", 
+                    result, entry->current->last_value, insert_val, (double) current_time.tv_usec / MEGA + current_time.tv_sec, (double) entry->current->last_time.tv_usec / MEGA + entry->current->last_time.tv_sec, timediff(current_time, entry->current->last_time), rate);
 
                 /* TODO do we need to check for zero values again? */
                 /*
@@ -472,7 +490,6 @@ cleanup:
                     /* Only if we received a positive result back do we update the entry->current->last_value */
                     if (getnext_status) {
                         entry->current->last_value = result;
-                        if (entry->init == NEW) entry->init = LIVE;
                     } else {
                         tdebug(DEBUG, "no success:%i!\n", getnext_status);
                     }

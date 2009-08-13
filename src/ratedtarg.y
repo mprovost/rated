@@ -116,7 +116,6 @@ target_entry  : HST_TRGT L_OID
       /* TODO check return status */
       read_objid($2, ttgt->anOID, &ttgt->anOID_len);
 
-      ttgt->init = NEW;
       ttgt->next = NULL;
 }
 '{' tgt_directives '}'
