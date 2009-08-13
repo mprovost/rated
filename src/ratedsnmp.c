@@ -433,8 +433,6 @@ void *poller(void *thread_args)
                     goto cleanup;
                 }
 
-                //(double) tv1.tv_usec / MEGA + tv1.tv_sec
-
                 if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / (%d - %d = %.15f) = %.15f\n", 
                     result, entry->current->last_value, insert_val, (double) current_time.tv_usec / MEGA + current_time.tv_sec, (double) entry->current->last_time.tv_usec / MEGA + entry->current->last_time.tv_sec, timediff(current_time, entry->current->last_time), rate);
 
@@ -503,7 +501,6 @@ cleanup:
             /* loop_count++; */
 
             if (set->verbose >= HIGH) {
-                //host = host_dummy.next;
                 entry->current = entry->getnexts;
                 while (entry->current) {
                     print_objid(entry->current->anOID, entry->current->anOID_len);
