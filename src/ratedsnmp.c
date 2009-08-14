@@ -293,7 +293,7 @@ void *poller(void *thread_args)
             getnexts = 0;
 
             gettimeofday(&now, NULL);
-            begin_time = now.tv_sec * 1000 + now.tv_usec / 1000; /* convert to milliseconds */
+            begin_time = tv2ms(now);
 
             /* keep doing getnexts */
             while (anOID) {
@@ -496,7 +496,7 @@ cleanup:
                 }
             } /* while (anOID) */
             gettimeofday(&now, NULL);
-            end_time = now.tv_sec * 1000 + now.tv_usec / 1000; /* convert to milliseconds */
+            end_time = tv2ms(now);
             tdebug(HIGH, "%u getnexts in %.0f ms (%.0f/s)\n", getnexts, end_time - begin_time, (1000 / (end_time - begin_time)) * getnexts);
             /* loop_count++; */
 
