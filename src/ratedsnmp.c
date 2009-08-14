@@ -24,20 +24,18 @@ void cleanup_db(void *arg)
     db_disconnect();
 }
 
-int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, unsigned long long *result, struct timeval *current_time) {
+int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, unsigned long long *result, struct timeval *current_time) {
     netsnmp_pdu *pdu;
     netsnmp_pdu *response;
     netsnmp_variable_list *vars;
     netsnmp_session *session;
     int getnext_status = 0;
     int return_status = 0;
-    char *oid_string;
-    char *result_string;
+    char result_string[SPRINT_MAX_LEN];
 
     pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
     snmp_add_null_var(pdu, anOID, *anOID_len);
 
-    oid_string = (char*)malloc(SPRINT_MAX_LEN);
     /* TODO check return value */
     snprint_objid(oid_string, SPRINT_MAX_LEN, anOID, *anOID_len);
     session = snmp_sess_session(sessp);
@@ -49,6 +47,11 @@ int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, unsigned long long 
     /* Get the current time */
     gettimeofday(current_time, NULL);
 
+    /* convert the opaque session pointer back into a session struct for debug output */
+    session = snmp_sess_session(sessp);
+    /* convert the result oid to a string for debug */
+    snprint_objid(oid_string, SPRINT_MAX_LEN, vars->name, vars->name_length);
+
     /* Collect response and process stats */
     PT_MUTEX_LOCK(&stats.mutex);
     if (getnext_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
@@ -58,25 +61,14 @@ int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, unsigned long long 
         stats.polls++;
         PT_MUTEX_UNLOCK(&stats.mutex);
 
-        if (set->verbose >= DEBUG) {
-            /* convert the opaque session pointer back into a session struct for debug output */
-            session = snmp_sess_session(sessp);
 
-            /* we only do this if we're printing out debug, so don't allocate memory unless we need it */
-            /* this seems like a waste but it's difficult to predict the length of the result string
-             * maybe use sprint_realloc_value but it's a PITA */
-            result_string = (char*)malloc(SPRINT_MAX_LEN);
+        if (set->verbose >= DEBUG) {
             /* this results in something like 'Counter64: 11362777584380' */
             /* TODO check return value */
             snprint_value(result_string, SPRINT_MAX_LEN, vars->name, vars->name_length, vars);
-            oid_string = (char*)malloc(SPRINT_MAX_LEN);
             /* TODO check return value */
-            snprint_objid(oid_string, SPRINT_MAX_LEN, vars->name, vars->name_length);
             /* don't use tdebug because there's a signal race between when we malloc the memory and here */
             debug_all("(%s@%s) %s\n", oid_string, session->peername, result_string);
-
-            free(result_string);
-            free(oid_string);
         }
         switch (vars->type) {
             /*
@@ -121,19 +113,11 @@ int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, unsigned long long 
                 *result = 0;
                 return_status = 0;
         } /* switch (vars->type) */
-        /* copy the next oid so we can be called again */
-        oid_string = (char*)malloc(SPRINT_MAX_LEN);
-        snprint_objid(oid_string, SPRINT_MAX_LEN, vars->name, vars->name_length);
         debug(LOW, "Setting next: (%s@%s)\n", oid_string, session->peername);
         memmove(anOID, vars->name, vars->name_length * sizeof(oid));
         *anOID_len = vars->name_length;
-        free(oid_string);
     } else { 
         return_status = 0; /* error */
-        /* convert the opaque session pointer back into a session struct for debug output */
-        session = snmp_sess_session(sessp);
-        oid_string = (char*)malloc(SPRINT_MAX_LEN);
-        snprint_objid(oid_string, SPRINT_MAX_LEN, anOID, *anOID_len);
 
         switch (getnext_status) {
             case STAT_DESCRIP_ERROR:
@@ -158,7 +142,6 @@ int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, unsigned long long 
                 break;
         }
         PT_MUTEX_UNLOCK(&stats.mutex);
-        free(oid_string);
 
         anOID = NULL;
         anOID_len = 0;
@@ -196,6 +179,7 @@ void *poller(void *thread_args)
     int db_error = FALSE;
     oid *anOID;
     size_t *anOID_len;
+    char oid_string[SPRINT_MAX_LEN];
 
     /* for thread settings */
     int oldstate, oldtype;
@@ -303,7 +287,7 @@ void *poller(void *thread_args)
                 db_error = FALSE;
 
                 /* do the actual snmp poll */
-                getnext_status = snmp_getnext(sessp, anOID, anOID_len, &result, &current_time);
+                getnext_status = snmp_getnext(sessp, anOID, anOID_len, oid_string, &result, &current_time);
 
                 if (!getnext_status) {
                     /* skip to next oid */
@@ -421,7 +405,7 @@ void *poller(void *thread_args)
                     rate = insert_val / timediff(current_time, entry->current->last_time);
 
                     tdebug(LOW, "*** Counter Wrap (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
-                        entry->objoid, host->session.peername, result, entry->current->last_value, insert_val);
+                        oid_string, host->session.peername, result, entry->current->last_value, insert_val);
                 /* Not a counter wrap and this is not the first poll 
                  * the last_time should be 0 on the first poll */
                 } else if ((entry->current->last_value >= 0) && (entry->current->last_time.tv_sec > 0)) {
