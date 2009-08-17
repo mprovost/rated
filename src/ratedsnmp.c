@@ -43,6 +43,7 @@ int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, u
 
     /* this will free the pdu on error so we can't save them for reuse between rounds */
     getnext_status = snmp_sess_synch_response(sessp, pdu, &response);
+    vars = response->variables;
 
     /* Get the current time */
     gettimeofday(current_time, NULL);
@@ -55,7 +56,6 @@ int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, u
     /* Collect response and process stats */
     PT_MUTEX_LOCK(&stats.mutex);
     if (getnext_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
-        vars = response->variables;
         return_status = 1; /* success */
 
         stats.polls++;
