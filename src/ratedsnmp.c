@@ -61,14 +61,11 @@ int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, u
         stats.polls++;
         PT_MUTEX_UNLOCK(&stats.mutex);
 
-
         if (set->verbose >= DEBUG) {
             /* this results in something like 'Counter64: 11362777584380' */
             /* TODO check return value */
             snprint_value(result_string, SPRINT_MAX_LEN, vars->name, vars->name_length, vars);
-            /* TODO check return value */
-            /* don't use tdebug because there's a signal race between when we malloc the memory and here */
-            debug_all("(%s@%s) %s\n", oid_string, session->peername, result_string);
+            debug(HIGH, "(%s@%s) %s\n", oid_string, session->peername, result_string);
         }
         switch (vars->type) {
             /*
