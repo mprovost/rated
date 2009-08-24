@@ -212,16 +212,22 @@ int main(int argc, char *argv[]) {
 	PT_MUTEX_UNLOCK(&(crew.mutex));
 
 	gettimeofday(&now, NULL);
+        stats.round++;
         /* TODO inline */
         /* this isn't accurate anymore since the final thread(s) will still be running */
 	end_time = tv2ms(now);
 	stats.poll_time = end_time - begin_time;
-        stats.round++;
-	sleep_time = set->interval - stats.poll_time;
+        /* don't underflow */
+        if (stats.poll_time < set->interval) {
+	    sleep_time = set->interval - stats.poll_time;
+        /* never sleep longer than the default */
+        } else {
+            sleep_time = set->interval;
+        }
 
-	if (sleep_time <= 0)
+        if (sleep_time <= 0)
             stats.slow++;
-	else
+        else
             sleepy(sleep_time, set);
 
 	debug(LOW, "Poll round %d complete.\n", stats.round);
