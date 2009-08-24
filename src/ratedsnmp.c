@@ -24,13 +24,13 @@ void cleanup_db(void *arg)
     db_disconnect();
 }
 
-int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, unsigned long long *result, struct timeval *current_time) {
+short snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, unsigned long long *result, struct timeval *current_time) {
     netsnmp_pdu *pdu;
     netsnmp_pdu *response;
     netsnmp_variable_list *vars;
     netsnmp_session *session;
     int getnext_status = 0;
-    int return_status = 0;
+    short bits;
     char result_string[SPRINT_MAX_LEN];
 
     pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
@@ -56,7 +56,7 @@ int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, u
     /* Collect response and process stats */
     PT_MUTEX_LOCK(&stats.mutex);
     if (getnext_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
-        return_status = 1; /* success */
+        bits = 32; /* default */
 
         stats.polls++;
         PT_MUTEX_UNLOCK(&stats.mutex);
@@ -72,6 +72,7 @@ int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, u
              * Switch over vars->type and modify/assign result accordingly.
              */
             case ASN_COUNTER64:
+                bits = 64;
                 *result = vars->val.counter64->high;
                 *result = *result << 32;
                 *result = *result + vars->val.counter64->low;
@@ -83,6 +84,7 @@ int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, u
                 *result = (unsigned long) *(vars->val.integer);
                 break;
             case ASN_GAUGE:
+                bits = 0;
                 *result = (unsigned long) *(vars->val.integer);
                 break;
             case ASN_TIMETICKS:
@@ -101,20 +103,20 @@ int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, u
                 if (*result == ULONG_MAX && errno == ERANGE) {
 #endif
                     debug(LOW, "Negative number found: %s\n", vars->val.string);
-                    return_status = -1;
+                    bits = -1;
                 }
                 break;
             default:
                 /* no result that we can use, restart the polling loop */
                 /* TODO should we remove this target from the list? */
                 *result = 0;
-                return_status = 0;
+                bits = -1;
         } /* switch (vars->type) */
         debug(LOW, "Setting next: (%s@%s)\n", oid_string, session->peername);
         memmove(anOID, vars->name, vars->name_length * sizeof(oid));
         *anOID_len = vars->name_length;
     } else { 
-        return_status = 0; /* error */
+        bits = -1; /* error */
 
         switch (getnext_status) {
             case STAT_DESCRIP_ERROR:
@@ -146,7 +148,7 @@ int snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, u
 
     if (response)
         snmp_free_pdu(response);
-    return return_status;
+    return bits;
 }
 
 void *poller(void *thread_args)
@@ -157,7 +159,7 @@ void *poller(void *thread_args)
     target_t *head;
     target_t *entry = NULL;
     netsnmp_session *sessp;
-    int getnext_status = 0;
+    short bits;
     unsigned int getnexts;
     getnext_t *getnext_scratch;
     unsigned long long result = 0;
@@ -284,11 +286,11 @@ void *poller(void *thread_args)
                 db_error = FALSE;
 
                 /* do the actual snmp poll */
-                getnext_status = snmp_getnext(sessp, anOID, anOID_len, oid_string, &result, &current_time);
+                bits = snmp_getnext(sessp, anOID, anOID_len, oid_string, &result, &current_time);
 
-                if (!getnext_status) {
+                if (bits < 0) {
                     /* skip to next oid */
-                    tdebug(DEBUG, "!getnext_status\n");
+                    tdebug(DEBUG, "bits < 0\n");
                     continue;
                 }
 
@@ -372,7 +374,7 @@ void *poller(void *thread_args)
                     entry->current = entry->getnexts;
                 }
 
-                tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi\n", result, entry->current->last_value, entry->bits);
+                tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi\n", result, entry->current->last_value, bits);
 
                 /* zero delta */
                 /* TODO zero result on first poll */
@@ -387,7 +389,7 @@ void *poller(void *thread_args)
                         goto cleanup;
                     }
                 /* gauges */
-                } else if (entry->bits == 0) {
+                } else if (bits == 0) {
                     insert_val = result;
                 /* treat all other values as counters */
                 /* Counter Wrap Condition */
@@ -396,8 +398,8 @@ void *poller(void *thread_args)
                     stats.wraps++;
                     PT_MUTEX_UNLOCK(&stats.mutex);
 
-                    if (entry->bits == 32) insert_val = (THIRTYTWO - entry->current->last_value) + result;
-                    else if (entry->bits == 64) insert_val = (SIXTYFOUR - entry->current->last_value) + result;
+                    if (bits == 32) insert_val = (THIRTYTWO - entry->current->last_value) + result;
+                    else if (bits == 64) insert_val = (SIXTYFOUR - entry->current->last_value) + result;
 
                     rate = insert_val / timediff(current_time, entry->current->last_time);
 
@@ -467,10 +469,10 @@ cleanup:
                 if (!db_error) {
                     entry->current->last_time = current_time;	
                     /* Only if we received a positive result back do we update the entry->current->last_value */
-                    if (getnext_status) {
+                    if (bits >= 0) {
                         entry->current->last_value = result;
                     } else {
-                        tdebug(DEBUG, "no success:%i!\n", getnext_status);
+                        tdebug(DEBUG, "no success:%i!\n", bits);
                     }
                 } else {
                     tdebug(DEBUG, "db_reconnect = %i db_error = %i!\n", db_reconnect, db_error);
