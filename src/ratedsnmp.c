@@ -416,8 +416,8 @@ void *poller(void *thread_args)
                     goto cleanup;
                 }
 
-                if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / (%d - %d = %.15f) = %.15f\n", 
-                    result, entry->current->last_value, insert_val, (double) current_time.tv_usec / MEGA + current_time.tv_sec, (double) entry->current->last_time.tv_usec / MEGA + entry->current->last_time.tv_sec, timediff(current_time, entry->current->last_time), rate);
+                if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / (%lums - %lums = %.15fs) = %.15f\n", 
+                    result, entry->current->last_value, insert_val, tv2ms(current_time), tv2ms(entry->current->last_time), timediff(current_time, entry->current->last_time), rate);
 
                 /* TODO do we need to check for zero values again? */
                 /*
