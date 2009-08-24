@@ -128,15 +128,9 @@ tgt_directives        : tgt_directives tgt_directive
               | tgt_directive
               ;
 
-tgt_directive : bits_directive
-              | table_directive
+tgt_directive : table_directive
               | id_directive
               ;
-
-bits_directive        : TGT_BITS L_NUMBER
-{
-      ttgt->bits = $2;
-};
 
 table_directive       : TGT_TBL L_IDENT
 {
