@@ -42,6 +42,7 @@ PGconn* getpgsql() {
 	return(pgsql);
 }
 
+/* TODO just modify output in place and return length */
 /* utility function to safely escape table names */
 char *escape_string(char *output, char *input)
 {
@@ -129,7 +130,7 @@ int __db_disconnect() {
 }
 
 
-int __db_insert(char *table, int iid, unsigned long long insert_val, double insert_rate) {
+int __db_insert(char *table, unsigned long iid, unsigned long long insert_val, double insert_rate) {
 	PGconn *pgsql = getpgsql();
 
 	char *query;
@@ -152,11 +153,11 @@ int __db_insert(char *table, int iid, unsigned long long insert_val, double inse
         if (insert_rate > 0) {
             /* double columns have precision of at least 15 digits */
             asprintf(&query,
-                "INSERT INTO \"%s\" (id,dtime,counter,rate) VALUES (%d,NOW(),%llu,%.15f)",
+                "INSERT INTO \"%s\" (id,dtime,counter,rate) VALUES (%lu,NOW(),%llu,%.15f)",
                 table_esc, iid, insert_val, insert_rate);
         } else {
             asprintf(&query,
-                "INSERT INTO \"%s\" (id,dtime,counter) VALUES (%d,NOW(),%llu)",
+                "INSERT INTO \"%s\" (id,dtime,counter) VALUES (%lu,NOW(),%llu)",
                 table_esc, iid, insert_val);
         }
 
@@ -182,4 +183,53 @@ int __db_insert(char *table, int iid, unsigned long long insert_val, double inse
 
             return FALSE;
 	}
+}
+
+unsigned long __db_lookup_oid(char *oid) {
+    PGconn *pgsql = getpgsql();
+
+    unsigned long iid;
+    char *query;
+    char *oid_esc;
+
+    PGresult *result;
+
+    if (pgsql == NULL) {
+        debug(LOW, "No Postgres connection in db_lookup_oid\n");
+        return 0;
+    }
+
+    oid_esc = escape_string(oid_esc, oid);
+
+    asprintf(&query,
+        "SELECT \"iid\" from \"oids\" WHERE \"oid\" = \'%s\'",
+        oid_esc);
+
+    free(oid_esc);
+
+    debug(HIGH, "Query = %s\n", query);
+
+    result = PQexec(pgsql, query);
+
+    free(query);
+
+    if (PQresultStatus(result) == PGRES_TUPLES_OK) {
+        if (PQntuples(result) == 1) {
+            debug(LOW, "ntuples = %i\n", PQntuples(result));
+            iid = strtoul(PQgetvalue(result, 0, 0), NULL, 0);
+        } else {
+            debug(LOW, "ntuples = 0\n", PQntuples(result));
+            iid = 0;
+        }
+    } else {
+        debug(LOW, "Postgres %s", PQerrorMessage(pgsql));
+        iid = 0;
+    }
+
+    debug(DEBUG, "iid = %lu\n", iid);
+
+    /* free the result */
+    (void)PQclear(result);
+
+    return iid;
 }

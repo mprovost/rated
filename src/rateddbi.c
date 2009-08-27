@@ -65,6 +65,11 @@ int db_init(config_t *set) {
 		return FALSE;
 	}
 
+	if ((db_lookup_oid = lt_dlsym(dbhandle, "__db_lookup_oid")) == NULL) {
+		debug(LOW, "Couldn't load db_lookup_oid: %s\n",(char *) lt_dlerror());
+		return FALSE;
+	}
+
         db_test();
 	return TRUE;
 }

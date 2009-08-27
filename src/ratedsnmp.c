@@ -438,7 +438,11 @@ void *poller(void *thread_args)
                                 goto cleanup;
                             }
                         }
-                        tdebug(DEVELOP, "db_insert sent: %s %d %llu %.15f\n", entry->table, entry->iid, insert_val, rate);
+                entry->current->iid = db_lookup_oid(oid_string);
+
+                tdebug(DEBUG, "iid = %lu\n", entry->current->iid);
+
+                        tdebug(DEVELOP, "db_insert sent: %s %u %llu %.15f\n", entry->table, entry->iid, insert_val, rate);
                         /* insert into the database */
                         if (db_insert(entry->table, entry->iid, insert_val, rate)) {
                             PT_MUTEX_LOCK(&stats.mutex);

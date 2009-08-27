@@ -10,6 +10,7 @@ typedef struct getnext_struct {
     char *objoid;
     oid anOID[MAX_OID_LEN];
     size_t anOID_len;
+    unsigned long iid;
     unsigned long long last_value;
     struct timeval last_time;
     struct getnext_struct *next;
