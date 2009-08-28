@@ -11,7 +11,7 @@ int __db_connect(config_t *config);
 int __db_disconnect();
 int __db_commit();
 int __db_insert(char *table, unsigned long iid, unsigned long long counter, double rate);
-unsigned long __db_lookup_oid(char *oid);
+int __db_lookup_oid(char *, unsigned long *);
 
 /*
  * we have to jump through some hoops when we load the functions from a library
@@ -22,4 +22,4 @@ int (*db_connect)(config_t *config);
 int (*db_disconnect)();
 int (*db_commit)();
 int (*db_insert)(char *table, unsigned long iid, unsigned long long counter, double rate);
-unsigned long (*db_lookup_oid)(char *oid);
+int (*db_lookup_oid)(char *oid, unsigned long *iid);

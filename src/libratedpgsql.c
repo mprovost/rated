@@ -185,13 +185,46 @@ int __db_insert(char *table, unsigned long iid, unsigned long long insert_val, d
 	}
 }
 
-unsigned long __db_lookup_oid(char *oid) {
+/*
+ * insert an (escaped) snmp oid into the database and update the iid
+ * this probably only gets called by __db_lookup_oid 
+ */
+int __db_insert_oid(PGconn *pgsql, char *oid_esc, unsigned long *iid) {
+    
+    int status;
+    char *query;
+    PGresult *result;
+
+    asprintf(&query,
+        "INSERT INTO \"oids\" (oid) VALUES (\'%s\') RETURNING iid",
+        oid_esc);
+
+    debug(HIGH, "Query = %s\n", query);
+
+    result = PQexec(pgsql, query);
+
+    free(query);
+
+    if (PQresultStatus(result) == PGRES_TUPLES_OK) {
+        *iid = strtoul(PQgetvalue(result, 0, 0), NULL, 0);
+        status = TRUE;
+    } else {
+        debug(LOW, "Postgres %s", PQerrorMessage(pgsql));
+        status = FALSE;
+    }
+
+    (void)PQclear(result);
+
+    return status;
+}
+
+/* lookup the iid of an snmp oid in the database */
+int __db_lookup_oid(char *oid, unsigned long *iid) {
     PGconn *pgsql = getpgsql();
 
-    unsigned long iid;
+    int status;
     char *query;
     char *oid_esc;
-
     PGresult *result;
 
     if (pgsql == NULL) {
@@ -205,8 +238,6 @@ unsigned long __db_lookup_oid(char *oid) {
         "SELECT \"iid\" from \"oids\" WHERE \"oid\" = \'%s\'",
         oid_esc);
 
-    free(oid_esc);
-
     debug(HIGH, "Query = %s\n", query);
 
     result = PQexec(pgsql, query);
@@ -217,26 +248,31 @@ unsigned long __db_lookup_oid(char *oid) {
         switch (PQntuples(result)) {
             case 1:
                 debug(LOW, "ntuples = %i\n", PQntuples(result));
-                iid = strtoul(PQgetvalue(result, 0, 0), NULL, 0);
+                *iid = strtoul(PQgetvalue(result, 0, 0), NULL, 0);
+                status = TRUE;
                 break;
             case 0:
                 debug(LOW, "ntuples = 0\n", PQntuples(result));
-                iid = 0;
+                status = -1; /* do an insert below */
                 break;
             default:
                 /* this shouldn't happen */
                 debug(LOW, "ntuples = %i\n", PQntuples(result));
-                iid = 0;
+                status = FALSE;
         }
     } else {
         debug(LOW, "Postgres %s", PQerrorMessage(pgsql));
-        iid = 0;
+        status = FALSE;
     }
 
-    debug(DEBUG, "iid = %lu\n", iid);
-
-    /* free the result */
+    /* free the result before we reuse the connection */
     (void)PQclear(result);
 
-    return iid;
+    if (status == -1) {
+        status = __db_insert_oid(pgsql, oid_esc, iid);
+    }
+
+    free(oid_esc);
+
+    return status;
 }

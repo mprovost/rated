@@ -439,28 +439,40 @@ void *poller(void *thread_args)
                                 goto cleanup;
                             }
                         }
-                entry->current->iid = db_lookup_oid(oid_string);
 
-                tdebug(DEBUG, "iid = %lu\n", entry->current->iid);
-
-                        tdebug(DEVELOP, "db_insert sent: %s %u %llu %.15f\n", entry->table, entry->iid, insert_val, rate);
-                        /* insert into the database */
-                        if (db_insert(entry->table, entry->iid, insert_val, rate)) {
-                            PT_MUTEX_LOCK(&stats.mutex);
-                            stats.db_inserts++;
-                            PT_MUTEX_UNLOCK(&stats.mutex);
+                        /* get the oid->iid mapping from the db */
+                        if (db_lookup_oid(oid_string, &entry->current->iid)) {
+                            tdebug(DEVELOP, "db_insert sent: %s %u %llu %.15f\n", entry->table, entry->current->iid, insert_val, rate);
+                            /* insert into the database */
+                            if (db_insert(entry->table, entry->current->iid, insert_val, rate)) {
+                                PT_MUTEX_LOCK(&stats.mutex);
+                                stats.db_inserts++;
+                                PT_MUTEX_UNLOCK(&stats.mutex);
+                            } else {
+                                db_error = TRUE;
+                                PT_MUTEX_LOCK(&stats.mutex);
+                                stats.db_errors++;
+                                PT_MUTEX_UNLOCK(&stats.mutex);
+                                if (!db_status()) {
+                                    /* first disconnect to close the handle */
+                                    db_disconnect();
+                                    /* try and reconnect on the next poll */
+                                    db_reconnect = TRUE;
+                                }
+                            }
                         } else {
                             db_error = TRUE;
                             PT_MUTEX_LOCK(&stats.mutex);
                             stats.db_errors++;
                             PT_MUTEX_UNLOCK(&stats.mutex);
+                            /* TODO dedupe */
                             if (!db_status()) {
                                 /* first disconnect to close the handle */
                                 db_disconnect();
                                 /* try and reconnect on the next poll */
                                 db_reconnect = TRUE;
                             }
-                        }
+                        } /* db_lookup_oid */
                     } /* zero */
                 } /* !dboff */
 
