@@ -356,7 +356,8 @@ void *poller(void *thread_args)
                         }
                     }
                     /* end of list, append a new one */
-                    if (entry->current->next == NULL) {
+                    /* don't append last item twice on second poll */
+                    if (entry->current->next == NULL && memcmp(anOID, entry->current->anOID, *anOID_len * sizeof(oid)) != 0) {
                         tdebug(DEBUG, "appending getnext\n");
                         entry->current->next = malloc(sizeof(getnext_t));
                         entry->current->next->next = NULL;

@@ -214,12 +214,19 @@ unsigned long __db_lookup_oid(char *oid) {
     free(query);
 
     if (PQresultStatus(result) == PGRES_TUPLES_OK) {
-        if (PQntuples(result) == 1) {
-            debug(LOW, "ntuples = %i\n", PQntuples(result));
-            iid = strtoul(PQgetvalue(result, 0, 0), NULL, 0);
-        } else {
-            debug(LOW, "ntuples = 0\n", PQntuples(result));
-            iid = 0;
+        switch (PQntuples(result)) {
+            case 1:
+                debug(LOW, "ntuples = %i\n", PQntuples(result));
+                iid = strtoul(PQgetvalue(result, 0, 0), NULL, 0);
+                break;
+            case 0:
+                debug(LOW, "ntuples = 0\n", PQntuples(result));
+                iid = 0;
+                break;
+            default:
+                /* this shouldn't happen */
+                debug(LOW, "ntuples = %i\n", PQntuples(result));
+                iid = 0;
         }
     } else {
         debug(LOW, "Postgres %s", PQerrorMessage(pgsql));
