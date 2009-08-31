@@ -128,18 +128,11 @@ tgt_directives        : tgt_directives tgt_directive
               | tgt_directive
               ;
 
-tgt_directive : table_directive
-              | id_directive
-              ;
+tgt_directive : table_directive;
 
 table_directive       : TGT_TBL L_IDENT
 {
       ttgt->table = $2;
-};
-
-id_directive  : TGT_ID L_NUMBER
-{
-      ttgt->iid = $2;
 };
 
 %%

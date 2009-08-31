@@ -21,7 +21,6 @@ typedef struct target_struct {
     oid anOID[MAX_OID_LEN];
     size_t anOID_len;
     char *table;
-    unsigned int iid;
     struct getnext_struct *getnexts;
     struct getnext_struct *current;
     struct target_struct *next;
