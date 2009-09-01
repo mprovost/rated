@@ -458,9 +458,14 @@ void *poller(void *thread_args)
                             }
                         }
 
-                        tdebug(DEVELOP, "db_insert sent: %s %u %llu %.15f\n", entry->table, entry->current->iid, insert_val, rate);
+                        if (entry->table_esc == NULL) {
+                            entry->table_esc = db_escape_string(entry->table);
+                            debug(DEBUG, "entry->table_esc = %s\n", entry->table_esc);
+                        }
+
+                        tdebug(DEVELOP, "db_insert sent: %s, %u %llu %.15f\n", entry->table_esc, entry->current->iid, insert_val, rate);
                         /* insert into the database */
-                        if (db_insert(entry->table, entry->current->iid, insert_val, rate)) {
+                        if (db_insert(entry->table_esc, entry->current->iid, insert_val, rate)) {
                             PT_MUTEX_LOCK(&stats.mutex);
                             stats.db_inserts++;
                             PT_MUTEX_UNLOCK(&stats.mutex);
@@ -476,6 +481,7 @@ void *poller(void *thread_args)
                                 db_reconnect = TRUE;
                             }
                         } /* db_insert */
+                        tdebug(DEVELOP, "entry->table_esc: %s\n", entry->table_esc);
                     } /* zero */
                 } /* !dboff */
 

@@ -70,6 +70,11 @@ int db_init(config_t *set) {
 		return FALSE;
 	}
 
+	if ((db_escape_string = lt_dlsym(dbhandle, "__db_escape_string")) == NULL) {
+		debug(LOW, "Couldn't load db_escape_string: %s\n",(char *) lt_dlerror());
+		return FALSE;
+	}
+
         db_test();
 	return TRUE;
 }

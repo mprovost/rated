@@ -42,29 +42,41 @@ PGconn* getpgsql() {
 	return(pgsql);
 }
 
-/* TODO just modify output in place and return length */
 /* utility function to safely escape table names */
-char *escape_string(char *output, char *input)
+char *escape_string(PGconn *pgsql, const char *input)
 {
 	/* length of string */
 	size_t input_len = strlen(input);
+        char *scratch;
+        size_t scratch_len;
+        char *output;
 
-	/* target for PQescapeString */
 	/* worst case is every char escaped plus terminating NUL */
-	char *scratch = malloc(input_len*2+1);
+        scratch = malloc(input_len*2+1);
 
 	/* TODO check return */
 	/* escape the string */
-	PQescapeString(scratch, input, input_len);
+	scratch_len = PQescapeStringConn(pgsql, scratch, input, input_len, NULL);
 
-	/* set output to correct length string */
-	asprintf(&output, "%s", scratch);
+        debug(DEBUG, "scratch = %s\n", scratch);
+
+        output = strdup(scratch);
+
+        debug(DEBUG, "output = %s\n", output);
 
 	free(scratch);
 
-	return output;
+        debug(DEBUG, "output = %s\n", output);
+
+        return output;
 }
 
+/* wrapper function for escaping strings to be called externally */
+char *__db_escape_string(const char *input) {
+	PGconn *pgsql = getpgsql();
+
+        return escape_string(pgsql, input);
+}
 
 int __db_test() {
 	return 1;
@@ -129,12 +141,14 @@ int __db_disconnect() {
 	return TRUE;
 }
 
-
-int __db_insert(char *table, unsigned long iid, unsigned long long insert_val, double insert_rate) {
+/*
+ * insert a row into the db
+ * this expects an escaped table name
+ */
+int __db_insert(const char *table_esc, unsigned long iid, unsigned long long insert_val, double insert_rate) {
 	PGconn *pgsql = getpgsql();
 
 	char *query;
-	char *table_esc;
 	ExecStatusType status;
 
 	PGresult *result;
@@ -144,11 +158,7 @@ int __db_insert(char *table, unsigned long iid, unsigned long long insert_val, d
             return FALSE;
         }
 
-	/* size_t PQescapeString (char *to, const char *from, size_t length); */
 	/* INSERT INTO %s (id,dtime,counter,rate) VALUES (%d, NOW(), %llu, %.6f) */
-	/* escape table name */
-	table_esc = escape_string(table_esc, table);
-
         /* don't include the rate column if it's not needed */
         if (insert_rate > 0) {
             /* double columns have precision of at least 15 digits */
@@ -160,8 +170,6 @@ int __db_insert(char *table, unsigned long iid, unsigned long long insert_val, d
                 "INSERT INTO \"%s\" (id,dtime,counter) VALUES (%lu,NOW(),%llu)",
                 table_esc, iid, insert_val);
         }
-
-	free(table_esc);
 
 	debug(HIGH, "Query = %s\n", query);
 
@@ -189,7 +197,7 @@ int __db_insert(char *table, unsigned long iid, unsigned long long insert_val, d
  * insert an (escaped) snmp oid into the database and update the iid
  * this probably only gets called by __db_lookup_oid 
  */
-int __db_insert_oid(PGconn *pgsql, char *oid_esc, unsigned long *iid) {
+int db_insert_oid(PGconn *pgsql, char *oid_esc, unsigned long *iid) {
     
     int status;
     char *query;
@@ -232,7 +240,9 @@ int __db_lookup_oid(char *oid, unsigned long *iid) {
         return 0;
     }
 
-    oid_esc = escape_string(oid_esc, oid);
+    oid_esc = escape_string(pgsql, oid);
+
+    debug(DEBUG, "oid_esc = %s\n", oid_esc);
 
     asprintf(&query,
         "SELECT \"iid\" from \"oids\" WHERE \"oid\" = \'%s\'",
@@ -247,12 +257,12 @@ int __db_lookup_oid(char *oid, unsigned long *iid) {
     if (PQresultStatus(result) == PGRES_TUPLES_OK) {
         switch (PQntuples(result)) {
             case 1:
-                debug(LOW, "ntuples = %i\n", PQntuples(result));
+                debug(LOW, "ntuples = 1\n");
                 *iid = strtoul(PQgetvalue(result, 0, 0), NULL, 0);
                 status = TRUE;
                 break;
             case 0:
-                debug(LOW, "ntuples = 0\n", PQntuples(result));
+                debug(LOW, "ntuples = 0\n");
                 status = -1; /* do an insert below */
                 break;
             default:
@@ -269,7 +279,7 @@ int __db_lookup_oid(char *oid, unsigned long *iid) {
     (void)PQclear(result);
 
     if (status == -1) {
-        status = __db_insert_oid(pgsql, oid_esc, iid);
+        status = db_insert_oid(pgsql, oid_esc, iid);
     }
 
     free(oid_esc);
