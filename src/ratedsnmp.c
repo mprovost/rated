@@ -196,11 +196,19 @@ void *poller(void *thread_args)
         pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &oldtype);
     }
 
+    /*
+     * crew->running is initialised to the number of threads, count
+     * down to 0 as we start up this means that from the first poll
+     * we can count up again as we get a target and back down when
+     * we're finished to tell when all the threads are done each 
+     * round
+     */
     PT_MUTEX_LOCK(&crew->mutex);
-    tdebug(HIGH, "running.\n");
-    crew->running++;
+    crew->running--;
+    tdebug(HIGH, "running = %i\n", crew->running);
     PT_MUTEX_UNLOCK(&crew->mutex);
 
+    /* TODO change these to stack allocated */
     anOID = malloc(MAX_OID_LEN * sizeof(oid));
     anOID_len = malloc(sizeof(size_t));
 
@@ -246,6 +254,8 @@ void *poller(void *thread_args)
 
         /* we have a host, release the lock */
 	tdebug(DEVELOP, "unlocking (done grabbing current = %s)\n", host->host);
+        crew->running++;
+        tdebug(HIGH, "running++ = %i\n", crew->running);
 	PT_MUTEX_UNLOCK(&crew->mutex);
 
         /* take the unlock off the cancel stack */
@@ -255,6 +265,7 @@ void *poller(void *thread_args)
         head = host->current;
 
         /* open an snmp session once for all targets for this host for this round */
+        /* TODO only do it once at startup and store it in the host struct? */
         sessp = snmp_sess_open(&host->session);
 
         if (sessp == NULL) {
@@ -458,6 +469,7 @@ void *poller(void *thread_args)
                             }
                         }
 
+                        /* only escape the table name once */
                         if (entry->table_esc == NULL) {
                             entry->table_esc = db_escape_string(entry->table);
                             debug(DEBUG, "entry->table_esc = %s\n", entry->table_esc);
@@ -481,7 +493,6 @@ void *poller(void *thread_args)
                                 db_reconnect = TRUE;
                             }
                         } /* db_insert */
-                        tdebug(DEVELOP, "entry->table_esc: %s\n", entry->table_esc);
                     } /* zero */
                 } /* !dboff */
 
@@ -525,13 +536,16 @@ cleanup:
             snmp_sess_close(sessp);
         /* reset back to start */
         host->current = head;
-        /* done with targets for this host, check if it was the last host */
-        /* but other threads may still be doing their target lists... */
-        if (host->next == NULL) {
-            tdebug(HIGH, "Queue processed. Broadcasting thread done condition.\n");
-            /* this will wake up the main thread which will start sleeping for the next round */
-            PT_COND_BROAD(&crew->done);
-        }
+
+        PT_MUTEX_LOCK(&crew->mutex);
+        crew->running--;
+        tdebug(HIGH, "running-- = %i\n", crew->running);
+        /* done with targets for this host */
+        tdebug(HIGH, "Queue processed. Broadcasting thread done condition.\n");
+        /* this will wake up the main thread which will see if any other threads are still running */
+        /* TODO change to pthread_cond_signal? */
+        PT_COND_BROAD(&crew->done);
+        PT_MUTEX_UNLOCK(&crew->mutex);
     } /* while(1) */
     pthread_cleanup_pop(FALSE);
 } /* Not reached */

@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
     pthread_cond_init(&(crew.go), NULL);
 
     debug(HIGH, "Starting threads...");
-    crew.running = 0;
+    crew.running = set->threads;
     for (i = 0; i < set->threads; i++) {
         crew.member[i].index = i;
         crew.member[i].crew = &crew;
@@ -160,12 +160,12 @@ int main(int argc, char *argv[]) {
     ts.tv_nsec = 10000000; /* 10 ms */
     gettimeofday(&now, NULL);
     begin_time = tv2ms(now); /* convert to milliseconds */
-    while (crew.running < set->threads) {
+    while (crew.running > 0 ) {
 	nanosleep(&ts, NULL);
     }
     gettimeofday(&now, NULL);
     end_time = tv2ms(now); /* convert to milliseconds */
-    debug(HIGH, "Waited %ul milliseconds for thread startup.\n", end_time - begin_time);
+    debug(HIGH, "Waited %lu milliseconds for thread startup.\n", end_time - begin_time);
 
     /* build list of hosts to be polled */
     head = hash_target_file(target_file);
@@ -197,24 +197,24 @@ int main(int argc, char *argv[]) {
 
 	PT_MUTEX_LOCK(&(crew.mutex));
         crew.current = head;
-	PT_MUTEX_UNLOCK(&(crew.mutex));
 	    
 	debug(LOW, "Queue ready, broadcasting thread go condition.\n");
 
 	PT_COND_BROAD(&(crew.go));
-	PT_MUTEX_LOCK(&(crew.mutex));
+	PT_MUTEX_UNLOCK(&(crew.mutex));
 
-        /* wait for current to go NULL (end of host list) */
-        /* FIXME also wait for last target in last host */
-        while (crew.current) {
+        /*
+         * wait for signals from threads finishing
+         * we have to use a do loop because when this starts up the running count will be zero
+         * so wait at least once until we get a signal that some thread is done before checking for zero
+         */
+	PT_MUTEX_LOCK(&(crew.mutex));
+        do {
             PT_COND_WAIT(&(crew.done), &(crew.mutex));
-        }
+        } while (crew.running > 0);
 	PT_MUTEX_UNLOCK(&(crew.mutex));
 
 	gettimeofday(&now, NULL);
-        stats.round++;
-        /* TODO inline */
-        /* this isn't accurate anymore since the final thread(s) will still be running */
 	end_time = tv2ms(now);
 	stats.poll_time = end_time - begin_time;
         /* don't underflow */
@@ -225,16 +225,17 @@ int main(int argc, char *argv[]) {
             sleep_time = set->interval;
         }
 
-        if (sleep_time <= 0)
-            stats.slow++;
-        else
-            sleepy(sleep_time, set);
-
+        stats.round++;
 	debug(LOW, "Poll round %d complete.\n", stats.round);
 	if (set->verbose >= LOW) {
             print_stats(stats, set);
         }
-    } /* while */
+
+        if (sleep_time <= 0)
+            stats.slow++;
+        else
+            sleepy(sleep_time, set);
+    } /* while(1) */
     exit(0);
 }
 
