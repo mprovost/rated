@@ -346,7 +346,7 @@ void *poller(void *thread_args)
                             /* if greater, then create and insert a new getnext, this is the first poll for a new oid */
                             if (snmp_oid_compare(anOID, *anOID_len, entry->current->next->anOID, entry->current->next->anOID_len) > 0) {
                                 tdebug(DEBUG, "insert next\n");
-                                getnext_scratch = malloc(sizeof(getnext_t));
+                                getnext_scratch = calloc(1, sizeof(getnext_t));
                                 getnext_scratch->next = entry->current->next;
                                 memmove(getnext_scratch->anOID, anOID, *anOID_len * sizeof(oid));
                                 getnext_scratch->anOID_len = *anOID_len;
@@ -370,7 +370,7 @@ void *poller(void *thread_args)
                     /* don't append last item twice on second poll */
                     if (entry->current->next == NULL && memcmp(anOID, entry->current->anOID, *anOID_len * sizeof(oid)) != 0) {
                         tdebug(DEBUG, "appending getnext\n");
-                        entry->current->next = malloc(sizeof(getnext_t));
+                        entry->current->next = calloc(1, sizeof(getnext_t));
                         entry->current->next->next = NULL;
                         memmove(entry->current->next->anOID, anOID, *anOID_len * sizeof(oid));
                         entry->current->next->anOID_len = *anOID_len;
@@ -379,7 +379,7 @@ void *poller(void *thread_args)
                 /* first target of first poll */
                 } else {
                     tdebug(DEBUG, "entry->getnexts == NULL\n");
-                    entry->getnexts = malloc(sizeof(getnext_t));
+                    entry->getnexts = calloc(1, sizeof(getnext_t));
                     entry->getnexts->next = NULL;
                     memmove(entry->getnexts->anOID, anOID, *anOID_len * sizeof(oid));
                     entry->getnexts->anOID_len = *anOID_len;
@@ -469,13 +469,14 @@ void *poller(void *thread_args)
                             }
                         }
 
+                        /* TODO move up */
                         /* only escape the table name once */
                         if (entry->table_esc == NULL) {
                             entry->table_esc = db_escape_string(entry->table);
                             debug(DEBUG, "entry->table_esc = %s\n", entry->table_esc);
                         }
 
-                        tdebug(DEVELOP, "db_insert sent: %s, %u %llu %.15f\n", entry->table_esc, entry->current->iid, insert_val, rate);
+                        tdebug(DEVELOP, "db_insert sent: %s %lu %llu %.15f\n", entry->table_esc, entry->current->iid, insert_val, rate);
                         /* insert into the database */
                         if (db_insert(entry->table_esc, entry->current->iid, insert_val, rate)) {
                             PT_MUTEX_LOCK(&stats.mutex);
