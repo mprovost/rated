@@ -197,15 +197,15 @@ int __db_insert(const char *table_esc, unsigned long iid, unsigned long long ins
  * insert an (escaped) snmp oid into the database and update the iid
  * this probably only gets called by __db_lookup_oid 
  */
-int db_insert_oid(PGconn *pgsql, char *oid_esc, unsigned long *iid) {
+int db_insert_oid(PGconn *pgsql, char *host_esc, char *oid_esc, unsigned long *iid) {
     
     int status;
     char *query;
     PGresult *result;
 
     asprintf(&query,
-        "INSERT INTO \"oids\" (oid) VALUES (\'%s\') RETURNING iid",
-        oid_esc);
+        "INSERT INTO \"oids\" (host,oid) VALUES (\'%s\',\'%s\') RETURNING iid",
+        host_esc, oid_esc);
 
     debug(HIGH, "Query = %s\n", query);
 
@@ -227,11 +227,12 @@ int db_insert_oid(PGconn *pgsql, char *oid_esc, unsigned long *iid) {
 }
 
 /* lookup the iid of an snmp oid in the database */
-int __db_lookup_oid(char *oid, unsigned long *iid) {
+int __db_lookup_oid(char *host, char *oid, unsigned long *iid) {
     PGconn *pgsql = getpgsql();
 
     int status;
     char *query;
+    char *host_esc;
     char *oid_esc;
     PGresult *result;
 
@@ -240,13 +241,14 @@ int __db_lookup_oid(char *oid, unsigned long *iid) {
         return 0;
     }
 
+    host_esc = escape_string(pgsql, host);
     oid_esc = escape_string(pgsql, oid);
 
     debug(DEBUG, "oid_esc = %s\n", oid_esc);
 
     asprintf(&query,
-        "SELECT \"iid\" from \"oids\" WHERE \"oid\" = \'%s\'",
-        oid_esc);
+        "SELECT \"iid\" from \"oids\" WHERE \"host\" = \'%s\' AND \"oid\" = \'%s\'",
+        host_esc, oid_esc);
 
     debug(HIGH, "Query = %s\n", query);
 
@@ -279,9 +281,10 @@ int __db_lookup_oid(char *oid, unsigned long *iid) {
     (void)PQclear(result);
 
     if (status == -1) {
-        status = db_insert_oid(pgsql, oid_esc, iid);
+        status = db_insert_oid(pgsql, host_esc, oid_esc, iid);
     }
 
+    free(host_esc);
     free(oid_esc);
 
     return status;

@@ -11,7 +11,7 @@ int __db_connect(config_t *config);
 int __db_disconnect();
 int __db_commit();
 int __db_insert(const char *table_esc, unsigned long iid, unsigned long long counter, double rate);
-int __db_lookup_oid(char *, unsigned long *);
+int __db_lookup_oid(char *, char *, unsigned long *);
 char *__db_escape_string(const char *input);
 
 /*
@@ -23,5 +23,5 @@ int (*db_connect)(config_t *config);
 int (*db_disconnect)();
 int (*db_commit)();
 int (*db_insert)(const char *table, unsigned long iid, unsigned long long counter, double rate);
-int (*db_lookup_oid)(char *oid, unsigned long *iid);
+int (*db_lookup_oid)(char *host, char *oid, unsigned long *iid);
 char *(*db_escape_string)(const char *input);

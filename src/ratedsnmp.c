@@ -454,7 +454,7 @@ void *poller(void *thread_args)
                         /* check if we have a cached value for iid */
                         if (entry->current->iid == 0) {
                             /* get the oid->iid mapping from the db */
-                            if (!db_lookup_oid(oid_string, &entry->current->iid)) {
+                            if (!db_lookup_oid(host->host, oid_string, &entry->current->iid)) {
                                 db_error = TRUE;
                                 PT_MUTEX_LOCK(&stats.mutex);
                                 stats.db_errors++;
