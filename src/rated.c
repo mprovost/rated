@@ -216,13 +216,14 @@ int main(int argc, char *argv[]) {
 
 	gettimeofday(&now, NULL);
 	end_time = tv2ms(now);
+        /* we should be the only thread running so don't need to lock stats */
 	stats.poll_time = end_time - begin_time;
         /* don't underflow */
         if (stats.poll_time < set->interval) {
 	    sleep_time = set->interval - stats.poll_time;
-        /* never sleep longer than the default */
         } else {
-            sleep_time = set->interval;
+            sleep_time = 0;
+            stats.slow++;
         }
 
         stats.round++;
@@ -231,10 +232,11 @@ int main(int argc, char *argv[]) {
             print_stats(stats, set);
         }
 
-        if (sleep_time <= 0)
-            stats.slow++;
-        else
+        if (sleep_time > 0) {
             sleepy(sleep_time, set);
+        } else {
+            debug(LOW, "Slow poll, not sleeping\n");
+        }
     } /* while(1) */
     exit(0);
 }
