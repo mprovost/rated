@@ -15,7 +15,7 @@ token         [{};]
 endtoken      ;$
 newline       [\n]*
 whitespace    [ \t\v\f]+
-hashcmnt      ^#.*$
+hashcmnt      #.*$
 cppcmnt               "//".*$
 ipv4addr      ([0-9]{1,3}\.){1,3}[0-9]{1,3}
 oid           (\.[0-9]+)+
