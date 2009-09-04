@@ -469,8 +469,10 @@ void *poller(void *thread_args)
                             }
                         }
 
-                        /* TODO move up */
-                        /* only escape the table name once */
+                        /*
+                         * only escape the table name once
+                         * we need to do this after we have a db connection
+                         */
                         if (entry->table_esc == NULL) {
                             entry->table_esc = db_escape_string(entry->table);
                             debug(DEBUG, "entry->table_esc = %s\n", entry->table_esc);
