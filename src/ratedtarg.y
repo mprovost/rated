@@ -71,6 +71,7 @@ host_entry:   T_HOST L_IPADDR
       /* set up the snmp session */
       snmp_sess_init(&thst->session);
       thst->session.peername = thst->host;
+      /* TODO this is deprecated append to the peername */
       thst->session.remote_port = set->snmp_port;
 }
 '{' host_directives '}'
