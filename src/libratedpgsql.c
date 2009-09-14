@@ -289,3 +289,47 @@ int __db_lookup_oid(char *host, char *oid, unsigned long *iid) {
 
     return status;
 }
+
+/* internal function to check if a table exists in the database */
+int db_check_table(PGconn *pgsql, char *table) {
+    int status;
+    char *query;
+    char *db;
+    char *table_esc;
+    PGresult *result;
+
+    db = PQdb(pgsql);
+    table_esc = escape_string(pgsql, table);
+
+    asprintf(&query,
+        "SELECT \"table_name\" FROM information_schema.tables WHERE table_catalog = '%s' AND table_schema = 'public' AND table_name = '%s'",
+        db, table_esc);
+
+    debug(HIGH, "Query = %s\n", query);
+    result = PQexec(pgsql, query);
+    free(query);
+
+    if (PQresultStatus(result) == PGRES_TUPLES_OK) {
+        if (PQntuples(result) == 1) {
+            status = TRUE;
+        } else {
+            status = FALSE;
+        }
+    } else {
+        debug(LOW, "Postgres %s", PQerrorMessage(pgsql));
+        status = FALSE;
+    }
+
+    (void)PQclear(result);
+
+    free(table_esc);
+
+    return status;
+}
+
+int __db_check_oids_table() {
+    PGconn *pgsql = getpgsql();
+    char *oids = "oids";
+    
+    return db_check_table(pgsql, oids);
+}
