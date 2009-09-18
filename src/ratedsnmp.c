@@ -453,8 +453,13 @@ void *poller(void *thread_args)
 
                         /* check if we have a cached value for iid */
                         if (entry->current->iid == 0) {
+                            if (db_check_oids_table()) {
+                                debug(DEBUG, "oids found!\n");
+                            } else {
+                                debug(DEBUG, "oids missing!\n");
+                            }
                             /* get the oid->iid mapping from the db */
-                            if (!db_lookup_oid(host->host, oid_string, &entry->current->iid)) {
+                            if (!db_lookup_oid(host->address, oid_string, &entry->current->iid)) {
                                 db_error = TRUE;
                                 PT_MUTEX_LOCK(&stats.mutex);
                                 stats.db_errors++;
