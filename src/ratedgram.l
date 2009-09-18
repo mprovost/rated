@@ -34,13 +34,12 @@ false         [Ff]alse|[Nn]o
 
 host          { return T_HOST; }
 
+address       { return HST_ADDR; }
 community     { return HST_COMM; }
 snmpver               { return HST_SVER; }
 target                { return HST_TRGT; }
 
-bits          { return TGT_BITS; }
 table         { return TGT_TBL; }
-id            { return TGT_ID; }
 
 {token}               { return yytext[0]; }
 {number}      {
