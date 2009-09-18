@@ -29,6 +29,8 @@ typedef struct target_struct {
 
 typedef struct host_struct {
     char *host;
+    char *host_esc;
+    char *address;
     netsnmp_session session;
     target_t *targets;
     target_t *current;
