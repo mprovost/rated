@@ -38,10 +38,10 @@ target_t target_dummy;
 %token T_HOST
 
 /* per-host */
-%token HST_COMM HST_SVER HST_TRGT
+%token HST_ADDR HST_COMM HST_SVER HST_TRGT
 
 /* per-target */
-%token TGT_BITS TGT_TBL TGT_ID TGT_SPEED TGT_DESCR
+%token TGT_TBL
 
 %%
 
@@ -60,7 +60,7 @@ statement     : host_entry
                       { fprintf(stderr, "'}' line %d\n", yylineno); yyerrok; }
               ;
 
-host_entry:   T_HOST L_IPADDR
+host_entry:   T_HOST L_IDENT
 {
       thst = malloc(sizeof(host_t));
       bzero(thst, sizeof(host_t));
@@ -70,7 +70,6 @@ host_entry:   T_HOST L_IPADDR
       thst->targets = &target_dummy;
       /* set up the snmp session */
       snmp_sess_init(&thst->session);
-      thst->session.peername = thst->host;
       /* TODO this is deprecated append to the peername */
       thst->session.remote_port = set->snmp_port;
 }
@@ -87,10 +86,17 @@ host_directives       : host_directives host_directive
               | host_directive
               ;
 
-host_directive        : comm_directive
+host_directive        : addr_directive
+              | comm_directive
               | sver_directive
               | target_entry
               ;
+
+addr_directive : HST_ADDR L_IPADDR
+{
+    thst->address = $2;
+    thst->session.peername = $2;
+};
 
 comm_directive        : HST_COMM L_IDENT
 {
