@@ -389,7 +389,6 @@ void *poller(void *thread_args)
                 tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi\n", result, entry->current->last_value, bits);
 
                 /* zero delta */
-                /* TODO zero result on first poll */
                 if (result == entry->current->last_value) {
                     tdebug(DEBUG, "zero delta: %llu = %llu\n", result, entry->current->last_value);
                     PT_MUTEX_LOCK(&stats.mutex);
@@ -424,7 +423,6 @@ void *poller(void *thread_args)
                         oid_string, host->session.peername, result, entry->current->last_value, insert_val);
                 /* Not a counter wrap and this is not the first poll 
                  * the last_time should be 0 on the first poll */
-                 /* FIXME tv_sec or something else? can tv_sec ever be zero legitimately? */
                 } else if ((entry->current->last_value >= 0) && (entry->current->last_time.tv_sec > 0)) {
                     insert_val = result - entry->current->last_value;
                     rate = insert_val / timediff(current_time, entry->current->last_time);
