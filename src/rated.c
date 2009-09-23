@@ -10,8 +10,7 @@
 #include "ratedsnmp.h"
 
 /* Yes.  Globals. */
-stats_t stats =
-{PTHREAD_MUTEX_INITIALIZER, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0};
+stats_t stats;
 char *target_file = NULL;
 char *pid_file = PIDFILE;
 extern int entries;
@@ -96,6 +95,8 @@ int main(int argc, char *argv[]) {
             fatal("Could not fork daemon!\n");
         debug(LOW, "Daemon detached\n");
     }
+
+    pthread_mutex_init(&stats.mutex, NULL);
 
     /* Initialize signal handler */
     sigemptyset(&signal_set);
@@ -225,6 +226,9 @@ int main(int argc, char *argv[]) {
             sleep_time = 0;
             stats.slow++;
         }
+
+        /* have to call this before we increment the round counter */
+        calc_stats(&stats, poll_time);
 
         stats.round++;
 	debug(LOW, "Poll round %d completed in %u ms.\n", stats.round, poll_time);

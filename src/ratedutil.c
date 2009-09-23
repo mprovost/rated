@@ -109,11 +109,35 @@ void print_stats(stats_t stats, config_t *set)
 {
   debug(OFF, "[Polls = %lld] [DBInserts = %lld] [DBErrors = %lld] [Zero = %d] [Wraps = %d]\n",
       stats.polls, stats.db_inserts, stats.db_errors, stats.zero, stats.wraps);
-  debug(OFF, "[NoResp = %d] [SNMPErrors = %d] [Slow = %d]\n",
-      stats.no_resp, stats.errors, stats.slow);
+  debug(OFF, "[NoResp = %d] [SNMPErrors = %d] [Slow = %d] [Min = %u ms] [Max = %u ms] [Avg = %u ms]\n",
+      stats.no_resp, stats.errors, stats.slow, stats.min_time, stats.max_time, stats.average_time);
   return;
 }
 
+/* recalculate the overall poll timing stats
+ * this assumes that the stats.poll hasn't been incremented yet
+ * stats has to be locked by the caller
+ * handle the first poll seperately it needs to set the min time
+ */
+/* TODO maybe don't count the first poll? It won't do any DB inserts
+ * for counters so it should be faster than the others and may skew the stats
+ */
+void calc_stats(stats_t *stats, unsigned int poll_time)
+{
+    if (stats->round) {
+        /* see if we set a new record */
+        if (poll_time > stats->max_time) {
+            stats->max_time = poll_time;
+        } else if (poll_time < stats->min_time) {
+            stats->min_time = poll_time;
+        }
+        /* recalculate the average */
+        stats->average_time = (stats->average_time * stats->round + poll_time) / (stats->round + 1);
+    } else {
+        /* first poll */
+        stats->max_time = stats->min_time = stats->average_time = poll_time;
+    }
+}
 
 /* A fancy sleep routine */
 /* sleep time is in milliseconds */

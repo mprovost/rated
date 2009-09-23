@@ -126,7 +126,10 @@ typedef struct poll_stats {
     unsigned int no_resp;
     unsigned int errors;
     unsigned int slow;
-    unsigned int flat;
+    /* times in ms */
+    unsigned int min_time;
+    unsigned int average_time;
+    unsigned int max_time;
 } stats_t;
 
 /* Precasts: rated.c */
@@ -141,6 +144,7 @@ int read_rated_config(char *, config_t *);
 int write_rated_config(char *, config_t *);
 void config_defaults(config_t *);
 void print_stats (stats_t, config_t *);
+void calc_stats (stats_t *, unsigned int);
 int sleepy(unsigned int, config_t *);
 void timestamp(char *);
 double timediff(struct timeval, struct timeval);
