@@ -127,7 +127,6 @@ typedef struct poll_stats {
     unsigned int errors;
     unsigned int slow;
     unsigned int flat;
-    unsigned int poll_time; 
 } stats_t;
 
 /* Precasts: rated.c */

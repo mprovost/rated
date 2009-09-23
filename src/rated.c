@@ -39,6 +39,7 @@ int main(int argc, char *argv[]) {
     sigset_t signal_set;
     struct timeval now;
     unsigned long begin_time, end_time, sleep_time;
+    unsigned int poll_time;
     char *conf_file = NULL;
     char errstr[BUFSIZE];
     int ch, i, freed;
@@ -216,18 +217,17 @@ int main(int argc, char *argv[]) {
 
 	gettimeofday(&now, NULL);
 	end_time = tv2ms(now);
-        /* we should be the only thread running so don't need to lock stats */
-	stats.poll_time = end_time - begin_time;
+	poll_time = end_time - begin_time;
         /* don't underflow */
-        if (stats.poll_time < set->interval) {
-	    sleep_time = set->interval - stats.poll_time;
+        if (poll_time < set->interval) {
+	    sleep_time = set->interval - poll_time;
         } else {
             sleep_time = 0;
             stats.slow++;
         }
 
         stats.round++;
-	debug(LOW, "Poll round %d complete.\n", stats.round);
+	debug(LOW, "Poll round %d completed in %u ms.\n", stats.round, poll_time);
 	if (set->verbose >= LOW) {
             print_stats(stats, set);
         }
