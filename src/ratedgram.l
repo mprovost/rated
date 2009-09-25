@@ -32,16 +32,15 @@ false         [Ff]alse|[Nn]o
 {cppcmnt}     { }
 {endtoken}    { }
 
-host          { return T_HOST; }
+template      { return T_TMPL; }
+target        { return TMPL_TRGT; }
 
+host          { return T_HOST; }
 address       { return HST_ADDR; }
 community     { return HST_COMM; }
-snmpver               { return HST_SVER; }
-target                { return HST_TRGT; }
+snmpver       { return HST_SVER; }
 
-table         { return TGT_TBL; }
-
-{token}               { return yytext[0]; }
+{token}       { return yytext[0]; }
 {number}      {
 #ifdef HAVE_STRTOULL
                 yylval.number = strtoull(yytext, NULL, 0);

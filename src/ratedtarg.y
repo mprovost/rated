@@ -14,9 +14,9 @@ extern host_t *hosts_tail;
 extern config_t *set;
 
 static host_t *thst;
-target_t *ttgt;
+target_t *template_ttgt;
+target_t *target_dummy;
 target_t *targets_tail;
-target_t target_dummy;
 
 #define YYDEBUG 1
 %}
@@ -35,13 +35,16 @@ target_t target_dummy;
 %token <boolean>              L_BOOLEAN
 
 /* top level */
+%token T_TMPL
+
+/* per-template */
+%token TMPL_TRGT
+
+/* host */
 %token T_HOST
 
 /* per-host */
-%token HST_ADDR HST_COMM HST_SVER HST_TRGT
-
-/* per-target */
-%token TGT_TBL
+%token HST_ADDR HST_COMM HST_SVER 
 
 %%
 
@@ -53,31 +56,66 @@ statements    : statements statement
               | statement
               ;
 
-statement     : host_entry
+statement     : template_entry
               | error ';'
                       { fprintf(stderr, "';' line %d\n", yylineno); yyerrok; }
               | error '}'
                       { fprintf(stderr, "'}' line %d\n", yylineno); yyerrok; }
               ;
 
+template_entry: T_TMPL L_IDENT
+{
+    target_dummy = calloc(1, sizeof(target_t));
+    target_dummy->next = NULL;
+    template_ttgt = target_dummy;
+}
+'{' template_directives '}'
+{
+};
+
+template_directives: template_directives target_directive
+                   | template_directives host_entry
+                   | target_directive
+                   | host_entry
+                   ;
+
+target_directive: TMPL_TRGT L_OID
+{
+    target_t *ttgt;
+    ttgt = calloc(1, sizeof(target_t));
+    ttgt->next = NULL;
+    ttgt->objoid = $2;
+    ttgt->anOID_len = MAX_OID_LEN;
+
+    /* generate an internal oid from the string */
+    if (snmp_parse_oid($2, ttgt->anOID, &ttgt->anOID_len)) {
+        targets++;
+        target_dummy->next = ttgt;
+        target_dummy = target_dummy->next;
+    } else {
+        fprintf(stderr, "Couldn't parse target oid \"%s\" at line %d:\n", $2, yylineno);
+        snmp_perror($2);
+        free(ttgt);
+    }
+};
+
 host_entry:   T_HOST L_IDENT
 {
-      thst = malloc(sizeof(host_t));
-      bzero(thst, sizeof(host_t));
-      thst->host = $2;
-      thst->next = NULL;
-      target_dummy.next = NULL;
-      thst->targets = &target_dummy;
-      /* set up the snmp session */
-      snmp_sess_init(&thst->session);
-      /* TODO this is deprecated append to the peername */
-      thst->session.remote_port = set->snmp_port;
+    thst = malloc(sizeof(host_t));
+    bzero(thst, sizeof(host_t));
+    thst->host = $2;
+    thst->next = NULL;
+    /* thst->targets = &target_dummy; */
+    thst->targets = template_ttgt->next;
+    thst->current = thst->targets;
+    /* set up the snmp session */
+    snmp_sess_init(&thst->session);
+    /* TODO this is deprecated append to the peername */
+    thst->session.remote_port = set->snmp_port;
 }
 '{' host_directives '}'
 {
     hosts++;
-    thst->targets = target_dummy.next;
-    thst->current = thst->targets;
     hosts_tail->next = thst;
     hosts_tail = hosts_tail->next;
 };
@@ -89,7 +127,6 @@ host_directives       : host_directives host_directive
 host_directive        : addr_directive
               | comm_directive
               | sver_directive
-              | target_entry
               ;
 
 addr_directive : HST_ADDR L_IPADDR
@@ -112,35 +149,6 @@ sver_directive        : HST_SVER L_NUMBER
         thst->session.version = SNMP_VERSION_1;
 };
 
-target_entry  : HST_TRGT L_OID
-{
-      ttgt = malloc(sizeof(target_t));
-      bzero(ttgt, sizeof(target_t));
-      ttgt->objoid = $2;
-
-      /* generate an internal oid from the string */
-      ttgt->anOID_len = MAX_OID_LEN;
-      /* TODO check return status */
-      read_objid($2, ttgt->anOID, &ttgt->anOID_len);
-
-      ttgt->next = NULL;
-}
-'{' tgt_directives '}'
-{
-    targets++;
-    thst->targets->next = ttgt;
-    thst->targets = thst->targets->next;
-};
-tgt_directives        : tgt_directives tgt_directive
-              | tgt_directive
-              ;
-
-tgt_directive : table_directive;
-
-table_directive       : TGT_TBL L_IDENT
-{
-      ttgt->table = $2;
-};
 
 %%
 int yyerror(const char *msg)
