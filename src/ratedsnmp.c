@@ -482,14 +482,14 @@ void *poller(void *thread_args)
                          * only escape the table name once
                          * we need to do this after we have a db connection
                          */
-                        if (entry->table_esc == NULL) {
-                            entry->table_esc = db_escape_string(entry->table);
-                            debug(DEBUG, "entry->table_esc = %s\n", entry->table_esc);
+                        if (host->host_esc == NULL) {
+                            host->host_esc = db_escape_string(host->host);
+                            debug(DEBUG, "host->host_esc = %s\n", host->host_esc);
                         }
 
-                        tdebug(DEVELOP, "db_insert sent: %s %lu %llu %.15f\n", entry->table_esc, entry->current->iid, insert_val, rate);
+                        tdebug(DEVELOP, "db_insert sent: %s %lu %llu %.15f\n", host->host_esc, entry->current->iid, insert_val, rate);
                         /* insert into the database */
-                        if (db_insert(entry->table_esc, entry->current->iid, insert_val, rate)) {
+                        if (db_insert(host->host_esc, entry->current->iid, insert_val, rate)) {
                             PT_MUTEX_LOCK(&stats.mutex);
                             stats.db_inserts++;
                             PT_MUTEX_UNLOCK(&stats.mutex);
