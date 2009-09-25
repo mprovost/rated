@@ -133,6 +133,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* these probably aren't thread safe*/
+    init_snmp("rated");
     /* TODO only do this if we're debugging or not daemonised? */
     snmp_enable_stderrlog();
     /* output oids numerically - this is equivalent to -On in the snmp tools */
