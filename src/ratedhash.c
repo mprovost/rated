@@ -49,12 +49,8 @@ host_t *hash_target_file(char *file) {
     if (set->verbose >= HIGH) {
         host = host_dummy.next;
         while (host) {
-            debug(HIGH, "%s\n", host->host);
-            ttgt = host->targets;
-            while (ttgt) {
-                debug(HIGH, "\t%s\n", ttgt->objoid);
-                ttgt = ttgt->next;
-            }
+            debug_all("%s\n", host->host);
+            print_targets(host->targets);
             host = host->next;
         }
     }
@@ -62,6 +58,13 @@ host_t *hash_target_file(char *file) {
     debug(LOW, "Successfully created [%i] hosts, [%i] targets (%i bytes).\n",
         hosts, targets, targets * sizeof(target_t) + hosts * sizeof(host_t));
     return (host_dummy.next);
+}
+
+void print_targets(target_t *targets) {
+    while (targets) {
+        debug_all("\t%s\n", targets->objoid);
+        targets = targets->next;
+    }
 }
 
 /* walk through the host/target list freeing everything */
@@ -93,4 +96,28 @@ int free_target_list(host_t *head) {
         } while (host);
     }
     return count;
+}
+
+/* deep copy a target list */
+/* doesn't copy the getnexts list */
+target_t *copy_target_list(target_t *head) {
+    target_t *current = head;
+    target_t dummy;
+    target_t *tail = &dummy;
+
+    dummy.next = NULL;
+
+    while (current) {
+        tail->next = calloc(1, sizeof(target_t));
+        tail = tail->next;
+        tail->objoid = current->objoid;
+        //tail->anOID = current->anOID;
+        memcpy(tail->anOID, current->anOID, MAX_OID_LEN);
+        tail->anOID_len = current->anOID_len;
+        tail->getnexts = NULL;
+        tail->current = NULL;
+        tail->next = NULL;
+        current = current->next;
+    }
+    return dummy.next;
 }
