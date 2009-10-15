@@ -68,33 +68,37 @@ void print_targets(target_t *targets) {
 }
 
 /* walk through the host/target list freeing everything */
-int free_target_list(host_t *head) {
-    unsigned int count;
+int free_host_list(host_t *head) {
+    unsigned int count = 0;
     host_t *host;
     host_t *host_next;
-    target_t *target;
-    target_t *target_next;
-
-    /* only count the targets */
-    count = 0;
 
     if (head) {
         host = head;
         do {
+            count++;
             if (host->targets) {
-                target = host->targets;
-                do {
-                    count++;
-                    target_next = target->next;
-                    free(target);
-                    target = target_next;
-                } while (target);
+                free_target_list(host->targets);
             }
             host_next = host->next;
             free(host);
             host = host_next;
         } while (host);
     }
+    return count;
+}
+
+int free_target_list(target_t *head) {
+    unsigned int count = 0;
+    target_t *target_next;
+
+    do {
+        count++;
+        target_next = head->next;
+        free(head);
+        head = target_next;
+    } while (head);
+
     return count;
 }
 

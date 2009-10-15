@@ -189,8 +189,8 @@ int main(int argc, char *argv[]) {
             /* this just rebuilds the target list
              * so all of the targets will reset to a first poll */
             /* none of the threads should be running at this point so we shouldn't need a lock */
-            freed = free_target_list(head);
-            debug(HIGH, "Freed %i targets\n", freed);
+            freed = free_host_list(head);
+            debug(HIGH, "Freed %i hosts\n", freed);
             head = hash_target_file(target_file);
             waiting = FALSE;
 	}
