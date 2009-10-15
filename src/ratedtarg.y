@@ -14,9 +14,9 @@ extern host_t *hosts_tail;
 extern config_t *set;
 
 static host_t *thst;
-target_t *template_ttgt;
-target_t *target_dummy;
-target_t *targets_tail;
+
+static target_t *target_tail;
+static target_t target_dummy;
 
 #define YYDEBUG 1
 %}
@@ -65,9 +65,8 @@ statement     : template_entry
 
 template_entry: T_TMPL L_IDENT
 {
-    target_dummy = calloc(1, sizeof(target_t));
-    target_dummy->next = NULL;
-    template_ttgt = target_dummy;
+    target_tail = &target_dummy;
+    target_dummy.next = NULL;
 }
 '{' template_directives '}'
 {
@@ -90,8 +89,8 @@ target_directive: TMPL_TRGT L_OID
     /* generate an internal oid from the string */
     if (snmp_parse_oid($2, ttgt->anOID, &ttgt->anOID_len)) {
         targets++;
-        target_dummy->next = ttgt;
-        target_dummy = target_dummy->next;
+        target_tail->next = ttgt;
+        target_tail = target_tail->next;
     } else {
         fprintf(stderr, "Couldn't parse target oid \"%s\" at line %d:\n", $2, yylineno);
         snmp_perror($2);
@@ -105,8 +104,8 @@ host_entry:   T_HOST L_IDENT
     bzero(thst, sizeof(host_t));
     thst->host = $2;
     thst->next = NULL;
-    /* thst->targets = &target_dummy; */
-    thst->targets = template_ttgt->next;
+    /* copy the target list from the template */
+    thst->targets = copy_target_list(target_dummy.next);
     thst->current = thst->targets;
     /* set up the snmp session */
     snmp_sess_init(&thst->session);
