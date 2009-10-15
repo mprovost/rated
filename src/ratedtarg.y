@@ -70,6 +70,7 @@ template_entry: T_TMPL L_IDENT
 }
 '{' template_directives '}'
 {
+    free_target_list(target_dummy.next);
 };
 
 template_directives: template_directives target_directive
