@@ -139,6 +139,11 @@ int main(int argc, char *argv[]) {
     /* output oids numerically - this is equivalent to -On in the snmp tools */
     netsnmp_ds_set_int(NETSNMP_DS_LIBRARY_ID, NETSNMP_DS_LIB_OID_OUTPUT_FORMAT, NETSNMP_OID_OUTPUT_NUMERIC);
 
+    /* build list of hosts to be polled */
+    head = hash_target_file(target_file);
+    if (head == NULL)
+        fatal("Error updating target list.");
+
     debug(LOW, "Initializing threads (%d).\n", set->threads);
     pthread_mutex_init(&(crew.mutex), NULL);
     pthread_cond_init(&(crew.done), NULL);
@@ -169,11 +174,6 @@ int main(int argc, char *argv[]) {
     gettimeofday(&now, NULL);
     end_time = tv2ms(now); /* convert to milliseconds */
     debug(HIGH, "Waited %lu milliseconds for thread startup.\n", end_time - begin_time);
-
-    /* build list of hosts to be polled */
-    head = hash_target_file(target_file);
-    if (head == NULL)
-        fatal("Error updating target list.");
 
     debug(LOW, "rated ready.\n");
 
