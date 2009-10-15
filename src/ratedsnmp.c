@@ -538,6 +538,7 @@ cleanup:
                     print_objid(entry->current->anOID, entry->current->anOID_len);
                     entry->current = entry->current->next;
                 }
+                entry->current = entry->getnexts;
             }
 
             /* move to next target */
