@@ -197,15 +197,14 @@ int __db_insert(const char *table_esc, unsigned long iid, unsigned long long ins
  * insert an (escaped) snmp oid into the database and update the iid
  * this probably only gets called by __db_lookup_oid 
  */
-int db_insert_oid(PGconn *pgsql, char *host_esc, char *oid_esc, unsigned long *iid) {
-    
+int db_insert_oid(PGconn *pgsql, const char *oid_esc, unsigned long *iid) {
     int status;
     char *query;
     PGresult *result;
 
     asprintf(&query,
-        "INSERT INTO \"oids\" (host,oid) VALUES (\'%s\',\'%s\') RETURNING iid",
-        host_esc, oid_esc);
+        "INSERT INTO \"oids\" (oid) VALUES (\'%s\') RETURNING iid",
+        oid_esc);
 
     debug(HIGH, "Query = %s\n", query);
 
@@ -227,12 +226,11 @@ int db_insert_oid(PGconn *pgsql, char *host_esc, char *oid_esc, unsigned long *i
 }
 
 /* lookup the iid of an snmp oid in the database */
-int __db_lookup_oid(char *host, char *oid, unsigned long *iid) {
+int __db_lookup_oid(const char *oid, unsigned long *iid) {
     PGconn *pgsql = getpgsql();
 
     int status;
     char *query;
-    char *host_esc;
     char *oid_esc;
     PGresult *result;
 
@@ -241,14 +239,13 @@ int __db_lookup_oid(char *host, char *oid, unsigned long *iid) {
         return 0;
     }
 
-    host_esc = escape_string(pgsql, host);
     oid_esc = escape_string(pgsql, oid);
 
     debug(DEBUG, "oid_esc = %s\n", oid_esc);
 
     asprintf(&query,
-        "SELECT \"iid\" from \"oids\" WHERE \"host\" = \'%s\' AND \"oid\" = \'%s\'",
-        host_esc, oid_esc);
+        "SELECT \"iid\" from \"oids\" WHERE \"oid\" = \'%s\'",
+        oid_esc);
 
     debug(HIGH, "Query = %s\n", query);
 
@@ -281,29 +278,28 @@ int __db_lookup_oid(char *host, char *oid, unsigned long *iid) {
     (void)PQclear(result);
 
     if (status == -1) {
-        status = db_insert_oid(pgsql, host_esc, oid_esc, iid);
+        status = db_insert_oid(pgsql, oid_esc, iid);
     }
 
-    free(host_esc);
     free(oid_esc);
 
     return status;
 }
 
-/* internal function to check if a table exists in the database */
-int db_check_table(PGconn *pgsql, char *table) {
+/* internal function to check if a table exists in the database
+ * the table name must already be escaped */
+int __db_check_table(const char *table) {
+    PGconn *pgsql = getpgsql();
     int status;
     char *query;
     char *db;
-    char *table_esc;
     PGresult *result;
 
     db = PQdb(pgsql);
-    table_esc = escape_string(pgsql, table);
 
     asprintf(&query,
         "SELECT \"table_name\" FROM information_schema.tables WHERE table_catalog = '%s' AND table_schema = 'public' AND table_name = '%s'",
-        db, table_esc);
+        db, table);
 
     debug(HIGH, "Query = %s\n", query);
     result = PQexec(pgsql, query);
@@ -322,14 +318,59 @@ int db_check_table(PGconn *pgsql, char *table) {
 
     (void)PQclear(result);
 
-    free(table_esc);
+    return status;
+}
+
+/* execute a sql command (query) that doesn't return any rows */
+int db_exec_command(PGconn *pgsql, const char *query) {
+    PGresult *result;
+    int status;
+
+    result = PQexec(pgsql, query);
+
+    if (PQresultStatus(result) == PGRES_COMMAND_OK) {
+        status = TRUE;
+    } else {
+        debug(LOW, "Postgres %s", PQerrorMessage(pgsql));
+        status = FALSE;
+    }
+
+    (void)PQclear(result);
 
     return status;
 }
 
-int __db_check_oids_table() {
+/* create a data table
+ * return the escaped table name on success, otherwise NULL */
+/* TODO check the table name length against NAMEDATALEN -1 (ie 63) */
+char *__db_create_data_table(const char *table) {
     PGconn *pgsql = getpgsql();
-    char *oids = "oids";
-    
-    return db_check_table(pgsql, oids);
+    char *query;
+    char *table_esc = escape_string(pgsql, table);
+    const char *create = 
+    "CREATE TABLE \"%s\" ("
+    "id int NOT NULL default '0',"
+    "dtime timestamp NOT NULL,"
+    "counter bigint NOT NULL default '0',"
+    "rate real NOT NULL default '0.0'"
+    ")";
+    const char *index = "CREATE INDEX \"%s_idx\" ON \"%s\" (id,dtime)";
+
+    asprintf(&query, create, table_esc);
+    debug(HIGH, "Query = %s\n", query);
+
+    if (db_exec_command(pgsql, query)) {
+        free(query);
+        asprintf(&query, index, table_esc, table_esc);
+        debug(HIGH, "Query = %s\n", query);
+        if (!db_exec_command(pgsql, query)) {
+            free(table_esc);
+            table_esc = NULL; /* needed? */
+        }
+    }
+    /* this will either be the create table query if that failed, or the index query if the create succeeded */ 
+    free(query);
+
+    /* if we failed this will be set to NULL above */
+    return table_esc;
 }

@@ -455,15 +455,28 @@ void *poller(void *thread_args)
                             }
                         }
 
+                        /*
+                         * only escape the table name once and save it
+                         * we need to do this after we have a db connection
+                         */
+                        if (host->host_esc == NULL) {
+                            /* check that we have a data table for this host */
+                            if (db_check_table(host->host_esc)) {
+                                debug(HIGH, "Creating table %s\n", host->host_esc);
+                                db_create_data_table(host->host_esc);
+                            }
+                            debug(DEBUG, "host: %s -> host_esc: %s\n", host->host, host->host_esc);
+                        }
+
                         /* check if we have a cached value for iid */
                         if (entry->current->iid == 0) {
-                            if (db_check_oids_table()) {
+                            if (db_check_table("oids")) {
                                 debug(DEBUG, "oids found!\n");
                             } else {
                                 debug(DEBUG, "oids missing!\n");
                             }
                             /* get the oid->iid mapping from the db */
-                            if (!db_lookup_oid(host->address, oid_string, &entry->current->iid)) {
+                            if (!db_lookup_oid(oid_string, &entry->current->iid)) {
                                 db_error = TRUE;
                                 PT_MUTEX_LOCK(&stats.mutex);
                                 stats.db_errors++;
@@ -476,15 +489,6 @@ void *poller(void *thread_args)
                                 }
                                 goto cleanup;
                             }
-                        }
-
-                        /*
-                         * only escape the table name once
-                         * we need to do this after we have a db connection
-                         */
-                        if (host->host_esc == NULL) {
-                            host->host_esc = db_escape_string(host->host);
-                            debug(DEBUG, "host->host_esc = %s\n", host->host_esc);
                         }
 
                         tdebug(DEVELOP, "db_insert sent: %s %lu %llu %.15f\n", host->host_esc, entry->current->iid, insert_val, rate);
