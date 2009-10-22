@@ -448,46 +448,41 @@ void *poller(void *thread_args)
                             } else {
                                 /* the db driver will print an error itself */
                                 db_error = TRUE;
-                                PT_MUTEX_LOCK(&stats.mutex);
-                                stats.db_errors++;
-                                PT_MUTEX_UNLOCK(&stats.mutex);
                                 goto cleanup;
                             }
                         }
 
-                        /*
-                         * only escape the table name once and save it
-                         * we need to do this after we have a db connection
-                         */
+                        /* Now we have a DB connection */
+
+                        /* only escape the table name once and save it */
                         if (host->host_esc == NULL) {
                             /* check that we have a data table for this host */
-                            if (db_check_table(host->host_esc)) {
-                                debug(HIGH, "Creating table %s\n", host->host_esc);
-                                db_create_data_table(host->host_esc);
-                            }
+                            host->host_esc = db_check_table(host->host);
                             debug(DEBUG, "host: %s -> host_esc: %s\n", host->host, host->host_esc);
+                            if (host->host_esc == NULL) {
+                                debug(HIGH, "Creating table %s\n", host->host_esc);
+                                if (!db_create_data_table(host->host_esc)) {
+                                    db_error = TRUE;
+                                    goto cleanup;
+                                }
+                            }
                         }
 
                         /* check if we have a cached value for iid */
                         if (entry->current->iid == 0) {
-                            if (db_check_table("oids")) {
-                                debug(DEBUG, "oids found!\n");
-                            } else {
-                                debug(DEBUG, "oids missing!\n");
-                            }
-                            /* get the oid->iid mapping from the db */
-                            if (!db_lookup_oid(oid_string, &entry->current->iid)) {
-                                db_error = TRUE;
-                                PT_MUTEX_LOCK(&stats.mutex);
-                                stats.db_errors++;
-                                PT_MUTEX_UNLOCK(&stats.mutex);
-                                if (!db_status()) {
-                                    /* first disconnect to close the handle */
-                                    db_disconnect();
-                                    /* try and reconnect on the next poll */
-                                    db_reconnect = TRUE;
+                            if (db_check_table(OIDS)) {
+                                /* get the oid->iid mapping from the db */
+                                if (!db_lookup_oid(oid_string, &entry->current->iid)) {
+                                    db_error = TRUE;
+                                    goto cleanup;
                                 }
-                                goto cleanup;
+                            } else {
+                                /* no oids table! let's make one! */
+                                debug(HIGH, "Creating table %s\n", OIDS);
+                                if (!db_create_oids_table(OIDS)) {
+                                    db_error = TRUE;
+                                    goto cleanup;
+                                }
                             }
                         }
 
@@ -499,15 +494,6 @@ void *poller(void *thread_args)
                             PT_MUTEX_UNLOCK(&stats.mutex);
                         } else {
                             db_error = TRUE;
-                            PT_MUTEX_LOCK(&stats.mutex);
-                            stats.db_errors++;
-                            PT_MUTEX_UNLOCK(&stats.mutex);
-                            if (!db_status()) {
-                                /* first disconnect to close the handle */
-                                db_disconnect();
-                                /* try and reconnect on the next poll */
-                                db_reconnect = TRUE;
-                            }
                         } /* db_insert */
                     } /* zero */
                 } /* !dboff */
@@ -529,6 +515,15 @@ cleanup:
                     }
                 } else {
                     tdebug(DEBUG, "db_reconnect = %i db_error = %i!\n", db_reconnect, db_error);
+                    PT_MUTEX_LOCK(&stats.mutex);
+                    stats.db_errors++;
+                    PT_MUTEX_UNLOCK(&stats.mutex);
+                    if (!db_status()) {
+                        /* first disconnect to close the handle */
+                        db_disconnect();
+                        /* try and reconnect on the next poll */
+                        db_reconnect = TRUE;
+                    }
                 }
             } /* while (anOID) */
             gettimeofday(&now, NULL);

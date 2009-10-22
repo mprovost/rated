@@ -6,6 +6,9 @@
 #ifndef _RATEDSNMP_H_
 #define _RATEDSNMP_H_ 1
 
+/* oid lookup table */
+#define OIDS "oids"
+
 typedef struct getnext_struct {
     char *objoid;
     oid anOID[MAX_OID_LEN];

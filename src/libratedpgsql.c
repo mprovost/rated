@@ -287,19 +287,21 @@ int __db_lookup_oid(const char *oid, unsigned long *iid) {
 }
 
 /* internal function to check if a table exists in the database
- * the table name must already be escaped */
-int __db_check_table(const char *table) {
+ * takes an unescaped table name and returns an escaped one or null */
+char *__db_check_table(const char *table) {
     PGconn *pgsql = getpgsql();
-    int status;
+    char *table_esc;
     char *query;
     char *db;
     PGresult *result;
+
+    table_esc = escape_string(pgsql, table);
 
     db = PQdb(pgsql);
 
     asprintf(&query,
         "SELECT \"table_name\" FROM information_schema.tables WHERE table_catalog = '%s' AND table_schema = 'public' AND table_name = '%s'",
-        db, table);
+        db, table_esc);
 
     debug(HIGH, "Query = %s\n", query);
     result = PQexec(pgsql, query);
@@ -307,18 +309,23 @@ int __db_check_table(const char *table) {
 
     if (PQresultStatus(result) == PGRES_TUPLES_OK) {
         if (PQntuples(result) == 1) {
-            status = TRUE;
+            debug(HIGH, "%s found!\n", table_esc);
         } else {
-            status = FALSE;
+            debug(HIGH, "%s missing!\n", table_esc);
+            /* we want to return NULL in this case */
+            free(table_esc);
+            table_esc = NULL; /* needed? */
         }
     } else {
         debug(LOW, "Postgres %s", PQerrorMessage(pgsql));
-        status = FALSE;
+        /* we want to return NULL in this case */
+        free(table_esc);
+        table_esc = NULL; /* needed? */
     }
 
     (void)PQclear(result);
 
-    return status;
+    return table_esc;
 }
 
 /* execute a sql command (query) that doesn't return any rows */
@@ -341,12 +348,12 @@ int db_exec_command(PGconn *pgsql, const char *query) {
 }
 
 /* create a data table
- * return the escaped table name on success, otherwise NULL */
+ * takes an escaped table name */
 /* TODO check the table name length against NAMEDATALEN -1 (ie 63) */
-char *__db_create_data_table(const char *table) {
+int __db_create_data_table(const char *table_esc) {
     PGconn *pgsql = getpgsql();
+    int status;
     char *query;
-    char *table_esc = escape_string(pgsql, table);
     const char *create = 
     "CREATE TABLE \"%s\" ("
     "id int NOT NULL default '0',"
@@ -363,14 +370,37 @@ char *__db_create_data_table(const char *table) {
         free(query);
         asprintf(&query, index, table_esc, table_esc);
         debug(HIGH, "Query = %s\n", query);
-        if (!db_exec_command(pgsql, query)) {
-            free(table_esc);
-            table_esc = NULL; /* needed? */
+        if (db_exec_command(pgsql, query)) {
+            status = TRUE;
+        } else {
+            status = FALSE;
         }
     }
     /* this will either be the create table query if that failed, or the index query if the create succeeded */ 
     free(query);
 
-    /* if we failed this will be set to NULL above */
-    return table_esc;
+    return status;
+}
+
+int __db_create_oids_table(const char *table_esc) {
+    PGconn *pgsql = getpgsql();
+    int status;
+    char *query;
+    const char *create = 
+    "CREATE TABLE \"%s\" ("
+    "iid SERIAL PRIMARY KEY,"
+    "oid TEXT NOT NULL UNIQUE"
+    ")";
+
+    asprintf(&query, create, table_esc);
+    debug(HIGH, "Query = %s\n", query);
+
+    if (db_exec_command(pgsql, query)) {
+        status = TRUE;
+    } else {
+        status = FALSE;
+    }
+    free(query);
+
+    return status;
 }
