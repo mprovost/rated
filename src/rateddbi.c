@@ -75,18 +75,13 @@ int db_init(config_t *set) {
 		return FALSE;
 	}
 
-	if ((db_check_table = lt_dlsym(dbhandle, "__db_check_table")) == NULL) {
-		debug(LOW, "Couldn't load db_check_oids_table: %s\n",(char *) lt_dlerror());
+	if ((db_check_and_create_data_table = lt_dlsym(dbhandle, "__db_check_and_create_data_table")) == NULL) {
+		debug(LOW, "Couldn't load db_check_and_create_data_table: %s\n",(char *) lt_dlerror());
 		return FALSE;
 	}
 
-	if ((db_create_data_table = lt_dlsym(dbhandle, "__db_create_data_table")) == NULL) {
-		debug(LOW, "Couldn't load db_create_data_table: %s\n",(char *) lt_dlerror());
-		return FALSE;
-	}
-
-	if ((db_create_oids_table = lt_dlsym(dbhandle, "__db_create_oids_table")) == NULL) {
-		debug(LOW, "Couldn't load db_create_oids_table: %s\n",(char *) lt_dlerror());
+	if ((db_check_and_create_oids_table = lt_dlsym(dbhandle, "__db_check_and_create_oids_table")) == NULL) {
+		debug(LOW, "Couldn't load db_check_and_create_oids_table: %s\n",(char *) lt_dlerror());
 		return FALSE;
 	}
 
