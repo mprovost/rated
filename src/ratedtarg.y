@@ -71,6 +71,8 @@ template_entry: T_TMPL L_IDENT
 '{' template_directives '}'
 {
     free_target_list(target_dummy.next);
+    /* we don't store the template name so free it to avoid a memory leak */
+    free($2);
 };
 
 template_directives: template_directives target_directive
