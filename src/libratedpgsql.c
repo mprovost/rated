@@ -155,12 +155,12 @@ int __db_insert(const char *table_esc, unsigned long iid, unsigned long long ins
             return FALSE;
         }
 
-	/* INSERT INTO %s (id,dtime,counter,rate) VALUES (%d, NOW(), %llu, %.6f) */
+	/* INSERT INTO %s (iid,dtime,counter,rate) VALUES (%d, NOW(), %llu, %.6f) */
         /* don't include the rate column if it's not needed */
         if (insert_rate > 0) {
             /* double columns have precision of at least 15 digits */
             asprintf(&query,
-                "INSERT INTO \"%s\" (id,dtime,counter,rate) VALUES (%lu,NOW(),%llu,%.15f)",
+                "INSERT INTO \"%s\" (iid,dtime,counter,rate) VALUES (%lu,NOW(),%llu,%.15f)",
                 table_esc, iid, insert_val, insert_rate);
         } else {
             asprintf(&query,
