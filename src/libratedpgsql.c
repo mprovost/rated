@@ -51,22 +51,19 @@ char *escape_string(PGconn *pgsql, const char *input)
         size_t scratch_len;
         char *output;
 
-	/* worst case is every char escaped plus terminating NUL */
+        /* worst case is every char escaped plus terminating NUL */
         scratch = malloc(input_len*2+1);
 
-	/* TODO check return */
 	/* escape the string */
 	scratch_len = PQescapeStringConn(pgsql, scratch, input, input_len, NULL);
+        if (scratch_len) {
+            output = strndup(scratch, scratch_len);
+            free(scratch);
+        } else {
+            output = NULL;
+        }
 
-        debug(DEBUG, "scratch = %s\n", scratch);
-
-        output = strdup(scratch);
-
-        debug(DEBUG, "output = %s\n", output);
-
-	free(scratch);
-
-        debug(DEBUG, "output = %s\n", output);
+        debug(DEBUG, "escape_string input = '%s' output = '%s'\n", input, output);
 
         return output;
 }
@@ -167,7 +164,7 @@ int __db_insert(const char *table_esc, unsigned long iid, unsigned long long ins
                 table_esc, iid, insert_val, insert_rate);
         } else {
             asprintf(&query,
-                "INSERT INTO \"%s\" (id,dtime,counter) VALUES (%lu,NOW(),%llu)",
+                "INSERT INTO \"%s\" (iid,dtime,counter) VALUES (%lu,NOW(),%llu)",
                 table_esc, iid, insert_val);
         }
 
@@ -195,7 +192,6 @@ int __db_insert(const char *table_esc, unsigned long iid, unsigned long long ins
 
 /*
  * insert an (escaped) snmp oid into the database and update the iid
- * this probably only gets called by __db_lookup_oid 
  */
 int db_insert_oid(PGconn *pgsql, const char *oid_esc, unsigned long *iid) {
     int status;
@@ -205,11 +201,9 @@ int db_insert_oid(PGconn *pgsql, const char *oid_esc, unsigned long *iid) {
     asprintf(&query,
         "INSERT INTO \"oids\" (oid) VALUES (\'%s\') RETURNING iid",
         oid_esc);
-
     debug(HIGH, "Query = %s\n", query);
 
     result = PQexec(pgsql, query);
-
     free(query);
 
     if (PQresultStatus(result) == PGRES_TUPLES_OK) {
@@ -228,45 +222,35 @@ int db_insert_oid(PGconn *pgsql, const char *oid_esc, unsigned long *iid) {
 /* lookup the iid of an snmp oid in the database */
 int __db_lookup_oid(const char *oid, unsigned long *iid) {
     PGconn *pgsql = getpgsql();
-
     int status;
     char *query;
     char *oid_esc;
     PGresult *result;
 
-    if (pgsql == NULL) {
-        debug(LOW, "No Postgres connection in db_lookup_oid\n");
-        return 0;
-    }
-
     oid_esc = escape_string(pgsql, oid);
-
     debug(DEBUG, "oid_esc = %s\n", oid_esc);
 
     asprintf(&query,
         "SELECT \"iid\" from \"oids\" WHERE \"oid\" = \'%s\'",
         oid_esc);
-
     debug(HIGH, "Query = %s\n", query);
 
     result = PQexec(pgsql, query);
-
     free(query);
 
     if (PQresultStatus(result) == PGRES_TUPLES_OK) {
         switch (PQntuples(result)) {
             case 1:
-                debug(LOW, "ntuples = 1\n");
                 *iid = strtoul(PQgetvalue(result, 0, 0), NULL, 0);
+                debug(DEBUG, "iid = %lu\n", iid);
                 status = TRUE;
                 break;
             case 0:
-                debug(LOW, "ntuples = 0\n");
-                status = -1; /* do an insert below */
+                status = db_insert_oid(pgsql, oid_esc, iid);
                 break;
             default:
                 /* this shouldn't happen */
-                debug(LOW, "ntuples = %i\n", PQntuples(result));
+                debug(DEBUG, "oid '%s' ntuples = %i\n", oid_esc, PQntuples(result));
                 status = FALSE;
         }
     } else {
@@ -274,13 +258,7 @@ int __db_lookup_oid(const char *oid, unsigned long *iid) {
         status = FALSE;
     }
 
-    /* free the result before we reuse the connection */
     (void)PQclear(result);
-
-    if (status == -1) {
-        status = db_insert_oid(pgsql, oid_esc, iid);
-    }
-
     free(oid_esc);
 
     return status;
@@ -350,12 +328,12 @@ char *__db_check_and_create_data_table(const char *table) {
     char *table_esc;
     const char *create = 
     "CREATE TABLE \"%s\" ("
-    "id int NOT NULL default '0',"
+    "iid int NOT NULL default '0',"
     "dtime timestamp NOT NULL,"
     "counter bigint NOT NULL default '0',"
     "rate real NOT NULL default '0.0'"
     ")";
-    const char *index = "CREATE INDEX \"%s_idx\" ON \"%s\" (id,dtime)";
+    const char *index = "CREATE INDEX \"%s_idx\" ON \"%s\" (iid,dtime)";
 
     table_esc = escape_string(pgsql, table);
     /* first check if it already exists */
