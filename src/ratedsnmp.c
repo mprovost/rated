@@ -81,6 +81,7 @@ short snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string,
                 *result = (unsigned long) *(vars->val.integer);
                 break;
             case ASN_INTEGER:
+                bits = 0;
                 *result = (unsigned long) *(vars->val.integer);
                 break;
             case ASN_GAUGE:
