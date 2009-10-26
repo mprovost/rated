@@ -208,10 +208,6 @@ void *poller(void *thread_args)
     tdebug(HIGH, "running = %i\n", crew->running);
     PT_MUTEX_UNLOCK(&crew->mutex);
 
-    /* TODO change these to stack allocated */
-    //anOID = malloc(MAX_OID_LEN * sizeof(oid));
-    //anOID_len = malloc(sizeof(size_t));
-
     while (1) {
 /*
         if(loop_count >= POLLS_PER_TRANSACTION) {
