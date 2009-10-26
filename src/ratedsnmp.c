@@ -467,16 +467,22 @@ void *poller(void *thread_args)
 
                         /* check if we have a cached value for iid */
                         if (entry->current->iid == 0) {
+                            /* don't let two threads try and manipulate the oids table at the same time */
+                            PT_MUTEX_LOCK(&crew->mutex);
                             if (db_check_and_create_oids_table(OIDS)) {
-                                /* get the oid->iid mapping from the db */
-                                if (!db_lookup_oid(oid_string, &entry->current->iid)) {
-                                    db_error = TRUE;
-                                    goto cleanup;
-                                }
+                                debug(HIGH, "oids table created\n");
                             } else {
                                 db_error = TRUE;
+                                PT_MUTEX_UNLOCK(&crew->mutex);
                                 goto cleanup;
                             }
+                            /* get the oid->iid mapping from the db */
+                            if (!db_lookup_oid(oid_string, &entry->current->iid)) {
+                                db_error = TRUE;
+                                PT_MUTEX_UNLOCK(&crew->mutex);
+                                goto cleanup;
+                            }
+                            PT_MUTEX_UNLOCK(&crew->mutex);
                         }
 
                         tdebug(DEVELOP, "db_insert sent: %s %lu %llu %.15f\n", host->host_esc, entry->current->iid, insert_val, rate);
