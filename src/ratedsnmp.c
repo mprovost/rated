@@ -30,7 +30,7 @@ short snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string,
     netsnmp_variable_list *vars;
     netsnmp_session *session;
     int getnext_status = 0;
-    short bits;
+    short bits = 32; /* default */
     char result_string[SPRINT_MAX_LEN];
 
     pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
@@ -43,23 +43,23 @@ short snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string,
 
     /* this will free the pdu on error so we can't save them for reuse between rounds */
     getnext_status = snmp_sess_synch_response(sessp, pdu, &response);
-    vars = response->variables;
 
     /* Get the current time */
     gettimeofday(current_time, NULL);
 
     /* convert the opaque session pointer back into a session struct for debug output */
     session = snmp_sess_session(sessp);
-    /* convert the result oid to a string for debug */
-    snprint_objid(oid_string, SPRINT_MAX_LEN, vars->name, vars->name_length);
 
     /* Collect response and process stats */
     PT_MUTEX_LOCK(&stats.mutex);
-    if (getnext_status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
-        bits = 32; /* default */
-
+    /* check for NULL responses */
+    if (getnext_status == STAT_SUCCESS && response && response->errstat == SNMP_ERR_NOERROR) {
         stats.polls++;
         PT_MUTEX_UNLOCK(&stats.mutex);
+
+        vars = response->variables;
+        /* convert the result oid to a string for debug */
+        snprint_objid(oid_string, SPRINT_MAX_LEN, vars->name, vars->name_length);
 
         if (set->verbose >= DEBUG) {
             /* this results in something like 'Counter64: 11362777584380' */
@@ -133,7 +133,11 @@ short snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string,
                 if (response->variables->type == SNMP_NOSUCHINSTANCE) {
                     debug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", oid_string, session->peername);
                 } else {
-                    debug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, snmp_errstring(response->errstat));
+                    if (response) {
+                        debug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, snmp_errstring(response->errstat));
+                    } else {
+                        debug(LOW, "*** SNMP NULL response: (%s@%s) %s\n", oid_string, session->peername);
+                    }
                 }
                 break;
             default:
