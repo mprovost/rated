@@ -8,6 +8,9 @@ Targetmaker maintained by Brian T. O'Neill.
 Uses (and useless without) the excellent work of many others, including:
  MySQL, Net-SNMP, libgd, libpng, zlib, cgilib and SNMP_Session.
 
+Linked list implementations based on "Linked List Basics" by Nick Parlante.
+http://cslibrary.stanford.edu/103/
+
 Inspired by the likes of MRTG, RRDtool (Tobias Oetiker, Dave Rand)
 and Cricket (Jeff Allen).
 
