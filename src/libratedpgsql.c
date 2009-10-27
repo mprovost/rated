@@ -242,7 +242,7 @@ int __db_lookup_oid(const char *oid, unsigned long *iid) {
         switch (PQntuples(result)) {
             case 1:
                 *iid = strtoul(PQgetvalue(result, 0, 0), NULL, 0);
-                debug(DEBUG, "iid = %lu\n", iid);
+                debug(DEBUG, "iid = %lu\n", *iid);
                 status = TRUE;
                 break;
             case 0:
