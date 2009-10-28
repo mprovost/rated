@@ -7,11 +7,14 @@ library (http://www.net-snmp.org/) for retrieving the SNMP data and
 has a modular backend for connecting to various databases. At the
 moment it has drivers for MySQL, PostgreSQL and Oracle (experimental).
 
-NOTE: currently only the postgres driver compiles. You may have to run
-configure with the --without-mysql argument.
+WARNING: currently only the postgres driver compiles. You may have to
+run configure with the --without-mysql argument.
 
-The database drivers are implemented as shared libraries and are loaded
-as needed on startup. See the file DBI.TXT for details.
+The database drivers are implemented as shared libraries (using
+libtool) and are loaded as needed on startup. See the file DBI.TXT for
+details. If you are running rated from the src directory where it
+compiles, you will need to add the .libs directory to your
+LD_LIBRARY_PATH so it can find the database libraries.
 
 Rated uses SNMP get-next calls to poll its targets. This is similar to
 net-snmp's snmpwalk or the bulk retrieval method outlined in RFC 1187.
@@ -32,7 +35,7 @@ could cause it to become overloaded.
 Each result of a get-next request is stored in memory along with a
 timestamp so that the delta and rate of change can be calculated
 between rounds. Since get-nexts return the results in order (in
-well-behaved snmp agents) they can be stored in an efficient linked
+well-behaved SNMP agents) they can be stored in an efficient linked
 list. Rated can detect when new OIDS need to be inserted or deleted
 from the list but in the common case where the agent returns the same
 OIDS in the same order it can walk through the list (so it just
@@ -44,6 +47,18 @@ well as the rate of change (ie difference divided by the time between
 polls). These values are then sent to the database driver.  It does
 database inserts synchronously for each OID as a means of throttling
 the frequency of SNMP requests being sent to the target host.
+
+The database driver will automatically create a table that maps OIDs
+to an iid which is an internal integer which is used to uniquely
+identify each OID. It will look up OIDs in that table and if they
+aren't found, will insert them.
+
+Once it has an iid, it will look for a data table with the name of the
+host (from the target config file). If one isn't found, it will create
+one before doing the first insert.
+
+This means that there are no scripts that need to be run to create
+database tables before running rated.
 
 Rated will detect and correct counter wraps, when the (32 bit) counter
 has overflowed and the new value is less than the previous value. This
@@ -58,36 +73,63 @@ loses precision but should maintain the correct value. Otherwise
 trying to cache all of the intermediate values can quickly use up the
 available memory and flood the database with inserts when it reconnects.
 
-Here's a sample rated.conf file:
+When rated is done doing getnexts for an OID target for a host, it will
+record a single entry in the host's table for the target OID with the
+number of getnexts and the rate at which they were polled (and
+inserted). This allows you to monitor the performance of the poller
+itself and of the SNMP responses from the host.
+
+You can send a HUP signal to the rated poller and it will reread the
+target config file at the start of the next poll. Currently this
+regenerates the hosts/targets lists from scratch so any previous
+poll's data is discarded and it will treat every target as a first poll.
+
+Here's a sample rated.conf file (specified with -c on the command line):
 
 Interval    30
 DB_Host     localhost
-DB_Database rtg
-DB_User     rtg
-DB_Pass     rtg
+DB_Database rated
+DB_User     rated
+DB_Pass     rated
 DB_Driver   libratedpgsql.so
 Threads     5
 
-Here's a sample target configuration file:
+The interval specifies how often you want each target to be polled.
+For example, if you specify 30 seconds and the poll takes 10 seconds,
+it will sleep for 20 seconds before starting the next poll. The sleep
+time is determined at the end of every poll.
 
-host 192.168.1.2 {
-    community public;
-    snmpver 2;
+Here's a sample target configuration file (specified with -t):
+
+template switch {
     # ifHCInOctets
-    target .1.3.6.1.2.1.31.1.1.1.6 {
-        table ifinoctets;
-    }
+    target .1.3.6.1.2.1.31.1.1.1.6;
     # ifHCOutOctets
-    target .1.3.6.1.2.1.31.1.1.1.10 {
-        table ifoutoctets;
-    }
+    target .1.3.6.1.2.1.31.1.1.1.10;
     # ifHCInUcastPkts
-    target .1.3.6.1.2.1.31.1.1.1.7 {
-        table ifinucastpkts;
-    }
+    target .1.3.6.1.2.1.31.1.1.1.7;
     # ifHCOutUcastPkts
-    target .1.3.6.1.2.1.31.1.1.1.11 {
-        table ifoutucastpkts;
+    target .1.3.6.1.2.1.31.1.1.1.11;
+    host myswitch1 {
+        address 192.168.1.1;
+        community public;
+        snmpver 2;
+    }
+    host myswitch2 {
+        address 192.168.1.2;
+        community public;
+        snmpver 2;
     }
 }
+
+Comments start with a # (shell style) or // (C++ style) and go to the
+end of the line.
+
+Templates let you specify common targets for groups of hosts. This way
+if you have several of the same type of device you can specify the
+target list once. You specify the target OID where rated will start
+doing getnexts, so the first value to be inserted will be the next
+value in the OID tree. So you specify the top level OID and it will
+poll and record everything below that until it goes into a different
+part of the tree.
 
