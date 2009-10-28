@@ -23,8 +23,10 @@ typedef struct target_struct {
     char *objoid;
     oid anOID[MAX_OID_LEN];
     size_t anOID_len;
+    unsigned long long getnext_counter;
     struct getnext_struct *getnexts;
     struct getnext_struct *current;
+    struct getnext_struct poll;
     struct target_struct *next;
 } target_t;
 

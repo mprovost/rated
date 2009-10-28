@@ -160,7 +160,7 @@ short snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string,
     return bits;
 }
 
-
+/* insert into the database and return a boolean indicating whether to attempt to reconnect to the db the next time */
 int do_insert(int db_reconnect, unsigned long long result, getnext_t *getnext, short bits, struct timeval current_time, const char *oid_string, host_t *host) { 
     unsigned long long insert_val = 0;
     double rate = 0;
@@ -305,7 +305,6 @@ void *poller(void *thread_args)
     target_t *entry = NULL;
     netsnmp_session *sessp;
     short bits;
-    unsigned int getnexts;
     getnext_t *getnext_scratch;
     unsigned long long result = 0;
     /*
@@ -422,10 +421,10 @@ void *poller(void *thread_args)
             memmove(&anOID, entry->anOID, entry->anOID_len * sizeof(oid));
             anOID_len = entry->anOID_len;
 
-            getnexts = 0;
-
             gettimeofday(&now, NULL);
             begin_time = tv2ms(now);
+            /* update the time in the previous poll getnext struct so that we don't count the idle time between polls */
+            entry->poll.last_time = now;
 
             /* keep doing getnexts */
             while (anOID) {
@@ -441,7 +440,7 @@ void *poller(void *thread_args)
                     continue;
                 }
 
-                getnexts++;
+                entry->getnext_counter++;
 
                 /*
                  * checks to see if the getnexts are finished
@@ -513,7 +512,7 @@ void *poller(void *thread_args)
                     }
                 /* first target of first poll */
                 } else {
-                    tdebug(DEBUG, "entry->getnexts == NULL\n");
+                    tdebug(DEBUG, "entry->getnexts == NULL\n"); 
                     entry->getnexts = calloc(1, sizeof(getnext_t));
                     entry->getnexts->next = NULL;
                     memmove(entry->getnexts->anOID, &anOID, anOID_len * sizeof(oid));
@@ -529,13 +528,19 @@ void *poller(void *thread_args)
                 db_status = db_commit();
         */
 
+                /*
+                 * insert into the database
+                 */
                 db_reconnect = do_insert(db_reconnect, result, entry->current, bits, current_time, oid_string, host);
 
             } /* while (anOID) */
             gettimeofday(&now, NULL);
             end_time = tv2ms(now);
-            tdebug(HIGH, "%u getnexts in %.0f ms (%.0f/s)\n", getnexts, end_time - begin_time, (1000 / (end_time - begin_time)) * getnexts);
+            tdebug(HIGH, "%s@%s: %u getnexts in %.0f ms (%.0f/s)\n", entry->objoid, host->host, entry->getnext_counter, end_time - begin_time, (1000 / (end_time - begin_time)) * entry->getnext_counter);
             /* loop_count++; */
+
+            /* insert the internal poll data (ie how many getnexts for this oid) into the host table */
+            db_reconnect = do_insert(db_reconnect, entry->getnext_counter, &entry->poll, 64, now, entry->objoid, host);
 
             if (set->verbose >= HIGH) {
                 entry->current = entry->getnexts;
