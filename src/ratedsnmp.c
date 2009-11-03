@@ -13,10 +13,6 @@
 extern stats_t stats;
 extern config_t *set;
 
-/* globals! */
-worker_t *worker;
-crew_t *crew;
-
 void cancel_lock(void *arg)
 {
     /* to be called from the cleanup handler */
@@ -28,7 +24,8 @@ void cleanup_db(void *arg)
     db_disconnect();
 }
 
-short snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, unsigned long long *result, struct timeval *current_time) {
+short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, unsigned long long *result, struct timeval *current_time) {
+    crew_t *crew = worker->crew;
     netsnmp_pdu *pdu;
     netsnmp_pdu *response;
     netsnmp_variable_list *vars;
@@ -161,7 +158,8 @@ short snmp_getnext(void *sessp, oid *anOID, size_t *anOID_len, char *oid_string,
 }
 
 /* insert into the database and return a boolean indicating whether to attempt to reconnect to the db the next time */
-int do_insert(int db_reconnect, unsigned long long result, getnext_t *getnext, short bits, struct timeval current_time, const char *oid_string, host_t *host) { 
+int do_insert(worker_t *worker, int db_reconnect, unsigned long long result, getnext_t *getnext, short bits, struct timeval current_time, const char *oid_string, host_t *host) { 
+    crew_t *crew = worker->crew;
     unsigned long long insert_val = 0;
     double rate = 0;
     int db_error = FALSE;
@@ -298,8 +296,8 @@ cleanup:
 
 void *poller(void *thread_args)
 {
-    worker = (worker_t *) thread_args;
-    crew = worker->crew;
+    worker_t *worker = (worker_t *) thread_args;
+    crew_t *crew = worker->crew;
     host_t *host = NULL;
     target_t *head;
     target_t *entry = NULL;
@@ -432,7 +430,7 @@ void *poller(void *thread_args)
                 result = 0;
 
                 /* do the actual snmp poll */
-                bits = snmp_getnext(sessp, anOID, &anOID_len, oid_string, &result, &current_time);
+                bits = snmp_getnext(worker, sessp, anOID, &anOID_len, oid_string, &result, &current_time);
 
                 if (bits < 0) {
                     /* skip to next oid */
@@ -531,7 +529,7 @@ void *poller(void *thread_args)
                 /*
                  * insert into the database
                  */
-                db_reconnect = do_insert(db_reconnect, result, entry->current, bits, current_time, oid_string, host);
+                db_reconnect = do_insert(worker, db_reconnect, result, entry->current, bits, current_time, oid_string, host);
 
             } /* while (anOID) */
             gettimeofday(&now, NULL);
@@ -540,7 +538,7 @@ void *poller(void *thread_args)
             /* loop_count++; */
 
             /* insert the internal poll data (ie how many getnexts for this oid) into the host table */
-            db_reconnect = do_insert(db_reconnect, entry->getnext_counter, &entry->poll, 64, now, entry->objoid, host);
+            db_reconnect = do_insert(worker, db_reconnect, entry->getnext_counter, &entry->poll, 64, now, entry->objoid, host);
 
             if (set->verbose >= HIGH) {
                 entry->current = entry->getnexts;
