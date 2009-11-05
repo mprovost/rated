@@ -39,17 +39,15 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
 
     /* TODO check return value */
     snprint_objid(oid_string, SPRINT_MAX_LEN, anOID, *anOID_len);
+    /* convert the opaque session pointer back into a session struct for debug output */
     session = snmp_sess_session(sessp);
-    tdebug(LOW, "Polling (%s@%s)\n", oid_string, session->peername);
+    tdebug(HIGH, "Polling (%s@%s)\n", oid_string, session->peername);
 
     /* this will free the pdu on error so we can't save them for reuse between rounds */
     getnext_status = snmp_sess_synch_response(sessp, pdu, &response);
 
     /* Get the current time */
     gettimeofday(current_time, NULL);
-
-    /* convert the opaque session pointer back into a session struct for debug output */
-    session = snmp_sess_session(sessp);
 
     /* Collect response and process stats */
     PT_MUTEX_LOCK(&stats.mutex);
