@@ -345,14 +345,6 @@ void *poller(void *thread_args)
     PT_MUTEX_UNLOCK(&crew->mutex);
 
     while (1) {
-/*
-        if(loop_count >= POLLS_PER_TRANSACTION) {
-            tdebug(HIGH, "doing commit on %d\n", POLLS_PER_TRANSACTION);
-            db_status = db_commit(); 
-            loop_count = 0;
-        }
-*/
-
 	/* see if we've been cancelled before we start another loop */
 	pthread_testcancel();
 
@@ -368,15 +360,6 @@ void *poller(void *thread_args)
             PT_COND_WAIT(&crew->go, &crew->mutex);
 	}
 	tdebug(DEVELOP, "done waiting, received go\n");
-/*
-        cur_work = crew->work_count;
-        if(cur_work > prev_work) {
-            tdebug(HIGH, "doing commit at %d\n", time(NULL));
-            db_status = db_commit(); 
-            loop_count = 0;
-        }
-        prev_work = cur_work;
-*/
 
         /* TODO do we need this check at all? */
 	if (crew->current) {
@@ -517,12 +500,6 @@ void *poller(void *thread_args)
 
                 tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi\n", result, entry->current->last_value, bits);
 
-
-        /*
-                tdebug(HIGH, "doing commit\n");
-                db_status = db_commit();
-        */
-
                 /*
                  * insert into the database
                  */
@@ -531,7 +508,6 @@ void *poller(void *thread_args)
             } /* while (anOID) */
             /* grab the time that we finished this target for the internal stats insert */
             gettimeofday(&now, NULL);
-            /* loop_count++; */
 
             /* insert the internal poll data (ie how many getnexts for this oid) into the host table */
             db_reconnect = do_insert(worker, db_reconnect, entry->getnext_counter, &entry->poll, 64, now, entry->objoid, host);
