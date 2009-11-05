@@ -312,7 +312,6 @@ void *poller(void *thread_args)
     */
     struct timeval current_time;
     struct timeval now;
-    double begin_time, end_time;
     /* this forces the db to connect on the first poll (that we have something to insert) */
     int db_reconnect = TRUE;
     oid anOID[MAX_OID_LEN];
@@ -419,9 +418,8 @@ void *poller(void *thread_args)
             memmove(&anOID, entry->anOID, entry->anOID_len * sizeof(oid));
             anOID_len = entry->anOID_len;
 
-            gettimeofday(&now, NULL);
-            begin_time = tv2ms(now);
             /* update the time in the previous poll getnext struct so that we don't count the idle time between polls */
+            gettimeofday(&now, NULL);
             entry->poll.last_time = now;
 
             /* keep doing getnexts */
@@ -438,6 +436,7 @@ void *poller(void *thread_args)
                     continue;
                 }
 
+                /* this is a counter so we never zero it */
                 entry->getnext_counter++;
 
                 /*
@@ -532,9 +531,8 @@ void *poller(void *thread_args)
                 db_reconnect = do_insert(worker, db_reconnect, result, entry->current, bits, current_time, oid_string, host);
 
             } /* while (anOID) */
+            /* grab the time that we finished this target for the internal stats insert */
             gettimeofday(&now, NULL);
-            end_time = tv2ms(now);
-            tdebug(HIGH, "%s@%s: %u getnexts in %.0f ms (%.0f/s)\n", entry->objoid, host->host, entry->getnext_counter, end_time - begin_time, (1000 / (end_time - begin_time)) * entry->getnext_counter);
             /* loop_count++; */
 
             /* insert the internal poll data (ie how many getnexts for this oid) into the host table */
