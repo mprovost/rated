@@ -112,7 +112,7 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
                 *result = 0;
                 bits = -1;
         } /* switch (vars->type) */
-        tdebug(LOW, "Setting next: (%s@%s)\n", oid_string, session->peername);
+        tdebug(DEBUG, "Setting next: (%s@%s)\n", oid_string, session->peername);
         memmove(anOID, vars->name, vars->name_length * sizeof(oid));
         *anOID_len = vars->name_length;
     } else { 
@@ -429,9 +429,12 @@ void *poller(void *thread_args)
                     break;
                 /* match against the original target to see if we're going into a different part of the oid tree */
                 } else if ((memcmp(&entry->anOID, &anOID, entry->anOID_len * sizeof(oid)) != 0)) {
-                    tdebug(DEBUG, "snmpgetnext done memcmp\n");
-                    print_objid(entry->anOID, entry->anOID_len);
-                    print_objid(anOID, anOID_len);
+                    if (set->verbose >= DEBUG) {
+                        tdebug_all("snmpgetnext done memcmp\n");
+                        /* TODO use snprint_objid */
+                        print_objid(entry->anOID, entry->anOID_len);
+                        print_objid(anOID, anOID_len);
+                    }
                     break;
                 }
 
