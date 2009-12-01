@@ -185,16 +185,29 @@ int do_insert(worker_t *worker, int db_reconnect, unsigned long long result, get
     /* Counter Wrap Condition */
     } else if (result < getnext->last_value) {
         PT_MUTEX_LOCK(&stats.mutex);
-        stats.wraps++;
+        /* check for off by ones
+         * some devices seem to occasionally go backwards by one
+         * it's extremely unlikely that it's a full counter wrap
+         */ 
+        if (getnext->last_value - result == 1) {
+            stats.obo++;
+            insert_val = 0;
+        } else if (bits == 32) {
+            stats.wraps++;
+            insert_val = (THIRTYTWO - getnext->last_value) + result;
+        } else if (bits == 64) {
+            stats.wraps64++;
+            insert_val = (SIXTYFOUR - getnext->last_value) + result;
+        }
         PT_MUTEX_UNLOCK(&stats.mutex);
 
-        if (bits == 32) insert_val = (THIRTYTWO - getnext->last_value) + result;
-        else if (bits == 64) insert_val = (SIXTYFOUR - getnext->last_value) + result;
-
-        rate = insert_val / timediff(current_time, getnext->last_time);
-
-        tdebug(LOW, "*** Counter Wrap (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
-            oid_string, host->host, result, getnext->last_value, insert_val);
+        if (insert_val) {
+            tdebug(LOW, "*** Counter Wrap (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
+                oid_string, host->host, result, getnext->last_value, insert_val);
+            rate = insert_val / timediff(current_time, getnext->last_time);
+        } else {
+            tdebug(LOW, "*** Off by one (%s@%s): %llu - %llu == 1\n", oid_string, host->host, getnext->last_value, result);
+        }
     /* Not a counter wrap and this is not the first poll 
      * the last_time should be 0 on the first poll */
     } else if ((getnext->last_value >= 0) && (getnext->last_time.tv_sec > 0)) {
