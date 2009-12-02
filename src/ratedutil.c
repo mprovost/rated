@@ -185,18 +185,6 @@ void timestamp(char *str) {
    return;
 }
 
-char *file_timestamp() {
-   static char str[BUFSIZE];
-   time_t clock;
-   struct tm *t;
-
-   clock = time(NULL);
-   t = localtime(&clock);
-   snprintf(str, sizeof(str), "%02d%02d_%02d:%02d:%02d", t->tm_mon + 1, 
-      t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
-   return(str);
-}
-
 /* Return number double precision seconds difference between timeval structs */
 double timediff(struct timeval tv1, struct timeval tv2) {
 	double result = 0.0;
