@@ -28,6 +28,7 @@
 #  include <limits.h>
 #  include <string.h>
 #  include <stdarg.h>
+#  include <assert.h>
 #elif HAVE_STRINGS_H
 #  include <strings.h>
 #endif /*STDC_HEADERS*/

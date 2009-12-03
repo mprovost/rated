@@ -265,9 +265,9 @@ int do_insert(worker_t *worker, int db_reconnect, unsigned long long result, get
                 PT_MUTEX_UNLOCK(&crew->mutex);
             }
 
-            tdebug(DEVELOP, "db_insert sent: %s %lu %llu %.15f\n", host->host_esc, getnext->iid, insert_val, rate);
+            tdebug(DEVELOP, "db_insert sent: %s %lu %lu %llu %.15f\n", host->host_esc, getnext->iid, tv2ms(current_time), insert_val, rate);
             /* insert into the database */
-            if (db_insert(host->host_esc, getnext->iid, insert_val, rate)) {
+            if (db_insert(host->host_esc, getnext->iid, current_time, insert_val, rate)) {
                 PT_MUTEX_LOCK(&stats.mutex);
                 stats.db_inserts++;
                 PT_MUTEX_UNLOCK(&stats.mutex);

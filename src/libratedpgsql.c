@@ -42,6 +42,17 @@ PGconn* getpgsql() {
 	return(pgsql);
 }
 
+/* convert a timeval to an ISO 8601 format string, return the length of the string */
+size_t tv2iso8601(char *iso, struct timeval tv) {
+    size_t len;
+    time_t secs = tv.tv_sec;
+    struct tm *tm = localtime(&secs);
+    /* 1970-01-30T13:25:01 == 19, plus terminating NUL */
+    len = strftime(iso, 20, ISO8601, tm);
+    assert(len == 19);
+    return(len);
+}
+
 /* utility function to safely escape table names */
 char *escape_string(PGconn *pgsql, const char *input)
 {
@@ -142,10 +153,11 @@ int __db_disconnect() {
  * insert a row into the db
  * this expects an escaped table name
  */
-int __db_insert(const char *table_esc, unsigned long iid, unsigned long long insert_val, double insert_rate) {
+int __db_insert(const char *table_esc, unsigned long iid, struct timeval current_time, unsigned long long insert_val, double insert_rate) {
 	PGconn *pgsql = getpgsql();
 
 	char *query;
+        char now[20];
 	ExecStatusType status;
 
 	PGresult *result;
@@ -155,17 +167,19 @@ int __db_insert(const char *table_esc, unsigned long iid, unsigned long long ins
             return FALSE;
         }
 
+        tv2iso8601(now, current_time);
+
 	/* INSERT INTO %s (iid,dtime,counter,rate) VALUES (%d, NOW(), %llu, %.6f) */
         /* don't include the rate column if it's not needed */
         if (insert_rate > 0) {
             /* double columns have precision of at least 15 digits */
             asprintf(&query,
-                "INSERT INTO \"%s\" (iid,dtime,counter,rate) VALUES (%lu,NOW(),%llu,%.15f)",
-                table_esc, iid, insert_val, insert_rate);
+                "INSERT INTO \"%s\" (iid,dtime,counter,rate) VALUES (%lu,\'%s\',%llu,%.15f)",
+                table_esc, iid, now, insert_val, insert_rate);
         } else {
             asprintf(&query,
-                "INSERT INTO \"%s\" (iid,dtime,counter) VALUES (%lu,NOW(),%llu)",
-                table_esc, iid, insert_val);
+                "INSERT INTO \"%s\" (iid,dtime,counter) VALUES (%lu,\'%s\',%llu)",
+                table_esc, iid, now, insert_val);
         }
 
 	debug(HIGH, "Query = %s\n", query);

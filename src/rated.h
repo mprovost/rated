@@ -36,6 +36,7 @@
 #define MEGA (unsigned int)(KILO * KILO)
 #define GIGA (unsigned long long)(MEGA * KILO)
 #define TERA (unsigned long long)(GIGA * KILO)
+#define ISO8601 "%Y-%m-%dT%H:%M:%S"
 
 
 #define POLLS_PER_TRANSACTION 100
@@ -152,6 +153,7 @@ void timestamp(char *);
 double timediff(struct timeval, struct timeval);
 unsigned long tv2ms(struct timeval);
 struct timeval ms2tv(unsigned long);
+size_t tv2iso8601(char *, struct timeval);
 int checkPID(char *, config_t *);
 int daemon_init();
 
