@@ -34,6 +34,7 @@ typedef struct host_struct {
     char *host;
     char *host_esc;
     char *address;
+    unsigned long sysuptime;
     netsnmp_session session;
     target_t *targets;
     target_t *current;
