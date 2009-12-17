@@ -24,6 +24,54 @@ void cleanup_db(void *arg)
     db_disconnect();
 }
 
+/* check the host uptime via snmp
+ * return timeticks or 0 on error */
+unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp, char *oid_string) {
+    /* DISMAN-EVENT-MIB::sysUpTimeInstance = .1.3.6.1.2.1.1.3.0 */
+    oid sysuptimeOID[] = {1, 3, 6, 1, 2, 1, 1, 3, 0};
+    size_t sysuptimeOID_len = 9;
+    netsnmp_pdu *pdu;
+    netsnmp_pdu *response;
+    netsnmp_variable_list *vars;
+    netsnmp_session *session;
+    char result_string[SPRINT_MAX_LEN];
+    int sysuptime_status;
+    unsigned long timeticks = 0;
+
+    pdu = snmp_pdu_create(SNMP_MSG_GET);
+    snmp_add_null_var(pdu, sysuptimeOID, sysuptimeOID_len);
+    /* convert the opaque session pointer back into a session struct for debug output */
+    session = snmp_sess_session(sessp);
+
+    /* do the snmp query */
+    sysuptime_status = snmp_sess_synch_response(sessp, pdu, &response);
+
+
+    if (sysuptime_status == STAT_SUCCESS && response && response->errstat == SNMP_ERR_NOERROR){
+        vars = response->variables;
+        if (vars->type == ASN_TIMETICKS) {
+            if (set->verbose >= DEBUG) {
+                snprint_objid(oid_string, SPRINT_MAX_LEN, sysuptimeOID, sysuptimeOID_len);
+                snprint_value(result_string, SPRINT_MAX_LEN, vars->name, vars->name_length, vars);
+                tdebug_all("sysuptime (%s@%s) %s\n", oid_string, session->peername, result_string);
+            }
+            timeticks = (unsigned long) *(vars->val.integer);
+        } else {
+            if (set->verbose >= LOW) {
+                snprint_objid(oid_string, SPRINT_MAX_LEN, sysuptimeOID, sysuptimeOID_len);
+                snprint_value(result_string, SPRINT_MAX_LEN, vars->name, vars->name_length, vars);
+                tdebug_all("sysuptime incorrect data type, expecting Timeticks: (%s@%s) %s\n", oid_string, session->peername, result_string);
+            }
+        }
+    } else {
+        snmp_sess_perror("rated", sessp);
+    }
+
+    if (response)
+        snmp_free_pdu(response);
+    return timeticks;
+}
+
 short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, unsigned long long *result, struct timeval *current_time) {
     crew_t *crew = worker->crew;
     netsnmp_pdu *pdu;
@@ -64,7 +112,7 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
             /* this results in something like 'Counter64: 11362777584380' */
             /* TODO check return value */
             snprint_value(result_string, SPRINT_MAX_LEN, vars->name, vars->name_length, vars);
-            tdebug(HIGH, "(%s@%s) %s\n", oid_string, session->peername, result_string);
+            tdebug_all("(%s@%s) %s\n", oid_string, session->peername, result_string);
         }
         switch (vars->type) {
             /*
@@ -316,6 +364,7 @@ void *poller(void *thread_args)
     short bits;
     getnext_t *getnext_scratch;
     unsigned long long result = 0;
+    unsigned long sysuptime = 0;
     /*
     int cur_work = 0;
     int prev_work = 99999999;
@@ -400,6 +449,9 @@ void *poller(void *thread_args)
             /* skip to next host */
             continue;
         }
+
+        /* first get the uptime for the host so we can check if it has restarted */
+        sysuptime = snmp_sysuptime(worker, sessp, oid_string);
 
         /* loop through the targets for this host */
         while (host->current) {
@@ -516,6 +568,13 @@ void *poller(void *thread_args)
 
                 tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi\n", result, entry->current->last_value, bits);
 
+                /* if the host reset */
+                if (sysuptime < host->sysuptime) {
+                    tdebug(LOW, "system uptime went backwards (%lu < %lu)\n", sysuptime, host->sysuptime);
+                    /* this will make do_insert think it's a first poll */
+                    entry->current->last_time.tv_sec = entry->current->last_time.tv_usec = 0;
+                }
+
                 /*
                  * insert into the database
                  */
@@ -543,6 +602,10 @@ void *poller(void *thread_args)
         } /* while (host->current) */
         if (sessp != NULL)
             snmp_sess_close(sessp);
+
+        /* update timestamp */
+        host->sysuptime = sysuptime;
+
         /* reset back to start */
         host->current = head;
 
