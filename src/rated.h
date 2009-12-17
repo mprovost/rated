@@ -38,9 +38,6 @@
 #define TERA (unsigned long long)(GIGA * KILO)
 #define ISO8601 "%Y-%m-%dT%H:%M:%S"
 
-
-#define POLLS_PER_TRANSACTION 100
-
 /* Define CONFIG_PATHS places to search for the rated.conf file.  Note
    that RTG_HOME, as determined during autoconf is one path */
 #define CONFIG_PATHS 3
