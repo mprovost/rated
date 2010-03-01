@@ -102,6 +102,20 @@ int free_target_list(target_t *head) {
     return count;
 }
 
+int free_getnext_list(getnext_t *head) {
+    unsigned int count = 0;
+    getnext_t *getnext_next;
+
+    do {
+        count++;
+        getnext_next = head->next;
+        free(head);
+        head = getnext_next;
+    } while (head);
+
+    return count;
+}
+
 /* deep copy a target list */
 /* doesn't copy the getnexts list */
 target_t *copy_target_list(target_t *head) {

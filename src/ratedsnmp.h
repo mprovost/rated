@@ -55,6 +55,7 @@ host_t *hash_target_file(char *);
 void print_targets(target_t *);
 int free_host_list(host_t *);
 int free_target_list(target_t *);
+int free_getnext_list(getnext_t *);
 target_t *copy_target_list(target_t *);
 
 #endif /* not _RATEDSNMP_H_ */

@@ -26,9 +26,10 @@ void cleanup_db(void *arg)
 
 /* check the host uptime via snmp
  * return timeticks or 0 on error */
-unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp, char *oid_string) {
+unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp) {
     /* DISMAN-EVENT-MIB::sysUpTimeInstance = .1.3.6.1.2.1.1.3.0 */
     oid sysuptimeOID[] = {1, 3, 6, 1, 2, 1, 1, 3, 0};
+    char *oid_string = ".1.3.6.1.2.1.1.3.0";
     size_t sysuptimeOID_len = 9;
     netsnmp_pdu *pdu;
     netsnmp_pdu *response;
@@ -46,29 +47,49 @@ unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp, char *oid
     /* do the snmp query */
     sysuptime_status = snmp_sess_synch_response(sessp, pdu, &response);
 
-
     if (sysuptime_status == STAT_SUCCESS && response && response->errstat == SNMP_ERR_NOERROR){
         vars = response->variables;
         if (vars->type == ASN_TIMETICKS) {
             if (set->verbose >= DEBUG) {
-                snprint_objid(oid_string, SPRINT_MAX_LEN, sysuptimeOID, sysuptimeOID_len);
                 snprint_value(result_string, SPRINT_MAX_LEN, vars->name, vars->name_length, vars);
                 tdebug_all("sysuptime (%s@%s) %s\n", oid_string, session->peername, result_string);
             }
             timeticks = (unsigned long) *(vars->val.integer);
         } else {
             if (set->verbose >= LOW) {
-                snprint_objid(oid_string, SPRINT_MAX_LEN, sysuptimeOID, sysuptimeOID_len);
                 snprint_value(result_string, SPRINT_MAX_LEN, vars->name, vars->name_length, vars);
                 tdebug_all("sysuptime incorrect data type, expecting Timeticks: (%s@%s) %s\n", oid_string, session->peername, result_string);
             }
         }
     } else {
-        snmp_sess_perror("rated", sessp);
+        /* TODO refactor into function */
+        switch (sysuptime_status) {
+            case STAT_DESCRIP_ERROR:
+                tdebug(LOW, "*** SNMP Error: (%s) Bad descriptor.\n", session->peername);
+                break;
+            case STAT_TIMEOUT:
+                tdebug(LOW, "*** SNMP No response: (%s@%s).\n", oid_string, session->peername);
+                break;
+            case STAT_SUCCESS:
+                if (response->variables->type == SNMP_NOSUCHINSTANCE) {
+                    tdebug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", oid_string, session->peername);
+                } else {
+                    if (response) {
+                        tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, snmp_errstring(response->errstat));
+                    } else {
+                        tdebug(LOW, "*** SNMP NULL response: (%s@%s) %s\n", oid_string, session->peername);
+                    }
+                }
+                break;
+            default:
+                tdebug(LOW, "*** SNMP Error: (%s@%s) Unsuccessful (%i).\n", oid_string, session->peername, sysuptime_status);
+                break;
+        }
     }
 
     if (response)
         snmp_free_pdu(response);
+
     return timeticks;
 }
 
@@ -447,12 +468,35 @@ void *poller(void *thread_args)
 
         if (sessp == NULL) {
             /* skip to next host */
-            continue;
+            goto cleanup;
         }
 
         /* first get the uptime for the host so we can check if it has restarted */
-        sysuptime = snmp_sysuptime(worker, sessp, oid_string);
+        sysuptime = snmp_sysuptime(worker, sessp);
 
+        if (sysuptime == 0) {
+            tdebug(LOW, "Couldn't get sysuptime from %s\n", host->host);
+            /* skip to next host */
+            goto cleanup;
+        }
+
+        /* if the host reset */
+        if (host->sysuptime && sysuptime < host->sysuptime) {
+            tdebug(LOW, "system uptime went backwards (%lu < %lu)!\n", sysuptime, host->sysuptime);
+
+            /* this will make do_insert think it's a first poll */
+            //entry->current->last_time.tv_sec = entry->current->last_time.tv_usec = 0;
+
+            /* erase the getnexts, they aren't valid anymore if the host reset */
+            while (host->current) {
+                free_getnext_list(host->current->getnexts);
+                host->current->getnexts = NULL;
+                host->current = host->current->next;
+            }
+            /* reset targets back to start */
+            host->current = head;
+        }
+                
         /* loop through the targets for this host */
         while (host->current) {
             entry = host->current;
@@ -568,13 +612,6 @@ void *poller(void *thread_args)
 
                 tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi\n", result, entry->current->last_value, bits);
 
-                /* if the host reset */
-                if (sysuptime < host->sysuptime) {
-                    tdebug(LOW, "system uptime went backwards (%lu < %lu)\n", sysuptime, host->sysuptime);
-                    /* this will make do_insert think it's a first poll */
-                    entry->current->last_time.tv_sec = entry->current->last_time.tv_usec = 0;
-                }
-
                 /*
                  * insert into the database
                  */
@@ -608,6 +645,8 @@ void *poller(void *thread_args)
 
         /* reset back to start */
         host->current = head;
+
+cleanup:
 
         PT_MUTEX_LOCK(&crew->mutex);
         crew->running--;
