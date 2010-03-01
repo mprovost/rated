@@ -47,7 +47,10 @@ unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp) {
     /* do the snmp query */
     sysuptime_status = snmp_sess_synch_response(sessp, pdu, &response);
 
+    PT_MUTEX_LOCK(&stats.mutex);
     if (sysuptime_status == STAT_SUCCESS && response && response->errstat == SNMP_ERR_NOERROR){
+        stats.polls++;
+        PT_MUTEX_UNLOCK(&stats.mutex);
         vars = response->variables;
         if (vars->type == ASN_TIMETICKS) {
             if (set->verbose >= DEBUG) {
@@ -62,15 +65,17 @@ unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp) {
             }
         }
     } else {
-        /* TODO refactor into function */
         switch (sysuptime_status) {
             case STAT_DESCRIP_ERROR:
+                stats.errors++;
                 tdebug(LOW, "*** SNMP Error: (%s) Bad descriptor.\n", session->peername);
                 break;
             case STAT_TIMEOUT:
+                stats.no_resp++;
                 tdebug(LOW, "*** SNMP No response: (%s@%s).\n", oid_string, session->peername);
                 break;
             case STAT_SUCCESS:
+                stats.errors++;
                 if (response->variables->type == SNMP_NOSUCHINSTANCE) {
                     tdebug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", oid_string, session->peername);
                 } else {
@@ -82,9 +87,11 @@ unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp) {
                 }
                 break;
             default:
+                stats.errors++;
                 tdebug(LOW, "*** SNMP Error: (%s@%s) Unsuccessful (%i).\n", oid_string, session->peername, sysuptime_status);
                 break;
         }
+        PT_MUTEX_UNLOCK(&stats.mutex);
     }
 
     if (response)
@@ -482,7 +489,7 @@ void *poller(void *thread_args)
 
         /* if the host reset */
         if (host->sysuptime && sysuptime < host->sysuptime) {
-            tdebug(LOW, "system uptime went backwards (%lu < %lu)!\n", sysuptime, host->sysuptime);
+            tdebug(LOW, "system uptime went backwards on %s (%lu < %lu)!\n", host->host, sysuptime, host->sysuptime);
 
             /* this will make do_insert think it's a first poll */
             //entry->current->last_time.tv_sec = entry->current->last_time.tv_usec = 0;
