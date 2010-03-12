@@ -25,6 +25,14 @@ cfgmaker/targetmaker). For a given target in the configuration it will
 send get-next requests until it reaches a different part of the tree
 or the next OID is smaller than the previous one (it's looping).
 
+There is an option on some Cisco routers to stop virtual interfaces
+from registering with the SNMP engine:
+
+no virtual-template snmp
+
+This will prevent the interfaces list from filling up with virtual
+interface information if you're not interested in that data.
+
 At startup the target configuration file (-t option) is parsed and a
 linked list of hosts is created. For each host, another linked list of
 targets is built. When polling, each thread takes a single host from
