@@ -22,7 +22,7 @@ int db_init(config_t *set) {
 
 	dbhandle = lt_dlopen(set->dbdriver);
 	if (dbhandle == NULL) {
-		debug(LOW, "Couldn't load database driver %s: %s\n", set->dbdriver,(char *) lt_dlerror());
+		fatal("Couldn't load database driver %s: %s\n", set->dbdriver,(char *) lt_dlerror());
 		return FALSE;
 	} else {
 		debug(LOW, "Loaded database driver %s\n", set->dbdriver);
