@@ -386,11 +386,12 @@ void *poller(void *thread_args)
     worker_t *worker = (worker_t *) thread_args;
     crew_t *crew = worker->crew;
     host_t *host = NULL;
-    target_t *head;
-    target_t *entry = NULL;
+    template_t *current_template;
+    target_t *current_target;
+    getnext_t *next_getnext;
+    getnext_t *getnext_scratch;
     netsnmp_session *sessp;
     short bits;
-    getnext_t *getnext_scratch;
     unsigned long long result = 0;
     unsigned long sysuptime = 0;
     /*
@@ -467,7 +468,9 @@ void *poller(void *thread_args)
         pthread_cleanup_pop(FALSE);
 
         /* keep the first entry in the target list */
-        head = host->current;
+        //head = host->current;
+        current_template = host->template;
+        current_target = host->targets;
 
         /* open an snmp session once for all targets for this host for this round */
         /* TODO only do it once at startup and store it in the host struct? */
@@ -495,29 +498,25 @@ void *poller(void *thread_args)
             //entry->current->last_time.tv_sec = entry->current->last_time.tv_usec = 0;
 
             /* erase the getnexts, they aren't valid anymore if the host reset */
-            while (host->current) {
-                free_getnext_list(host->current->getnexts);
-                host->current->getnexts = NULL;
-                host->current = host->current->next;
-            }
-            /* reset targets back to start */
-            host->current = head;
+            free_target_list(host->targets);
+            /* reset template back to start */
+            //current_template = host->template;
         }
                 
         /* loop through the targets for this host */
-        while (host->current) {
-            entry = host->current;
-            entry->current = entry->getnexts;
+        while (current_template) {
+            //entry = host->current;
+            //entry->current = entry->getnexts;
 
-            tdebug(DEVELOP, "processing %s@%s\n", entry->objoid, host->host);
+            tdebug(DEVELOP, "processing %s@%s\n", current_template->objoid, host->host);
 
             /* set up the variables for the first poll */
-            memmove(&anOID, entry->anOID, entry->anOID_len * sizeof(oid));
-            anOID_len = entry->anOID_len;
+            memmove(&anOID, current_template->anOID, current_template->anOID_len * sizeof(oid));
+            anOID_len = current_template->anOID_len;
 
             /* update the time in the previous poll getnext struct so that we don't count the idle time between polls */
             gettimeofday(&now, NULL);
-            entry->poll.last_time = now;
+            current_target->poll.last_time = now;
 
             /* keep doing getnexts */
             while (anOID) {
@@ -534,21 +533,21 @@ void *poller(void *thread_args)
                 }
 
                 /* this is a counter so we never zero it */
-                entry->getnext_counter++;
+                current_target->getnext_counter++;
 
                 /*
                  * checks to see if the getnexts are finished
                  */
                 /* check to see if the new oid is smaller than the original target */
-                if (anOID_len < entry->anOID_len) {
+                if (anOID_len < current_template->anOID_len) {
                     tdebug(DEBUG, "snmpgetnext done <\n");
                     break;
                 /* match against the original target to see if we're going into a different part of the oid tree */
-                } else if ((memcmp(&entry->anOID, &anOID, entry->anOID_len * sizeof(oid)) != 0)) {
+                } else if ((memcmp(&current_template->anOID, &anOID, current_template->anOID_len * sizeof(oid)) != 0)) {
                     if (set->verbose >= DEBUG) {
                         tdebug_all("snmpgetnext done memcmp\n");
                         /* TODO use snprint_objid */
-                        print_objid(entry->anOID, entry->anOID_len);
+                        print_objid(current_template->anOID, current_template->anOID_len);
                         print_objid(anOID, anOID_len);
                     }
                     break;
@@ -559,39 +558,41 @@ void *poller(void *thread_args)
                  * We do it this way instead of moving the pointer ahead at the end of each
                  * poll so you can insert a new one without needing a doubly linked list.
                  */
-                if (entry->getnexts) {
-                    while(entry->current->next) {
+                if (current_target->getnexts) {
+                    next_getnext = current_target->current->next;
+                    while(next_getnext) {
                         /* first check against the next entry, this should be the most common case */
-                        if (anOID_len == entry->current->next->anOID_len
-                            && memcmp(&anOID, entry->current->next->anOID, anOID_len * sizeof(oid)) == 0) {
+                        if (anOID_len == next_getnext->anOID_len
+                            && memcmp(&anOID, next_getnext->anOID, anOID_len * sizeof(oid)) == 0) {
                                 tdebug(DEBUG, "next memcmp equal\n");
-                                entry->current = entry->current->next;
+                                current_target->current = next_getnext;
                                 break;
                         /* then check against the current entry, this happens in the first loop */
-                        } else if (anOID_len == entry->current->anOID_len
-                            && memcmp(&anOID, entry->current->anOID, anOID_len * sizeof(oid)) == 0) {
+                        } else if (anOID_len == current_target->current->anOID_len
+                            && memcmp(&anOID, current_target->current->anOID, anOID_len * sizeof(oid)) == 0) {
                                 tdebug(DEBUG, "memcmp equal\n");
                                 break;
                         /* else snmp_oid_compare to the next one to see if it's lesser or greater */
                         } else {
                             /* if greater, then create and insert a new getnext, this is the first poll for a new oid */
-                            if (snmp_oid_compare(anOID, anOID_len, entry->current->next->anOID, entry->current->next->anOID_len) > 0) {
+                            if (snmp_oid_compare(anOID, anOID_len, next_getnext->anOID, next_getnext->anOID_len) > 0) {
                                 tdebug(DEBUG, "insert next\n");
                                 getnext_scratch = calloc(1, sizeof(getnext_t));
-                                getnext_scratch->next = entry->current->next;
+                                getnext_scratch->next = next_getnext;
                                 memmove(getnext_scratch->anOID, &anOID, anOID_len * sizeof(oid));
                                 getnext_scratch->anOID_len = anOID_len;
-                                entry->current->next = getnext_scratch;
-                                entry->current = getnext_scratch;
+                                /* insert the new one in the linked list */
+                                next_getnext = getnext_scratch;
+                                current_target->current = next_getnext;
                                 break;
                             /* if lesser, then that must be an abandoned oid, so delete it and start the comparison over again */
                             /* we already checked for equality above so we can ignore that case */
                             } else {
                                 tdebug(DEBUG, "delete next\n");
                                 print_objid(anOID, anOID_len);
-                                print_objid(entry->current->next->anOID, entry->current->next->anOID_len);
-                                getnext_scratch = entry->current->next;
-                                entry->current->next = entry->current->next->next;
+                                print_objid(next_getnext->anOID, next_getnext->anOID_len);
+                                getnext_scratch = next_getnext;
+                                next_getnext = next_getnext->next;
                                 free(getnext_scratch);
                                 continue;
                             }
@@ -599,49 +600,51 @@ void *poller(void *thread_args)
                     }
                     /* end of list, append a new one */
                     /* don't append last item twice on second poll */
-                    if (entry->current->next == NULL && memcmp(&anOID, entry->current->anOID, anOID_len * sizeof(oid)) != 0) {
+                    if (next_getnext == NULL && memcmp(&anOID, current_target->current->anOID, anOID_len * sizeof(oid)) != 0) {
                         tdebug(DEBUG, "appending getnext\n");
-                        entry->current->next = calloc(1, sizeof(getnext_t));
-                        entry->current->next->next = NULL;
-                        memmove(entry->current->next->anOID, &anOID, anOID_len * sizeof(oid));
-                        entry->current->next->anOID_len = anOID_len;
-                        entry->current = entry->current->next;
+                        next_getnext = calloc(1, sizeof(getnext_t));
+                        next_getnext->next = NULL;
+                        memmove(next_getnext->anOID, &anOID, anOID_len * sizeof(oid));
+                        next_getnext->anOID_len = anOID_len;
+                        current_target->current = next_getnext;
                     }
                 /* first target of first poll */
                 } else {
                     tdebug(DEBUG, "entry->getnexts == NULL\n"); 
-                    entry->getnexts = calloc(1, sizeof(getnext_t));
-                    entry->getnexts->next = NULL;
-                    memmove(entry->getnexts->anOID, &anOID, anOID_len * sizeof(oid));
-                    entry->getnexts->anOID_len = anOID_len;
-                    entry->current = entry->getnexts;
+                    current_target->getnexts = calloc(1, sizeof(getnext_t));
+                    current_target->getnexts->next = NULL;
+                    memmove(current_target->getnexts->anOID, &anOID, anOID_len * sizeof(oid));
+                    current_target->getnexts->anOID_len = anOID_len;
+                    current_target->current = current_target->getnexts;
                 }
 
-                tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi\n", result, entry->current->last_value, bits);
+                tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi\n", result, current_target->current->last_value, bits);
 
                 /*
                  * insert into the database
                  */
-                db_reconnect = do_insert(worker, db_reconnect, result, entry->current, bits, current_time, oid_string, host);
+                db_reconnect = do_insert(worker, db_reconnect, result, current_target->current, bits, current_time, oid_string, host);
 
             } /* while (anOID) */
             /* grab the time that we finished this target for the internal stats insert */
             gettimeofday(&now, NULL);
 
             /* insert the internal poll data (ie how many getnexts for this oid) into the host table */
-            db_reconnect = do_insert(worker, db_reconnect, entry->getnext_counter, &entry->poll, 64, now, entry->objoid, host);
+            db_reconnect = do_insert(worker, db_reconnect, current_target->getnext_counter, &current_target->poll, 64, now, current_template->objoid, host);
 
             if (set->verbose >= HIGH) {
-                entry->current = entry->getnexts;
-                while (entry->current) {
-                    print_objid(entry->current->anOID, entry->current->anOID_len);
-                    entry->current = entry->current->next;
+                current_target->current = current_target->getnexts;
+                while (current_target->current) {
+                    print_objid(current_target->current->anOID, current_target->current->anOID_len);
+                    current_target->current = current_target->current->next;
                 }
-                entry->current = entry->getnexts;
+                current_target->current = current_target->getnexts;
             }
 
             /* move to next target */
-            host->current = host->current->next;
+            //host->current = host->current->next;
+            current_template = current_template->next;
+            current_target = current_target->next;
 
         } /* while (host->current) */
         if (sessp != NULL)
@@ -649,9 +652,6 @@ void *poller(void *thread_args)
 
         /* update timestamp */
         host->sysuptime = sysuptime;
-
-        /* reset back to start */
-        host->current = head;
 
 cleanup:
 

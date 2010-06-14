@@ -20,24 +20,30 @@ typedef struct getnext_struct {
 } getnext_t;
 
 typedef struct target_struct {
-    char *objoid;
-    oid anOID[MAX_OID_LEN];
-    size_t anOID_len;
     unsigned long long getnext_counter;
     struct getnext_struct *getnexts;
     struct getnext_struct *current;
+    /* storage for the internal polling data */
     struct getnext_struct poll;
     struct target_struct *next;
 } target_t;
+
+typedef struct template_struct {
+    char *objoid;
+    oid anOID[MAX_OID_LEN];
+    size_t anOID_len;
+    struct template_struct *next;
+} template_t;
 
 typedef struct host_struct {
     char *host;
     char *host_esc;
     char *address;
+    struct template_struct *template;
     unsigned long sysuptime;
     netsnmp_session session;
     target_t *targets;
-    target_t *current;
+    //target_t *current; /* FIXME move to stack */
     struct host_struct *next;
 } host_t;
 
@@ -52,10 +58,10 @@ typedef struct crew_struct {
 
 /* Precasts: ratedhash.c */
 host_t *hash_target_file(char *);
-void print_targets(target_t *);
+void print_template(template_t *);
+int free_template_list(template_t *);
 int free_host_list(host_t *);
 int free_target_list(target_t *);
 int free_getnext_list(getnext_t *);
-target_t *copy_target_list(target_t *);
 
 #endif /* not _RATEDSNMP_H_ */

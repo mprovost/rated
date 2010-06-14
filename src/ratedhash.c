@@ -50,7 +50,7 @@ host_t *hash_target_file(char *file) {
         host = host_dummy.next;
         while (host) {
             debug_all("%s\n", host->host);
-            print_targets(host->targets);
+            print_template(host->template);
             host = host->next;
         }
     }
@@ -60,43 +60,58 @@ host_t *hash_target_file(char *file) {
     return (host_dummy.next);
 }
 
-void print_targets(target_t *targets) {
-    while (targets) {
-        debug_all("\t%s\n", targets->objoid);
-        targets = targets->next;
+void print_template(template_t *template) {
+    while (template) {
+        debug_all("\t%s\n", template->objoid);
+        template = template->next;
     }
+}
+
+int free_template_list(template_t *head) {
+    unsigned int count = 0;
+    template_t *next;
+
+    do {
+        count++;
+        next = head->next;
+        free(head);
+        head = next;
+    } while (head);
+
+    return count;
 }
 
 /* walk through the host/target list freeing everything */
 int free_host_list(host_t *head) {
     unsigned int count = 0;
     host_t *host;
-    host_t *host_next;
+    host_t *next;
 
     if (head) {
         host = head;
         do {
             count++;
-            if (host->targets) {
-                free_target_list(host->targets);
-            }
-            host_next = host->next;
+            if (host->template) free_template_list(host->template);
+            if (host->targets) free_target_list(host->targets);
+            next = host->next;
             free(host);
-            host = host_next;
+            host = next;
         } while (host);
     }
+
     return count;
 }
 
 int free_target_list(target_t *head) {
     unsigned int count = 0;
-    target_t *target_next;
+    target_t *next;
 
     do {
         count++;
-        target_next = head->next;
+        if (head->getnexts) free_getnext_list(head->getnexts);
+        next = head->next;
         free(head);
-        head = target_next;
+        head = next;
     } while (head);
 
     return count;
@@ -114,28 +129,4 @@ int free_getnext_list(getnext_t *head) {
     } while (head);
 
     return count;
-}
-
-/* deep copy a target list */
-/* doesn't copy the getnexts list */
-target_t *copy_target_list(target_t *head) {
-    target_t *current = head;
-    target_t dummy;
-    target_t *tail = &dummy;
-
-    dummy.next = NULL;
-
-    while (current) {
-        tail->next = calloc(1, sizeof(target_t));
-        tail = tail->next;
-        tail->objoid = current->objoid;
-        //tail->anOID = current->anOID;
-        memcpy(tail->anOID, current->anOID, MAX_OID_LEN);
-        tail->anOID_len = current->anOID_len;
-        tail->getnexts = NULL;
-        tail->current = NULL;
-        tail->next = NULL;
-        current = current->next;
-    }
-    return dummy.next;
 }
