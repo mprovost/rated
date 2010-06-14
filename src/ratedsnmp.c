@@ -470,6 +470,11 @@ void *poller(void *thread_args)
         /* keep the first entry in the target list */
         //head = host->current;
         current_template = host->template;
+        /* create the first target on the first poll */
+        /* TODO move to yacc do we can skip this check? */
+        if (!host->targets) {
+            host->targets = calloc(1, sizeof(target_t));
+        }
         current_target = host->targets;
 
         /* open an snmp session once for all targets for this host for this round */
@@ -644,6 +649,10 @@ void *poller(void *thread_args)
             /* move to next target */
             //host->current = host->current->next;
             current_template = current_template->next;
+            /* if we're at the end of the list we need to make a new one */
+            if (!current_target->next) {
+                current_target->next = calloc(1, sizeof(target_t));
+            }
             current_target = current_target->next;
 
         } /* while (host->current) */
