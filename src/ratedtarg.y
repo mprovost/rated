@@ -15,9 +15,10 @@ extern config_t *set;
 
 static host_t *thst;
 
-static target_t *target_tail;
+//static target_t *target_tail;
 //static target_t target_dummy;
 
+static template_t *template_tail;
 static template_t template_dummy;
 
 #define YYDEBUG 1
@@ -69,6 +70,7 @@ template_entry: T_TMPL L_IDENT
 {
     //target_tail = &target_dummy;
     //target_dummy.next = NULL;
+    template_tail = &template_dummy;
     template_dummy.next = NULL;
 }
 '{' template_directives '}'
@@ -104,8 +106,8 @@ target_directive: TMPL_TRGT L_OID
         targets++;
         //target_tail->next = ttgt;
         //target_tail = target_tail->next;
-        template_dummy.next = ttemplate;
-        template_dummy = *ttemplate;
+        template_tail->next = ttemplate;
+        template_tail = template_tail->next;
     } else {
         fprintf(stderr, "Couldn't parse target oid \"%s\" at line %d:\n", $2, yylineno);
         snmp_perror($2);
