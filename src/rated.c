@@ -14,6 +14,7 @@ stats_t stats;
 char *target_file = NULL;
 char *pid_file = PIDFILE;
 extern int entries;
+extern unsigned int hosts;
 host_t *head = NULL;
 
 /* Globals */
@@ -143,6 +144,11 @@ int main(int argc, char *argv[]) {
     head = hash_target_file(target_file);
     if (head == NULL)
         fatal("Error updating target list.");
+
+    if (hosts < set->threads) {
+        debug(LOW, "Number of hosts is less than configured number of threads, defaulting to %i.\n", hosts);
+        set->threads = hosts;
+    }
 
     debug(LOW, "Initializing threads (%d).\n", set->threads);
     pthread_mutex_init(&(crew.mutex), NULL);
