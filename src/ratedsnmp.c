@@ -565,8 +565,9 @@ void *poller(void *thread_args)
                  * We do it this way instead of moving the pointer ahead at the end of each
                  * poll so you can insert a new one without needing a doubly linked list.
                  */
-                if (current_target->getnexts) {
-                    next_getnext = current_target->getnexts->next;
+                if (current_getnext) {
+                    tdebug(DEBUG, "current_getnext\n");
+                    next_getnext = current_getnext->next;
                     while(next_getnext) {
                         /* first check against the next entry, this should be the most common case */
                         if (anOID_len == next_getnext->anOID_len
@@ -609,20 +610,29 @@ void *poller(void *thread_args)
                     /* don't append last item twice on second poll */
                     if (next_getnext == NULL && memcmp(&anOID, current_getnext->anOID, anOID_len * sizeof(oid)) != 0) {
                         tdebug(DEBUG, "appending getnext\n");
-                        next_getnext = calloc(1, sizeof(getnext_t));
+                        current_getnext->next = calloc(1, sizeof(getnext_t));
+                        next_getnext = current_getnext->next;
                         next_getnext->next = NULL;
                         memmove(next_getnext->anOID, &anOID, anOID_len * sizeof(oid));
                         next_getnext->anOID_len = anOID_len;
                         current_getnext = next_getnext;
+                    } else {
+                        if (next_getnext) {
+                            tdebug(DEBUG, "current_getnext && next_getnext != NULL\n");
+                        } else {
+                            tdebug(DEBUG, "current_getnext && next_getnext == NULL\n");
+                        }
+                        print_objid(anOID, anOID_len);
+                        print_objid(current_getnext->anOID, current_getnext->anOID_len);
                     }
                 /* first target of first poll */
                 } else {
-                    tdebug(DEBUG, "entry->getnexts == NULL\n"); 
+                    tdebug(DEBUG, "current_getnext == NULL\n"); 
                     current_target->getnexts = calloc(1, sizeof(getnext_t));
-                    current_target->getnexts->next = NULL;
-                    memmove(current_target->getnexts->anOID, &anOID, anOID_len * sizeof(oid));
-                    current_target->getnexts->anOID_len = anOID_len;
                     current_getnext = current_target->getnexts;
+                    current_getnext->next = NULL;
+                    memmove(current_getnext->anOID, &anOID, anOID_len * sizeof(oid));
+                    current_getnext->anOID_len = anOID_len;
                 }
 
                 tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi\n", result, current_getnext->last_value, bits);
