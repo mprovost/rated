@@ -649,13 +649,13 @@ void *poller(void *thread_args)
             /* move to next target */
             //host->current = host->current->next;
             current_template = current_template->next;
-            /* if we're at the end of the list we need to make a new one */
-            if (!current_target->next) {
+            /* if we're at the end of the targets list and we still have templates we need to make a new one */
+            if (current_template && !current_target->next) {
                 current_target->next = calloc(1, sizeof(target_t));
             }
             current_target = current_target->next;
 
-        } /* while (host->current) */
+        } /* while (current_template) */
         if (sessp != NULL)
             snmp_sess_close(sessp);
 
