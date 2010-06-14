@@ -388,6 +388,7 @@ void *poller(void *thread_args)
     host_t *host = NULL;
     template_t *current_template;
     target_t *current_target;
+    getnext_t *current_getnext;
     getnext_t *next_getnext;
     getnext_t *getnext_scratch;
     netsnmp_session *sessp;
@@ -472,10 +473,11 @@ void *poller(void *thread_args)
         current_template = host->template;
         /* create the first target on the first poll */
         /* TODO move to yacc do we can skip this check? */
-        if (!host->targets) {
+        if (host->targets == NULL) {
             host->targets = calloc(1, sizeof(target_t));
         }
         current_target = host->targets;
+        current_getnext = current_target->getnexts;
 
         /* open an snmp session once for all targets for this host for this round */
         /* TODO only do it once at startup and store it in the host struct? */
@@ -564,17 +566,17 @@ void *poller(void *thread_args)
                  * poll so you can insert a new one without needing a doubly linked list.
                  */
                 if (current_target->getnexts) {
-                    next_getnext = current_target->current->next;
+                    next_getnext = current_target->getnexts->next;
                     while(next_getnext) {
                         /* first check against the next entry, this should be the most common case */
                         if (anOID_len == next_getnext->anOID_len
                             && memcmp(&anOID, next_getnext->anOID, anOID_len * sizeof(oid)) == 0) {
                                 tdebug(DEBUG, "next memcmp equal\n");
-                                current_target->current = next_getnext;
+                                current_getnext = next_getnext;
                                 break;
                         /* then check against the current entry, this happens in the first loop */
-                        } else if (anOID_len == current_target->current->anOID_len
-                            && memcmp(&anOID, current_target->current->anOID, anOID_len * sizeof(oid)) == 0) {
+                        } else if (anOID_len == current_getnext->anOID_len
+                            && memcmp(&anOID, current_getnext->anOID, anOID_len * sizeof(oid)) == 0) {
                                 tdebug(DEBUG, "memcmp equal\n");
                                 break;
                         /* else snmp_oid_compare to the next one to see if it's lesser or greater */
@@ -588,7 +590,7 @@ void *poller(void *thread_args)
                                 getnext_scratch->anOID_len = anOID_len;
                                 /* insert the new one in the linked list */
                                 next_getnext = getnext_scratch;
-                                current_target->current = next_getnext;
+                                current_getnext = next_getnext;
                                 break;
                             /* if lesser, then that must be an abandoned oid, so delete it and start the comparison over again */
                             /* we already checked for equality above so we can ignore that case */
@@ -605,13 +607,13 @@ void *poller(void *thread_args)
                     }
                     /* end of list, append a new one */
                     /* don't append last item twice on second poll */
-                    if (next_getnext == NULL && memcmp(&anOID, current_target->current->anOID, anOID_len * sizeof(oid)) != 0) {
+                    if (next_getnext == NULL && memcmp(&anOID, current_getnext->anOID, anOID_len * sizeof(oid)) != 0) {
                         tdebug(DEBUG, "appending getnext\n");
                         next_getnext = calloc(1, sizeof(getnext_t));
                         next_getnext->next = NULL;
                         memmove(next_getnext->anOID, &anOID, anOID_len * sizeof(oid));
                         next_getnext->anOID_len = anOID_len;
-                        current_target->current = next_getnext;
+                        current_getnext = next_getnext;
                     }
                 /* first target of first poll */
                 } else {
@@ -620,15 +622,15 @@ void *poller(void *thread_args)
                     current_target->getnexts->next = NULL;
                     memmove(current_target->getnexts->anOID, &anOID, anOID_len * sizeof(oid));
                     current_target->getnexts->anOID_len = anOID_len;
-                    current_target->current = current_target->getnexts;
+                    current_getnext = current_target->getnexts;
                 }
 
-                tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi\n", result, current_target->current->last_value, bits);
+                tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi\n", result, current_getnext->last_value, bits);
 
                 /*
                  * insert into the database
                  */
-                db_reconnect = do_insert(worker, db_reconnect, result, current_target->current, bits, current_time, oid_string, host);
+                db_reconnect = do_insert(worker, db_reconnect, result, current_getnext, bits, current_time, oid_string, host);
 
             } /* while (anOID) */
             /* grab the time that we finished this target for the internal stats insert */
@@ -638,22 +640,23 @@ void *poller(void *thread_args)
             db_reconnect = do_insert(worker, db_reconnect, current_target->getnext_counter, &current_target->poll, 64, now, current_template->objoid, host);
 
             if (set->verbose >= HIGH) {
-                current_target->current = current_target->getnexts;
-                while (current_target->current) {
-                    print_objid(current_target->current->anOID, current_target->current->anOID_len);
-                    current_target->current = current_target->current->next;
+                current_getnext = current_target->getnexts;
+                while (current_getnext) {
+                    print_objid(current_getnext->anOID, current_getnext->anOID_len);
+                    current_getnext = current_getnext->next;
                 }
-                current_target->current = current_target->getnexts;
+                current_getnext = current_target->getnexts;
             }
 
-            /* move to next target */
+            /* move to next target in template */
             //host->current = host->current->next;
             current_template = current_template->next;
             /* if we're at the end of the targets list and we still have templates we need to make a new one */
-            if (current_template && !current_target->next) {
+            if (current_template && current_target->next == NULL) {
                 current_target->next = calloc(1, sizeof(target_t));
             }
             current_target = current_target->next;
+            current_getnext = current_target->getnexts;
 
         } /* while (current_template) */
         if (sessp != NULL)

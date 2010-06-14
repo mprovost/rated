@@ -22,7 +22,6 @@ typedef struct getnext_struct {
 typedef struct target_struct {
     unsigned long long getnext_counter;
     struct getnext_struct *getnexts;
-    struct getnext_struct *current;
     /* storage for the internal polling data */
     struct getnext_struct poll;
     struct target_struct *next;
