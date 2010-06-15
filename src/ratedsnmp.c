@@ -231,6 +231,68 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
     return bits;
 }
 
+/*
+ * Walk through the list of getnexts, peeking ahead to the next one.
+ * We do it this way instead of moving the pointer ahead at the end of each
+ * poll so you can insert a new one without needing a doubly linked list.
+ */
+getnext_t *walk_getnexts(worker_t *worker, getnext_t *current_getnext, const oid *anOID, const size_t anOID_len) {
+    getnext_t *getnext_scratch;
+    getnext_t *next_getnext = current_getnext->next;
+
+    /* return early to avoid the append check every time */
+    while(next_getnext) {
+        /* first check against the next entry, this should be the most common case */
+        if (anOID_len == next_getnext->anOID_len
+            && memcmp(&anOID, next_getnext->anOID, anOID_len * sizeof(oid)) == 0) {
+                tdebug(DEBUG, "next memcmp equal\n");
+                current_getnext = next_getnext;
+                return current_getnext;
+        /* then check against the current entry, this happens in the first loop */
+        } else if (anOID_len == current_getnext->anOID_len
+            && memcmp(&anOID, current_getnext->anOID, anOID_len * sizeof(oid)) == 0) {
+                tdebug(DEBUG, "memcmp equal\n");
+                return current_getnext;
+        /* else snmp_oid_compare to the next one to see if it's lesser or greater */
+        } else {
+            /* if greater, then create and insert a new getnext, this is the first poll for a new oid */
+            if (snmp_oid_compare(anOID, anOID_len, next_getnext->anOID, next_getnext->anOID_len) > 0) {
+                tdebug(DEBUG, "insert next\n");
+                getnext_scratch = calloc(1, sizeof(getnext_t));
+                getnext_scratch->next = next_getnext;
+                memmove(getnext_scratch->anOID, anOID, anOID_len * sizeof(oid));
+                getnext_scratch->anOID_len = anOID_len;
+                /* insert the new one in the linked list */
+                current_getnext->next = getnext_scratch;
+                current_getnext = getnext_scratch;
+                return current_getnext;
+            /* if lesser, then that must be an abandoned oid, so delete it and start the comparison over again */
+            /* we already checked for equality above so we can ignore that case */
+            } else {
+                tdebug(DEBUG, "delete next\n");
+                print_objid(anOID, anOID_len);
+                print_objid(next_getnext->anOID, next_getnext->anOID_len);
+                getnext_scratch = next_getnext;
+                next_getnext = next_getnext->next;
+                free(getnext_scratch);
+                continue;
+            }
+        }
+    }
+    /* end of list, append a new one */
+    /* don't append last item twice on second poll */
+    if (next_getnext == NULL && memcmp(&anOID, current_getnext->anOID, anOID_len * sizeof(oid)) != 0) {
+        tdebug(DEBUG, "appending getnext\n");
+        current_getnext->next = calloc(1, sizeof(getnext_t));
+        next_getnext = current_getnext->next;
+        next_getnext->next = NULL;
+        memmove(next_getnext->anOID, anOID, anOID_len * sizeof(oid));
+        next_getnext->anOID_len = anOID_len;
+        current_getnext = next_getnext;
+    } /* TODO else? */
+    return current_getnext;
+}
+
 /* insert into the database and return a boolean indicating whether to attempt to reconnect to the db the next time */
 int do_insert(worker_t *worker, int db_reconnect, unsigned long long result, getnext_t *getnext, short bits, struct timeval current_time, const char *oid_string, host_t *host) { 
     crew_t *crew = worker->crew;
@@ -389,8 +451,6 @@ void *poller(void *thread_args)
     template_t *current_template;
     target_t *current_target;
     getnext_t *current_getnext;
-    getnext_t *next_getnext;
-    getnext_t *getnext_scratch;
     netsnmp_session *sessp;
     short bits;
     unsigned long long result = 0;
@@ -550,64 +610,8 @@ void *poller(void *thread_args)
                     break;
                 }
 
-                /*
-                 * Walk through the list of getnexts, peeking ahead to the next one.
-                 * We do it this way instead of moving the pointer ahead at the end of each
-                 * poll so you can insert a new one without needing a doubly linked list.
-                 */
                 if (current_getnext) {
-                    next_getnext = current_getnext->next;
-                    while(next_getnext) {
-                        /* first check against the next entry, this should be the most common case */
-                        if (anOID_len == next_getnext->anOID_len
-                            && memcmp(&anOID, next_getnext->anOID, anOID_len * sizeof(oid)) == 0) {
-                                tdebug(DEBUG, "next memcmp equal\n");
-                                current_getnext = next_getnext;
-                                break;
-                        /* then check against the current entry, this happens in the first loop */
-                        } else if (anOID_len == current_getnext->anOID_len
-                            && memcmp(&anOID, current_getnext->anOID, anOID_len * sizeof(oid)) == 0) {
-                                tdebug(DEBUG, "memcmp equal\n");
-                                break;
-                        /* else snmp_oid_compare to the next one to see if it's lesser or greater */
-                        } else {
-                            /* if greater, then create and insert a new getnext, this is the first poll for a new oid */
-                            if (snmp_oid_compare(anOID, anOID_len, next_getnext->anOID, next_getnext->anOID_len) > 0) {
-                                tdebug(DEBUG, "insert next\n");
-                                getnext_scratch = calloc(1, sizeof(getnext_t));
-                                getnext_scratch->next = next_getnext;
-                                memmove(getnext_scratch->anOID, &anOID, anOID_len * sizeof(oid));
-                                getnext_scratch->anOID_len = anOID_len;
-                                /* insert the new one in the linked list */
-                                current_getnext->next = getnext_scratch;
-                                current_getnext = getnext_scratch;
-                                break;
-                            /* if lesser, then that must be an abandoned oid, so delete it and start the comparison over again */
-                            /* we already checked for equality above so we can ignore that case */
-                            } else {
-                                tdebug(DEBUG, "delete next\n");
-                                print_objid(anOID, anOID_len);
-                                print_objid(next_getnext->anOID, next_getnext->anOID_len);
-                                getnext_scratch = next_getnext;
-                                next_getnext = next_getnext->next;
-                                free(getnext_scratch);
-                                continue;
-                            }
-                        }
-                    }
-                    /* TODO don't check every time only when the while above falls off the end */
-                    /* end of list, append a new one */
-                    /* don't append last item twice on second poll */
-                    if (next_getnext == NULL && memcmp(&anOID, current_getnext->anOID, anOID_len * sizeof(oid)) != 0) {
-                        tdebug(DEBUG, "appending getnext\n");
-                        current_getnext->next = calloc(1, sizeof(getnext_t));
-                        next_getnext = current_getnext->next;
-                        next_getnext->next = NULL;
-                        memmove(next_getnext->anOID, &anOID, anOID_len * sizeof(oid));
-                        next_getnext->anOID_len = anOID_len;
-                        current_getnext = next_getnext;
-                    }
-                    /* most polls should end up here and do nothing */
+                    current_getnext = walk_getnexts(worker, current_getnext, anOID, anOID_len);
                 /* first target of first poll */
                 } else {
                     tdebug(DEBUG, "current_getnext == NULL\n"); 
