@@ -468,14 +468,7 @@ void *poller(void *thread_args)
         /* take the unlock off the cancel stack */
         pthread_cleanup_pop(FALSE);
 
-        /* keep the first entry in the target list */
-        //head = host->current;
         current_template = host->template;
-        /* create the first target on the first poll */
-        /* TODO move to yacc do we can skip this check? */
-        if (host->targets == NULL) {
-            host->targets = calloc(1, sizeof(target_t));
-        }
         current_target = host->targets;
         current_getnext = current_target->getnexts;
 
@@ -506,15 +499,12 @@ void *poller(void *thread_args)
 
             /* erase the getnexts, they aren't valid anymore if the host reset */
             free_target_list(host->targets);
-            /* reset template back to start */
-            //current_template = host->template;
+            host->targets = calloc(1, sizeof(target_t));
+            current_target = host->targets;
         }
                 
         /* loop through the targets for this host */
         while (current_template) {
-            //entry = host->current;
-            //entry->current = entry->getnexts;
-
             tdebug(DEVELOP, "processing %s@%s\n", current_template->objoid, host->host);
 
             /* set up the variables for the first poll */
@@ -566,7 +556,6 @@ void *poller(void *thread_args)
                  * poll so you can insert a new one without needing a doubly linked list.
                  */
                 if (current_getnext) {
-                    tdebug(DEBUG, "current_getnext\n");
                     next_getnext = current_getnext->next;
                     while(next_getnext) {
                         /* first check against the next entry, this should be the most common case */
@@ -590,8 +579,8 @@ void *poller(void *thread_args)
                                 memmove(getnext_scratch->anOID, &anOID, anOID_len * sizeof(oid));
                                 getnext_scratch->anOID_len = anOID_len;
                                 /* insert the new one in the linked list */
-                                next_getnext = getnext_scratch;
-                                current_getnext = next_getnext;
+                                current_getnext->next = getnext_scratch;
+                                current_getnext = getnext_scratch;
                                 break;
                             /* if lesser, then that must be an abandoned oid, so delete it and start the comparison over again */
                             /* we already checked for equality above so we can ignore that case */
@@ -606,6 +595,7 @@ void *poller(void *thread_args)
                             }
                         }
                     }
+                    /* TODO don't check every time only when the while above falls off the end */
                     /* end of list, append a new one */
                     /* don't append last item twice on second poll */
                     if (next_getnext == NULL && memcmp(&anOID, current_getnext->anOID, anOID_len * sizeof(oid)) != 0) {
@@ -616,15 +606,8 @@ void *poller(void *thread_args)
                         memmove(next_getnext->anOID, &anOID, anOID_len * sizeof(oid));
                         next_getnext->anOID_len = anOID_len;
                         current_getnext = next_getnext;
-                    } else {
-                        if (next_getnext) {
-                            tdebug(DEBUG, "current_getnext && next_getnext != NULL\n");
-                        } else {
-                            tdebug(DEBUG, "current_getnext && next_getnext == NULL\n");
-                        }
-                        print_objid(anOID, anOID_len);
-                        print_objid(current_getnext->anOID, current_getnext->anOID_len);
                     }
+                    /* most polls should end up here and do nothing */
                 /* first target of first poll */
                 } else {
                     tdebug(DEBUG, "current_getnext == NULL\n"); 
@@ -659,7 +642,6 @@ void *poller(void *thread_args)
             }
 
             /* move to next target in template */
-            //host->current = host->current->next;
             current_template = current_template->next;
             /* if we're at the end of the targets list and we still have templates we need to make a new one */
             if (current_template && current_target->next == NULL) {

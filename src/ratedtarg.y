@@ -15,9 +15,6 @@ extern config_t *set;
 
 static host_t *thst;
 
-//static target_t *target_tail;
-//static target_t target_dummy;
-
 static template_t *template_tail;
 static template_t template_dummy;
 
@@ -68,14 +65,11 @@ statement     : template_entry
 
 template_entry: T_TMPL L_IDENT
 {
-    //target_tail = &target_dummy;
-    //target_dummy.next = NULL;
     template_tail = &template_dummy;
     template_dummy.next = NULL;
 }
 '{' template_directives '}'
 {
-    //free_target_list(target_dummy.next);
     /* we don't store the template name so free it to avoid a memory leak */
     free($2);
 };
@@ -88,13 +82,6 @@ template_directives: template_directives target_directive
 
 target_directive: TMPL_TRGT L_OID
 {
-    /*
-    target_t *ttgt;
-    ttgt = calloc(1, sizeof(target_t));
-    ttgt->next = NULL;
-    ttgt->objoid = $2;
-    ttgt->anOID_len = MAX_OID_LEN;
-    */
     template_t *ttemplate;
     ttemplate = calloc(1, sizeof(template_t));
     ttemplate->next = NULL;
@@ -104,31 +91,28 @@ target_directive: TMPL_TRGT L_OID
     /* generate an internal oid from the string */
     if (snmp_parse_oid($2, ttemplate->anOID, &ttemplate->anOID_len)) {
         targets++;
-        //target_tail->next = ttgt;
-        //target_tail = target_tail->next;
         template_tail->next = ttemplate;
         template_tail = template_tail->next;
     } else {
         fprintf(stderr, "Couldn't parse target oid \"%s\" at line %d:\n", $2, yylineno);
         snmp_perror($2);
-        //free(ttgt);
         free(ttemplate);
     }
 };
 
 host_entry:   T_HOST L_IDENT
 {
-    thst = malloc(sizeof(host_t));
-    bzero(thst, sizeof(host_t));
+    thst = calloc(1, sizeof(host_t));
     thst->host = $2;
     thst->next = NULL;
-    /* copy the target list from the template */
-    //thst->targets = copy_target_list(target_dummy.next);
+    /* save pointer to enclosing template */
     thst->template = template_dummy.next;
     /* set up the snmp session */
     snmp_sess_init(&thst->session);
     /* TODO this is deprecated append to the peername */
     thst->session.remote_port = set->snmp_port;
+    /* create the first target */
+    thst->targets = calloc(1, sizeof(target_t));
 }
 '{' host_directives '}'
 {
