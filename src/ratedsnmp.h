@@ -10,7 +10,6 @@
 #define OIDS "oids"
 
 typedef struct getnext_struct {
-    char *objoid;
     oid anOID[MAX_OID_LEN];
     size_t anOID_len;
     unsigned long iid;
