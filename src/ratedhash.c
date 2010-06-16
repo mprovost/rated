@@ -55,7 +55,7 @@ host_t *hash_target_file(char *file) {
         }
     }
 
-    debug(LOW, "Successfully created [%i] hosts, [%i] targets (%i bytes).\n",
+    debug(LOW, "Successfully created [%i] hosts, [%i] targets (%lu bytes).\n",
         hosts, targets, targets * sizeof(target_t) + hosts * sizeof(host_t));
     return (host_dummy.next);
 }
