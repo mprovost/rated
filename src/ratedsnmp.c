@@ -244,13 +244,13 @@ getnext_t *walk_getnexts(worker_t *worker, getnext_t *current_getnext, const oid
     while(next_getnext) {
         /* first check against the next entry, this should be the most common case */
         if (anOID_len == next_getnext->anOID_len
-            && memcmp(&anOID, next_getnext->anOID, anOID_len * sizeof(oid)) == 0) {
+            && memcmp(anOID, next_getnext->anOID, anOID_len * sizeof(oid)) == 0) {
                 tdebug(DEBUG, "next memcmp equal\n");
                 current_getnext = next_getnext;
                 return current_getnext;
         /* then check against the current entry, this happens in the first loop */
         } else if (anOID_len == current_getnext->anOID_len
-            && memcmp(&anOID, current_getnext->anOID, anOID_len * sizeof(oid)) == 0) {
+            && memcmp(anOID, current_getnext->anOID, anOID_len * sizeof(oid)) == 0) {
                 tdebug(DEBUG, "memcmp equal\n");
                 return current_getnext;
         /* else snmp_oid_compare to the next one to see if it's lesser or greater */
@@ -270,8 +270,6 @@ getnext_t *walk_getnexts(worker_t *worker, getnext_t *current_getnext, const oid
             /* we already checked for equality above so we can ignore that case */
             } else {
                 tdebug(DEBUG, "delete next\n");
-                print_objid(anOID, anOID_len);
-                print_objid(next_getnext->anOID, next_getnext->anOID_len);
                 getnext_scratch = next_getnext;
                 next_getnext = next_getnext->next;
                 free(getnext_scratch);
@@ -281,7 +279,7 @@ getnext_t *walk_getnexts(worker_t *worker, getnext_t *current_getnext, const oid
     }
     /* end of list, append a new one */
     /* don't append last item twice on second poll */
-    if (next_getnext == NULL && memcmp(&anOID, current_getnext->anOID, anOID_len * sizeof(oid)) != 0) {
+    if (next_getnext == NULL && memcmp(anOID, current_getnext->anOID, anOID_len * sizeof(oid)) != 0) {
         tdebug(DEBUG, "appending getnext\n");
         current_getnext->next = calloc(1, sizeof(getnext_t));
         next_getnext = current_getnext->next;
