@@ -82,7 +82,7 @@ unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp) {
                     if (response) {
                         tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, snmp_errstring(response->errstat));
                     } else {
-                        tdebug(LOW, "*** SNMP NULL response: (%s@%s) %s\n", oid_string, session->peername);
+                        tdebug(LOW, "*** SNMP NULL response: (%s@%s)\n", oid_string, session->peername);
                     }
                 }
                 break;
@@ -211,7 +211,7 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
                     if (response) {
                         tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, snmp_errstring(response->errstat));
                     } else {
-                        tdebug(LOW, "*** SNMP NULL response: (%s@%s) %s\n", oid_string, session->peername);
+                        tdebug(LOW, "*** SNMP NULL response: (%s@%s)\n", oid_string, session->peername);
                     }
                 }
                 break;
