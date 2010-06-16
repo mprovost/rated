@@ -321,6 +321,7 @@ int do_insert(worker_t *worker, int db_reconnect, unsigned long long result, get
         insert_val = result;
     /* treat all other values as counters */
     /* Counter Wrap Condition */
+    /* TODO check sysuptime again if we detect a counter wrap */
     } else if (result < getnext->last_value) {
         PT_MUTEX_LOCK(&stats.mutex);
         /* check for off by ones
