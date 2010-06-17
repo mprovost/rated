@@ -154,6 +154,7 @@ int main(int argc, char *argv[]) {
     pthread_mutex_init(&(crew.mutex), NULL);
     pthread_cond_init(&(crew.done), NULL);
     pthread_cond_init(&(crew.go), NULL);
+    crew.current = NULL;
 
     debug(HIGH, "Starting threads...");
     crew.running = set->threads;
@@ -206,7 +207,7 @@ int main(int argc, char *argv[]) {
 
 	PT_MUTEX_LOCK(&(crew.mutex));
         crew.current = head;
-	    
+
 	debug(LOW, "Queue ready, broadcasting thread go condition.\n");
 
 	PT_COND_BROAD(&(crew.go));
