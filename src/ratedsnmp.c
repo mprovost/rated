@@ -621,6 +621,9 @@ void *poller(void *thread_args)
                     current_getnext->anOID_len = anOID_len;
                 }
 
+                /* doublecheck */
+                assert(memcmp(&current_getnext->anOID, &anOID, anOID_len) == 0);
+
                 tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi\n", result, current_getnext->last_value, bits);
 
                 /*
