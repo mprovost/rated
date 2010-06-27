@@ -18,6 +18,9 @@ static host_t *thst;
 static template_t *template_tail;
 static template_t template_dummy;
 
+char *community;
+size_t community_len;
+
 #define YYDEBUG 1
 %}
 
@@ -40,11 +43,14 @@ static template_t template_dummy;
 /* per-template */
 %token TMPL_TRGT
 
+/* community */
+%token T_COMM
+
 /* host */
 %token T_HOST
 
 /* per-host */
-%token HST_ADDR HST_COMM HST_SVER 
+%token HST_ADDR HST_SVER 
 
 %%
 
@@ -75,7 +81,7 @@ template_entry: T_TMPL L_IDENT
 };
 
 template_directives: template_directives target_directive
-                   | template_directives host_entry
+                   | template_directives community_entry
                    | target_directive
                    | host_entry
                    ;
@@ -100,6 +106,17 @@ target_directive: TMPL_TRGT L_OID
     }
 };
 
+community_entry: T_COMM L_IDENT
+{
+    community = $2;
+    community_len = strlen($2);
+}
+'{' community_directives '}';
+
+community_directives: host_entry
+                    | community_directives host_entry
+                    ;
+
 host_entry:   T_HOST L_IDENT
 {
     thst = calloc(1, sizeof(host_t));
@@ -111,6 +128,8 @@ host_entry:   T_HOST L_IDENT
     snmp_sess_init(&thst->session);
     /* TODO this is deprecated append to the peername */
     thst->session.remote_port = set->snmp_port;
+    thst->session.community = community;
+    thst->session.community_len = community_len;
     /* create the first target */
     thst->targets = calloc(1, sizeof(target_t));
 }
@@ -126,7 +145,6 @@ host_directives       : host_directives host_directive
               ;
 
 host_directive        : addr_directive
-              | comm_directive
               | sver_directive
               ;
 
@@ -134,12 +152,6 @@ addr_directive : HST_ADDR L_IPADDR
 {
     thst->address = $2;
     thst->session.peername = $2;
-};
-
-comm_directive        : HST_COMM L_IDENT
-{
-      thst->session.community = $2;
-      thst->session.community_len = strlen($2);
 };
 
 sver_directive        : HST_SVER L_NUMBER
