@@ -130,15 +130,15 @@ template switch {
     target .1.3.6.1.2.1.31.1.1.1.7;
     # ifHCOutUcastPkts
     target .1.3.6.1.2.1.31.1.1.1.11;
-    host myswitch1 {
-        address 192.168.1.1;
-        community public;
-        snmpver 2;
-    }
-    host myswitch2 {
-        address 192.168.1.2;
-        community public;
-        snmpver 2;
+    community public {
+        host myswitch1 {
+            address 192.168.1.1;
+            snmpver 2;
+        }
+        host myswitch2 {
+            address 192.168.1.2;
+            snmpver 2;
+        }
     }
 }
 
