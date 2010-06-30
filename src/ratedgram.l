@@ -33,11 +33,11 @@ false         [Ff]alse|[Nn]o
 {endtoken}    { }
 
 template      { return T_TMPL; }
+community     { return T_COMM; }
 target        { return TMPL_TRGT; }
 
 host          { return T_HOST; }
 address       { return HST_ADDR; }
-community     { return HST_COMM; }
 snmpver       { return HST_SVER; }
 
 {token}       { return yytext[0]; }
