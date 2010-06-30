@@ -34,11 +34,11 @@ false         [Ff]alse|[Nn]o
 
 template      { return T_TMPL; }
 community     { return T_COMM; }
+snmpver       { return T_SVER; }
 target        { return TMPL_TRGT; }
 
 host          { return T_HOST; }
 address       { return HST_ADDR; }
-snmpver       { return HST_SVER; }
 
 {token}       { return yytext[0]; }
 {number}      {

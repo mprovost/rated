@@ -20,6 +20,7 @@ static template_t template_dummy;
 
 char *community;
 size_t community_len;
+long sver;
 
 #define YYDEBUG 1
 %}
@@ -46,11 +47,14 @@ size_t community_len;
 /* community */
 %token T_COMM
 
+/* snmp version */
+%token T_SVER
+
 /* host */
 %token T_HOST
 
 /* per-host */
-%token HST_ADDR HST_SVER 
+%token HST_ADDR
 
 %%
 
@@ -113,9 +117,22 @@ community_entry: T_COMM L_IDENT
 }
 '{' community_directives '}';
 
-community_directives: host_entry
-                    | community_directives host_entry
+community_directives: sver_entry
+                    | community_directives sver_entry
                     ;
+
+sver_entry : T_SVER L_NUMBER
+{
+      if ((unsigned short)$2 == 2)
+        sver = SNMP_VERSION_2c;
+      else
+        sver = SNMP_VERSION_1;
+}
+'{' sver_directives '}';
+
+sver_directives: host_entry
+               | sver_directives host_entry
+               ;
 
 host_entry:   T_HOST L_IDENT
 {
@@ -130,6 +147,7 @@ host_entry:   T_HOST L_IDENT
     thst->session.remote_port = set->snmp_port;
     thst->session.community = community;
     thst->session.community_len = community_len;
+    thst->session.version = sver;
     /* create the first target */
     thst->targets = calloc(1, sizeof(target_t));
 }
@@ -145,21 +163,12 @@ host_directives       : host_directives host_directive
               ;
 
 host_directive        : addr_directive
-              | sver_directive
               ;
 
 addr_directive : HST_ADDR L_IPADDR
 {
     thst->address = $2;
     thst->session.peername = $2;
-};
-
-sver_directive        : HST_SVER L_NUMBER
-{
-      if ((unsigned short)$2 == 2)
-        thst->session.version = SNMP_VERSION_2c;
-      else
-        thst->session.version = SNMP_VERSION_1;
 };
 
 
