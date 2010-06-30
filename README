@@ -18,9 +18,9 @@ LD_LIBRARY_PATH so it can find the database libraries.
 
 Rated uses SNMP get-next calls to poll its targets. This is similar to
 net-snmp's snmpwalk or the bulk retrieval method outlined in RFC 1187.
-This is different from mrtg/rtg which use the get operation. This has
-been done to reduce the size of the target configuration and to
-eliminate the need for a separate configuration generator (ie
+This is different from mrtg/rtg/spine which use the get operation.
+This has been done to reduce the size of the target configuration and
+to eliminate the need for a separate configuration generator (ie
 cfgmaker/targetmaker). For a given target in the configuration it will
 send get-next requests until it reaches a different part of the tree
 or the next OID is smaller than the previous one (it's looping).
@@ -31,7 +31,7 @@ from registering with the SNMP engine:
 no virtual-template snmp
 
 This will prevent the interfaces list from filling up with virtual
-interface information if you're not interested in that data.
+interface information if that data isn't required.
 
 At startup the target configuration file (-t option) is parsed and a
 linked list of hosts is created. For each host, another linked list of
@@ -49,12 +49,21 @@ from the list but in the common case where the agent returns the same
 OIDS in the same order it can walk through the list (so it just
 updates a pointer every time instead of searching).
 
-For counters, after the second successfull poll, the delta between the
+The type of each response (gauge or counter) and size (32 or 64 bits)
+is detected automatically.
+
+For counters, after the second successful poll, the delta between the
 current value of the counter and the previous value is calculated as
 well as the rate of change (ie difference divided by the time between
-polls). These values are then sent to the database driver.  It does
-database inserts synchronously for each OID as a means of throttling
-the frequency of SNMP requests being sent to the target host.
+polls). Gauges can be inserted after the first poll.
+
+The delta and rate (for counters) are then sent to the database
+driver. Rated does database inserts synchronously for each OID as a
+means of throttling the frequency of SNMP requests being sent to the
+target host which often has limited CPU.
+
+Polls resulting in a zero delta are not sent to the database unless
+the -z command-line option is used.
 
 The database driver will automatically create a table that maps OIDs
 to an iid which is an internal integer which is used to uniquely
@@ -70,24 +79,27 @@ database tables before running rated.
 
 Rated will detect and correct counter wraps, when the (32 bit) counter
 has overflowed and the new value is less than the previous value. This
-can also occur when the device is rebooted but that condition isn't
-handled separately (yet). You can avoid wrapping by using 64 bit
-counters when available.
+can also occur when the device is rebooted. To detect this, an SNMP
+query for the sysUpTime OID is done at the beginning of each polling
+round. If it detects that the device has rebooted since the last poll,
+all of the counters are zeroed.
+
+Wrapping can be avoided by using 64 bit counters when available.
 
 If there is a problem inserting into the database, rated will keep the
 last value and timestamp the same. When the database comes back, it
 will do a single insert with the delta and rate since then. So it
-loses precision but should maintain the correct value. Otherwise
-trying to cache all of the intermediate values can quickly use up the
-available memory and flood the database with inserts when it reconnects.
+loses precision but maintains the correct value. Cacheing all of the
+intermediate values can quickly use up the available memory and flood
+the database with inserts when it reconnects.
 
-When rated is done doing getnexts for an OID target for a host, it will
+When rated is done doing getnexts for a target OID for a host, it will
 record a single entry in the host's table for the target OID with the
 number of getnexts and the rate at which they were polled (and
-inserted). This allows you to monitor the performance of the poller
-itself and of the SNMP responses from the host.
+inserted). This allows monitoring the performance of the poller itself
+and of the SNMP responses from the host.
 
-You can send a HUP signal to the rated poller and it will reread the
+Sending a HUP signal to the rated poller forces it to reread the
 target config file at the start of the next poll. Currently this
 regenerates the hosts/targets lists from scratch so any previous
 poll's data is discarded and it will treat every target as a first poll.
@@ -102,10 +114,10 @@ DB_Pass     rated
 DB_Driver   libratedpgsql.so
 Threads     5
 
-The interval specifies how often you want each target to be polled.
-For example, if you specify 30 seconds and the poll takes 10 seconds,
-it will sleep for 20 seconds before starting the next poll. The sleep
-time is determined at the end of every poll.
+The interval specifies how often each target will be polled.
+For example, if the interval is 30 seconds and the poll takes 10
+seconds, rated will sleep for 20 seconds before starting the next
+round. The sleep time is determined at the end of every round.
 
 Here's a sample target configuration file (specified with -t):
 
@@ -133,11 +145,9 @@ template switch {
 Comments start with a # (shell style) or // (C++ style) and go to the
 end of the line.
 
-Templates let you specify common targets for groups of hosts. This way
-if you have several of the same type of device you can specify the
-target list once. You specify the target OID where rated will start
-doing getnexts, so the first value to be inserted will be the next
-value in the OID tree. So you specify the top level OID and it will
-poll and record everything below that until it goes into a different
-part of the tree.
+Target OIDs are grouped into templates so that they apply to multiple
+hosts to reduce the size of the configuration. The target OID is used
+by rated in the first getnext request, so the first result will be the
+next value in the OID tree. This is the same behaviour as the snmpwalk
+utility. 
 
