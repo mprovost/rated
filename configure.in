@@ -3,12 +3,14 @@
 # Author: Rob Beverly <rbeverly@users.sourceforge.net>
 #
 
-AC_INIT(src/rated.h)
+AC_INIT
+AC_CONFIG_SRCDIR([src/rated.h])
 AC_CONFIG_AUX_DIR(config)
 AC_SUBST(ac_aux_dir)
 AM_INIT_AUTOMAKE(rated, 0.9.0)
+AM_PROG_CC_C_O
 AC_SUBST(VERSION)
-AM_CONFIG_HEADER(config/config.h)
+AC_CONFIG_HEADERS([config/config.h])
 AC_CANONICAL_HOST
 AC_PREFIX_DEFAULT(/usr/local/rated)
 
@@ -43,9 +45,6 @@ esac
 
 dnl Checks for programs.
 AC_PROG_AWK
-AC_PROG_CC
-AC_PROG_CC_C99
-AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_DISABLE_STATIC
@@ -99,6 +98,42 @@ else
 fi
 AC_DEFINE_UNQUOTED(RTG_HOME, "$RTG_HOME", RTG root installation prefix)
 
+dnl ****************** Begin SNMP checking ***********************
+AC_MSG_CHECKING(snmp)
+AS_IF([test "x$with_snmp" == "x"],
+    [ dnl try some standard locations
+    for i in /usr /usr/local /opt/local/; do
+        test -f $i/bin/snmpwalk && SNMP_DIR=$i && break
+    done
+    ], 
+    [ SNMP_DIR=$with_snmp ]
+)
+for i in include/net-snmp include; do
+    if test -d ${SNMP_DIR}/$i; then
+        SNMP_INC_DIR=$i
+        break
+    fi
+done
+OLD_CPPFLAGS=$CPPFLAGS
+CPPFLAGS="$CPPFLAGS -I${SNMP_DIR}/${SNMP_INC_DIR}"
+AC_CHECK_HEADER(net-snmp-config.h,
+    [ AC_SUBST(SNMP_CPPFLAGS, "-I${SNMP_DIR}/${SNMP_INC_DIR}") ],
+    [ if test "x$with_snmp" == "x"; then
+	AC_MSG_ERROR(["Cannot find net-snmp headers. Use --with-snmp to specify non-default path."])
+    else
+	AC_MSG_ERROR(["Cannot find net-snmp headers in ${SNMP_DIR}/{$SNMP_INC_DIR}."])
+    fi
+    ]
+)
+OLD_LDFLAGS=$LDFLAGS
+LDFLAGS="$LDFLAGS -lnetsnmp"
+AC_CHECK_LIB([netsnmp], [snmp_sess_open],
+    [ AC_SUBST(SNMP_LIB, "-lnetsnmp") ],
+    [ AC_MSG_ERROR(["Cannot link with net-snmp libs! (libnetsnmp)"]) ]
+)
+LDFLAGS=$OLD_LDFLAGS
+CPPFLAGS=$OLD_CPPFLAGS
+dnl ****************** End SNMP checking ***********************
 
 dnl ****************** Begin Postgres checking ***********************
 AC_MSG_CHECKING(pgsql)
@@ -147,7 +182,6 @@ AS_IF([test "x$with_pgsql" != "xno"],
 )
 dnl ****************** End Postgres checking ***********************
 
-
 dnl ****************** Begin MySQL checking ***********************
 AC_MSG_CHECKING(mysql)
 AS_IF([test "x$with_mysql" != "xno"],
@@ -191,66 +225,10 @@ AS_IF([test "x$with_mysql" != "xno"],
 )
 dnl ****************** End MySQL checking ***********************
 
-
-dnl ****************** Begin SNMP checking ***********************
-AC_MSG_CHECKING(snmp)
-dnl Determine UCD or Net-SNMP installation paths
-if test "x$with_snmp" != "x"; then
-    for i in / /ucd-snmp /include/ucd-snmp; do
-       test -f $with_snmp/$i/snmp.h           && SNMP_INCDIR=$with_snmp/$i
-    done
-    for i in / /net-snmp /include/net-snmp; do
-       test -f $with_snmp/$i/net-snmp-config.h  && SNMP_INCDIR=$with_snmp/$i
-    done
-    test -f $with_snmp/lib/libsnmp.a -o -f $with_snmp/lib/libsnmp.so && SNMP_LIBDIR=$with_snmp/lib
-    test -f $with_snmp/lib/libnetsnmp.a -o -f $with_snmp/lib/libnetsnmp.so && SNMP_LIBDIR=$with_snmp/lib
-    AC_DEFINE(IN_UCD_SNMP_SOURCE, 1, [UCD SNMP Path Explicitly Defined])
-else
-    for i in /usr/include /usr/local/include; do
-      test -f $i/snmp.h                       && SNMP_INCDIR=$i
-      test -f $i/ucd-snmp/snmp.h              && SNMP_INCDIR=$i/ucd-snmp
-      test -f $i/net-snmp/net-snmp-config.h   && SNMP_INCDIR=$i/net-snmp
-      test -f $i/snmp/snmp.h                  && SNMP_INCDIR=$i/snmp
-      test -f $i/snmp/include/ucd-snmp/snmp.h && SNMP_INCDIR=$i/snmp/include/ucd-snmp
-      test -f $i/snmp/include/net-snmp/net-snmp-config.h && SNMP_INCDIR=$i/snmp/include/net-snmp
-    done
-    for i in /usr /usr/snmp /usr/local /usr/local/snmp; do
-      test -f $i/lib/libsnmp.a -o -f $i/lib/libsnmp.so && SNMP_LIBDIR=$i/lib
-      test -f $i/lib64/libsnmp.a -o -f $i/lib64/libsnmp.so && SNMP_LIBDIR=$i/lib64
-      test -f $i/lib/libnetsnmp.a -o -f $i/lib/libnetsnmp.so && SNMP_LIBDIR=$i/lib
-      test -f $i/lib64/libnetsnmp.a -o -f $i/lib64/libnetsnmp.so && SNMP_LIBDIR=$i/lib64
-    done
-fi
-
-if test -z "$SNMP_INCDIR"; then
-  if test "x$with_snmp" != "x";then
-    AC_MSG_ERROR(Cannot find SNMP header files under $with_snmp)
-  else
-    AC_MSG_ERROR(Cannot find SNMP headers.  Use --with-snmp= to specify non-default path.)
-  fi
-fi
-
-LDFLAGS="-L$SNMP_LIBDIR $LDFLAGS"
-
-AC_CHECK_LIB(netsnmp, snmp_timeout,
-       [ AC_SUBST(SNMP_LIB, "-lnetsnmp")
-         AC_SUBST(SNMP_CPPFLAGS, "-I${SNMP_INCDIR}")
-         AC_DEFINE(HAVE_NET_SNMP, 1, Net-SNMP Found) 
-	 OLD_UCD_SNMP=no ],
-       [ AC_MSG_RESULT(Cannot find Net-SNMP libraries(netsnmp)... checking UCD-SNMP)
-         OLD_UCD_SNMP=yes ])
-
-if test "$OLD_UCD_SNMP" = "yes"; then
- AC_CHECK_LIB(snmp, snmp_timeout,
-       [ LIBS="-lsnmp $LIBS"
-         AC_DEFINE(OLD_UCD_SNMP, 1, Old UCD SNMP Version) ],
-       AC_MSG_ERROR(Cannot find UCD/Net-SNMP libraries))
-fi
-dnl ****************** End SNMP checking ***********************
-
 AC_SUBST(ltlibraries)
 
-AC_OUTPUT(Makefile                         \
+AC_CONFIG_FILES([Makefile                         \
 	  src/Makefile                     \
 	  etc/createdb			   \
-          man/rtgpoll.1)
+          man/rtgpoll.1])
+AC_OUTPUT
