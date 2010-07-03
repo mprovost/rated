@@ -1,6 +1,5 @@
 # 
-# RTG 0.8.1 configure.in
-# Author: Rob Beverly <rbeverly@users.sourceforge.net>
+# Rated 0.9.0 configure.in
 #
 
 AC_INIT
@@ -25,7 +24,7 @@ AC_ARG_WITH(snmp,
 
 dnl substitute them in all the files listed in AC_OUTPUT
 AC_SUBST(MYSQL_DIR)
-AC_SUBST(RTG_HOME)
+AC_SUBST(RATED_HOME)
 
 dnl if host_alias is empty, ac_cv_host_alias may still have the info
 if test -z "$host_alias"; then
@@ -92,13 +91,13 @@ dnl Checks for library functions.
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS(asprintf gettimeofday strerror strtoull)
 
-dnl Determine RTG home installation path for script substitution
+dnl Determine RATED home installation path for script substitution
 if test "x$prefix" != "xNONE"; then
-    RTG_HOME=$prefix 
+    RATED_HOME=$prefix 
 else 
-    RTG_HOME=/usr/local/rated
+    RATED_HOME=/usr/local/rated
 fi
-AC_DEFINE_UNQUOTED(RTG_HOME, "$RTG_HOME", RTG root installation prefix)
+AC_DEFINE_UNQUOTED(RATED_HOME, "$RATED_HOME", RATED root installation prefix)
 
 dnl ****************** Begin SNMP checking ***********************
 AC_MSG_CHECKING(snmp)
