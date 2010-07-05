@@ -99,7 +99,7 @@ void config_defaults(config_t * set)
    set->daemon = TRUE;
    strncpy(config_paths[0], CONFIG_PATH_1, sizeof(config_paths[0]));
    strncpy(config_paths[1], CONFIG_PATH_2, sizeof(config_paths[1]));
-   snprintf(config_paths[2], sizeof(config_paths[1]), "%s/etc/", RTG_HOME);
+   snprintf(config_paths[2], sizeof(config_paths[1]), "%s/etc/", RATED_HOME);
    return;
 }
 
