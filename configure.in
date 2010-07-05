@@ -67,11 +67,10 @@ dnl Checks for libraries.
 AC_CHECK_LIB(kstat, kstat_lookup)
 AC_CHECK_LIB(nsl, gethostbyname)
 AC_CHECK_LIB(socket, socket)
-AC_CHECK_LIB(m, floor)
+dnl AC_CHECK_LIB(m, floor)
 AC_CHECK_LIB(pthread, pthread_exit)
 AC_CHECK_LIB(rt, clock_gettime)
-AC_CHECK_LIB(z, deflate)
-AC_CHECK_LIB(crypto, CRYPTO_free,[],[AC_MSG_ERROR(libcrypto not found!)])
+dnl AC_CHECK_LIB(z, deflate)
 dnl AC_CHECK_LIB(des, CRYPTO_free,[],[])
 AC_CHECK_LIB(ltdl, lt_dlopen,[],[AC_MSG_ERROR(Cannot link with libtool libs! (libltdl))])
 
@@ -127,6 +126,11 @@ AC_CHECK_LIB([netsnmp], [snmp_sess_open],
     [ AC_MSG_ERROR(["Cannot link with net-snmp libs! (libnetsnmp)"]) ]
 )
 dnl ****************** End SNMP checking ***********************
+
+AC_CHECK_LIB(crypto, CRYPTO_free,
+    [AC_SUBST(rated_LDADD, "${rated_LDADD} -lcrypto")],
+    [AC_MSG_ERROR(libcrypto not found!)]
+)
 
 dnl ****************** Begin Postgres checking ***********************
 AC_MSG_CHECKING(pgsql)
