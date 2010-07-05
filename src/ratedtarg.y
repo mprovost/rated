@@ -18,7 +18,7 @@ static host_t *thst;
 static template_t *template_tail;
 static template_t template_dummy;
 
-char *community;
+u_char *community;
 size_t community_len;
 long sver;
 
@@ -112,7 +112,7 @@ target_directive: TMPL_TRGT L_OID
 
 community_entry: T_COMM L_IDENT
 {
-    community = $2;
+    community = (u_char *)$2;
     community_len = strlen($2);
 }
 '{' community_directives '}';
