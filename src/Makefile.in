@@ -81,7 +81,7 @@ libratedmysql_la_OBJECTS = $(am_libratedmysql_la_OBJECTS)
 libratedmysql_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(libratedmysql_la_LDFLAGS) $(LDFLAGS) -o $@
-libratedpgsql_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
+libratedpgsql_la_DEPENDENCIES =
 am_libratedpgsql_la_OBJECTS = libratedpgsql_la-libratedpgsql.lo
 libratedpgsql_la_OBJECTS = $(am_libratedpgsql_la_OBJECTS)
 libratedpgsql_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
@@ -183,8 +183,7 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
-PGSQL_CPPFLAGS = @PGSQL_CPPFLAGS@
-PGSQL_LIB = @PGSQL_LIB@
+PG_CONFIG = @PG_CONFIG@
 RANLIB = @RANLIB@
 RATED_HOME = @RATED_HOME@
 SED = @SED@
@@ -229,6 +228,8 @@ infodir = @infodir@
 install_sh = @install_sh@
 libdir = @libdir@
 libexecdir = @libexecdir@
+libratedpgsql_la_CPPFLAGS = @libratedpgsql_la_CPPFLAGS@
+libratedpgsql_la_LIBADD = @libratedpgsql_la_LIBADD@
 localedir = @localedir@
 localstatedir = @localstatedir@
 lt_ECHO = @lt_ECHO@
@@ -261,9 +262,7 @@ libratedmysql_la_CPPFLAGS = $(MYSQL_CPPFLAGS)
 libratedmysql_la_LDFLAGS = -rpath '$(libdir)'
 libratedmysql_la_LIBADD = $(MYSQL_LIB)
 libratedpgsql_la_SOURCES = libratedpgsql.c
-libratedpgsql_la_CPPFLAGS = $(PGSQL_CPPFLAGS)
 libratedpgsql_la_LDFLAGS = -rpath '$(libdir)'
-libratedpgsql_la_LIBADD = $(PGSQL_LIB)
 rated_SOURCES = ratedsnmp.c rateddbi.c rated.c ratedutil.c ratedtarg.y ratedgram.l ratedhash.c
 #rated_CPPFLAGS = $(SNMP_CPPFLAGS)
 rated_LDFLAGS = -rpath '$(libdir)'

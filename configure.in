@@ -136,44 +136,35 @@ dnl ****************** Begin Postgres checking ***********************
 AC_MSG_CHECKING(pgsql)
 AS_IF([test "x$with_pgsql" != "xno"],
     [if test "x$with_pgsql" != "xcheck"; then
-        PGSQL_DIR=$with_pgsql
+        AC_PATH_PROG(PG_CONFIG, pg_config, [], "${with_pgsql}/bin")
     else
-        dnl try some standard locations
-        for i in /usr /usr/local /usr/local/psql; do
-            test -f $i/bin/psql && PGSQL_DIR=$i && break
-        done
+        dnl look for the pg_config helper
+        AC_PATH_PROG(PG_CONFIG, pg_config)
     fi
 
-    if test -n $PGSQL_DIR; then
+    if test -n $PG_CONFIG; then
+        PGSQL_INC_DIR=`${PG_CONFIG} --includedir`
         OLD_CPPFLAGS=$CPPFLAGS
-        for i in include/postgresql include; do
-            if test -d ${PGSQL_DIR}/$i; then
-                PGSQL_INC_DIR=$i
-                break
-            fi
-        done
-        CPPFLAGS="$CPPFLAGS -I${PGSQL_DIR}/${PGSQL_INC_DIR}"
+        CPPFLAGS="$CPPFLAGS -I${PGSQL_INC_DIR}"
         AC_CHECK_HEADER(libpq-fe.h,
-            [ CPPFLAGS=$OLD_CPPFLAGS
-            OLD_LDFLAGS=$LDFLAGS
-            LDFLAGS="$LDFLAGS -lpq"
-            AC_CHECK_LIB(pq, PQconnectdb,
-                [ LDFLAGS=$OLD_LDFLAGS
-                AC_SUBST(PGSQL_LIB, "-lpq")
-                AC_SUBST(PGSQL_CPPFLAGS, "-I${PGSQL_DIR}/${PGSQL_INC_DIR}")
+            [ AC_CHECK_LIB(pq, PQconnectdb,
+                [ AC_SUBST(libratedpgsql_la_LIBADD, "-lpq")
+                AC_SUBST(libratedpgsql_la_CPPFLAGS, "-I${PGSQL_INC_DIR}")
                 ltlibraries="libratedpgsql.la $ltlibraries" ],
-                [ LDFLAGS=$OLD_LDFLAGS
-                if test "x$with_pgsql" != "xcheck"; then
+                [ if test "x$with_pgsql" != "xcheck"; then
                     AC_MSG_ERROR(Cannot link with Postgres libs! (libpq))
                 else
                     AC_MSG_WARN(Cannot link with Postgres libs! (libpq))
-                fi ]) ],
-            [ CPPFLAGS=$OLD_CPPFLAGS
-            if test "x$with_pgsql" != "xcheck"; then
+                fi ]
+            )],
+            [ if test "x$with_pgsql" != "xcheck"; then
                 AC_MSG_ERROR([Cannot find Postgres headers in ${PGSQL_DIR}])
             else
                 AC_MSG_WARN([Cannot find Postgres headers in ${PGSQL_DIR}. Use --with-pgsql to specify non-default path.])
-            fi ])
+            fi
+            ]
+        )
+        CPPFLAGS=$OLD_CPPFLAGS
     fi
     ]
 )

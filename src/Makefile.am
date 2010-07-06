@@ -14,9 +14,7 @@ libratedmysql_la_LDFLAGS  = -rpath '$(libdir)'
 libratedmysql_la_LIBADD    = $(MYSQL_LIB)
 
 libratedpgsql_la_SOURCES  = libratedpgsql.c
-libratedpgsql_la_CPPFLAGS = $(PGSQL_CPPFLAGS)
 libratedpgsql_la_LDFLAGS  = -rpath '$(libdir)'
-libratedpgsql_la_LIBADD    = $(PGSQL_LIB)
 
 rated_SOURCES  = ratedsnmp.c rateddbi.c rated.c ratedutil.c ratedtarg.y ratedgram.l ratedhash.c
 #rated_CPPFLAGS = $(SNMP_CPPFLAGS)
