@@ -474,14 +474,9 @@ void *poller(void *thread_args)
 
     pthread_cleanup_push(cleanup_db, NULL);
 
-    if (!(set->dboff)) {
-	/* load the database driver */
-	if (!(db_init(set)))
-            fatal("** Database error - check configuration.\n");
-        /* set up cancel function for exit */
-        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
-        pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &oldtype);
-    }
+    /* set up cancel function for exit */
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, &oldtype);
 
     /*
      * crew->running is initialised to the number of threads, count

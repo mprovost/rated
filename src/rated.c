@@ -8,6 +8,7 @@
 #define _REENTRANT
 #include "rated.h"
 #include "ratedsnmp.h"
+#include "rateddbi.h"
 
 /* Yes.  Globals. */
 stats_t stats;
@@ -139,6 +140,12 @@ int main(int argc, char *argv[]) {
     snmp_enable_stderrlog();
     /* output oids numerically - this is equivalent to -On in the snmp tools */
     netsnmp_ds_set_int(NETSNMP_DS_LIBRARY_ID, NETSNMP_DS_LIB_OID_OUTPUT_FORMAT, NETSNMP_OID_OUTPUT_NUMERIC);
+
+    if (!(set->dboff)) {
+        /* load the database driver */
+        if (!(db_init(set)))
+            fatal("** Database error - check configuration.\n");
+    }
 
     /* build list of hosts to be polled */
     head = hash_target_file(target_file);
