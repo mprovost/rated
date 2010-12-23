@@ -242,14 +242,12 @@ getnext_t *insert_getnext(getnext_t *current_getnext, const oid *anOID, const si
 
     /* check for empty list */
     if (current_getnext) {
+        /* not empty */
         /* this could be NULL if we're appending to the end of the list */
         getnext_scratch->next = current_getnext->next;
-        /* don't insert duplicates */
-        if (current_getnext->next == NULL && memcmp(anOID, current_getnext->anOID, anOID_len * sizeof(oid)) != 0) {
-            /* insert/append to the list */
-            current_getnext->next = getnext_scratch;
-            current_getnext = getnext_scratch;
-        }
+        /* insert/append to the list */
+        current_getnext->next = getnext_scratch;
+        current_getnext = getnext_scratch;
     } else {
         /* empty */
         current_getnext = getnext_scratch;
@@ -304,7 +302,7 @@ getnext_t *walk_getnexts(worker_t *worker, getnext_t *current_getnext, const oid
         /* empty list */
         tdebug(DEBUG, "empty getnext list, creating\n");
     }
-
+    /* either it's an empty list or we've gotten to the end and need to append a new item */
     return insert_getnext(current_getnext, anOID, anOID_len);
 }
 
