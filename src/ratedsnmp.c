@@ -394,7 +394,7 @@ int do_insert(worker_t *worker, int db_reconnect, unsigned long long result, get
                 /* don't let two threads try and manipulate the oids table at the same time */
                 PT_MUTEX_LOCK(&crew->mutex);
                 /* get the oid->iid mapping from the db */
-                if (!db_check_and_create_oids_table(OIDS) || !db_lookup_oid(oid_string, &getnext->iid)) {
+                if (!db_lookup_oid(oid_string, &getnext->iid)) {
                     db_error = TRUE;
                     PT_MUTEX_UNLOCK(&crew->mutex);
                     goto cleanup;

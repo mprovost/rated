@@ -146,6 +146,9 @@ int main(int argc, char *argv[]) {
         /* we need a db connection before we parse the targets file so we can check and create tables */
         if (!(db_init(set) && db_connect(set)))
             fatal("** Database error - check configuration.\n");
+
+        if (!db_check_and_create_oids_table(OIDS))
+            fatal("** Database error - couldn't create oids table.\n");
     }
 
     /* build list of hosts to be polled */

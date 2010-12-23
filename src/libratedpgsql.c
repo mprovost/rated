@@ -390,6 +390,7 @@ int __db_check_and_create_oids_table(const char *table) {
         status = TRUE;
     } else {
         asprintf(&query, create, table);
+        debug(LOW, "oids table not found, creating\n");
         debug(HIGH, "Query = %s\n", query);
 
         if (db_exec_command(pgsql, query)) {
