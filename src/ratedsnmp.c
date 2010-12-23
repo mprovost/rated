@@ -232,31 +232,28 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
 }
 
 /* insert/append a new getnext into a list */
-getnext_t *insert_getnext(getnext_t *current_getnext, const oid *anOID, const size_t anOID_len, const char *oid_string) {
+getnext_t *insert_getnext(getnext_t *current_getnext, const oid *anOID, const size_t anOID_len) {
     getnext_t *getnext_scratch;
-    getnext_t *next_getnext = current_getnext->next;
 
     /* construct a new one */
     getnext_scratch = calloc(1, sizeof(getnext_t));
-    /* this could be NULL if we're appending to the end of the list */
-    getnext_scratch->next = next_getnext;
     memmove(getnext_scratch->anOID, anOID, anOID_len * sizeof(oid));
     getnext_scratch->anOID_len = anOID_len;
 
-    /* look up the iid in the db */
-    if (!set->dboff) {
-        /* if we can't look up the iid in the db then leave the original list unchanged */
-        if (!db_lookup_oid(oid_string, &getnext_scratch->iid)) {
-            PT_MUTEX_LOCK(&stats.mutex);
-            stats.db_errors++;
-            PT_MUTEX_UNLOCK(&stats.mutex);
-            return current_getnext;
+    /* check for empty list */
+    if (current_getnext) {
+        /* this could be NULL if we're appending to the end of the list */
+        getnext_scratch->next = current_getnext->next;
+        /* don't insert duplicates */
+        if (current_getnext->next == NULL && memcmp(anOID, current_getnext->anOID, anOID_len * sizeof(oid)) != 0) {
+            /* insert/append to the list */
+            current_getnext->next = getnext_scratch;
+            current_getnext = getnext_scratch;
         }
+    } else {
+        /* empty */
+        current_getnext = getnext_scratch;
     }
-
-    /* insert/append to the list */
-    current_getnext->next = getnext_scratch;
-    current_getnext = getnext_scratch;
 
     return current_getnext;
 }
@@ -266,47 +263,49 @@ getnext_t *insert_getnext(getnext_t *current_getnext, const oid *anOID, const si
  * We do it this way instead of moving the pointer ahead at the end of each
  * poll so you can insert a new one without needing a doubly linked list.
  */
-getnext_t *walk_getnexts(worker_t *worker, getnext_t *current_getnext, const oid *anOID, const size_t anOID_len, const char *oid_string) {
-    getnext_t *next_getnext = current_getnext->next;
+getnext_t *walk_getnexts(worker_t *worker, getnext_t *current_getnext, const oid *anOID, const size_t anOID_len) {
+    getnext_t *next_getnext;
+    
+    if (current_getnext) {
+        next_getnext = current_getnext->next;
 
-    /* return early to avoid the append check every time */
-    while(next_getnext) {
-        /* first check against the next entry, this should be the most common case */
-        if (anOID_len == next_getnext->anOID_len
-            && memcmp(anOID, next_getnext->anOID, anOID_len * sizeof(oid)) == 0) {
-                tdebug(DEBUG, "next memcmp equal\n");
-                current_getnext = next_getnext;
-                return current_getnext;
-        /* then check against the current entry, this happens in the first loop */
-        } else if (anOID_len == current_getnext->anOID_len
-            && memcmp(anOID, current_getnext->anOID, anOID_len * sizeof(oid)) == 0) {
-                tdebug(DEBUG, "memcmp equal\n");
-                return current_getnext;
-        /* else snmp_oid_compare to the next one to see if it's lesser or greater */
-        } else {
-            /* if greater, then create and insert a new getnext, this is the first poll for a new oid */
-            if (snmp_oid_compare(anOID, anOID_len, next_getnext->anOID, next_getnext->anOID_len) > 0) {
-                tdebug(DEBUG, "insert next\n");
-                current_getnext = insert_getnext(current_getnext, anOID, anOID_len, oid_string);
-                return current_getnext;
-            /* if lesser, then that must be an abandoned oid, so delete it and start the comparison over again */
-            /* we already checked for equality above so we can ignore that case */
+        /* return early to avoid the append check every time */
+        while(next_getnext) {
+            /* first check against the next entry, this should be the most common case */
+            if (anOID_len == next_getnext->anOID_len
+                && memcmp(anOID, next_getnext->anOID, anOID_len * sizeof(oid)) == 0) {
+                    tdebug(DEBUG, "next memcmp equal\n");
+                    current_getnext = next_getnext;
+                    return current_getnext;
+            /* then check against the current entry, this happens in the first loop */
+            } else if (anOID_len == current_getnext->anOID_len
+                && memcmp(anOID, current_getnext->anOID, anOID_len * sizeof(oid)) == 0) {
+                    tdebug(DEBUG, "memcmp equal\n");
+                    return current_getnext;
+            /* else snmp_oid_compare to the next one to see if it's lesser or greater */
             } else {
-                tdebug(DEBUG, "delete next\n");
-                current_getnext->next = next_getnext->next;
-                free(next_getnext);
-                next_getnext = current_getnext->next;
-                continue;
+                /* if greater, then create and insert a new getnext, this is the first poll for a new oid */
+                if (snmp_oid_compare(anOID, anOID_len, next_getnext->anOID, next_getnext->anOID_len) > 0) {
+                    tdebug(DEBUG, "insert next\n");
+                    current_getnext = insert_getnext(current_getnext, anOID, anOID_len);
+                    return current_getnext;
+                /* if lesser, then that must be an abandoned oid, so delete it and start the comparison over again */
+                /* we already checked for equality above so we can ignore that case */
+                } else {
+                    tdebug(DEBUG, "delete next\n");
+                    current_getnext->next = next_getnext->next;
+                    free(next_getnext);
+                    next_getnext = current_getnext->next;
+                    continue;
+                }
             }
         }
+    } else {
+        /* empty list */
+        tdebug(DEBUG, "empty getnext list, creating\n");
     }
-    /* end of list, append a new one */
-    /* don't append last item twice on second poll */
-    if (next_getnext == NULL && memcmp(anOID, current_getnext->anOID, anOID_len * sizeof(oid)) != 0) {
-        tdebug(DEBUG, "appending getnext\n");
-        current_getnext = insert_getnext(current_getnext, anOID, anOID_len, oid_string);
-    } /* TODO else? */
-    return current_getnext;
+
+    return insert_getnext(current_getnext, anOID, anOID_len);
 }
 
 /* insert into the database and return a boolean indicating whether to attempt to reconnect to the db the next time */
@@ -395,6 +394,16 @@ int do_insert(worker_t *worker, int db_reconnect, unsigned long long result, get
             }
 
             /* Now we have a DB connection */
+
+            /* check if we already have an iid, otherwise look it up first */
+            if (getnext->iid == 0) {
+                /* look up the iid in the db */
+                if (!db_lookup_oid(oid_string, &getnext->iid)) {
+                    db_error = TRUE;
+                    /* can't insert without an iid so bail out */
+                    goto cleanup;
+                }
+            }
 
             tdebug(DEVELOP, "db_insert sent: %s %lu %lu %llu %.15f\n", host->host_esc, getnext->iid, tv2ms(current_time), insert_val, rate);
             /* insert into the database */
@@ -598,17 +607,7 @@ void *poller(void *thread_args)
                     break;
                 }
 
-                if (current_getnext) {
-                    current_getnext = walk_getnexts(worker, current_getnext, anOID, anOID_len, oid_string);
-                /* first target of first poll */
-                } else {
-                    tdebug(DEBUG, "current_getnext == NULL\n"); 
-                    current_target->getnexts = calloc(1, sizeof(getnext_t));
-                    current_getnext = current_target->getnexts;
-                    current_getnext->next = NULL;
-                    memmove(current_getnext->anOID, &anOID, anOID_len * sizeof(oid));
-                    current_getnext->anOID_len = anOID_len;
-                }
+                current_getnext = walk_getnexts(worker, current_getnext, anOID, anOID_len);
 
                 /* doublecheck */
                 assert(memcmp(&current_getnext->anOID, &anOID, anOID_len) == 0);
