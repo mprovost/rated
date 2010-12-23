@@ -612,6 +612,11 @@ void *poller(void *thread_args)
                 /* doublecheck */
                 assert(memcmp(&current_getnext->anOID, &anOID, anOID_len) == 0);
 
+                /* check if we started with an empty list */
+                if (current_target->getnexts == NULL)
+                    /* copy the newly created list into place */
+                    current_target->getnexts = current_getnext;
+
                 tdebug(DEBUG, "result = %llu, last_value = %llu, bits = %hi\n", result, current_getnext->last_value, bits);
 
                 /*
