@@ -143,7 +143,8 @@ int main(int argc, char *argv[]) {
 
     if (!(set->dboff)) {
         /* load the database driver */
-        if (!(db_init(set)))
+        /* we need a db connection before we parse the targets file so we can check and create tables */
+        if (!(db_init(set) && db_connect(set)))
             fatal("** Database error - check configuration.\n");
     }
 
@@ -151,6 +152,9 @@ int main(int argc, char *argv[]) {
     head = hash_target_file(target_file);
     if (head == NULL)
         fatal("Error updating target list.");
+
+    /* don't need a db connection in the main program anymore */
+    db_disconnect();
 
     if (hosts < set->threads) {
         debug(LOW, "Number of hosts is less than configured number of threads, defaulting to %i.\n", hosts);
