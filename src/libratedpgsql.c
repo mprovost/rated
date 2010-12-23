@@ -101,11 +101,19 @@ int __db_status() {
 	}
 }
 
+/*
+ * connect to the database server
+ * if there is already an existing connection, just return
+ */
 int __db_connect(config_t *config) {
 	char *connectstring;
-	PGconn* pgsql;
+	PGconn* pgsql = getpgsql();
 
 	set = config;
+
+        /* shortcut */
+	if (PQstatus(pgsql) == CONNECTION_OK)
+            return TRUE;
 
 	/* TODO escape strings */
 	asprintf(&connectstring, "host='%s' dbname='%s' user='%s' password='%s'", set->dbhost, set->dbdb, set->dbuser, set->dbpass);
