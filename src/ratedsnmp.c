@@ -378,7 +378,7 @@ int do_insert(worker_t *worker, int db_reconnect, unsigned long long result, get
     /*
      * insert into the db
      */
-    if (!set->dboff) {
+    if (set->dbon) {
         if ( (insert_val > 0) || (set->withzeros) ) {
             if (db_reconnect) {
                 /* try and (re)connect */
@@ -413,7 +413,7 @@ int do_insert(worker_t *worker, int db_reconnect, unsigned long long result, get
                 db_error = TRUE;
             } /* db_insert */
         } /* zero */
-    } /* !dboff */
+    } /* dbon */
 
 cleanup:
 

@@ -152,8 +152,10 @@ host_entry:   T_HOST L_IDENT
     /* create the first target */
     thst->targets = calloc(1, sizeof(target_t));
     /* check and create a db table */
-    thst->host_esc = db_check_and_create_data_table(thst->host);
-    debug(DEBUG, "host: %s -> host_esc: %s\n", thst->host, thst->host_esc);
+    if (set->dbon) {
+        thst->host_esc = db_check_and_create_data_table(thst->host);
+        debug(DEBUG, "host: %s -> host_esc: %s\n", thst->host, thst->host_esc);
+    }
 }
 '{' host_directives '}'
 {

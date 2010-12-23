@@ -93,7 +93,7 @@ void config_defaults(config_t * set)
    strncpy(set->dbdb, DEFAULT_DB_DB, sizeof(set->dbdb));
    strncpy(set->dbuser, DEFAULT_DB_USER, sizeof(set->dbuser));
    strncpy(set->dbpass, DEFAULT_DB_PASS, sizeof(set->dbpass));
-   set->dboff = FALSE;
+   set->dbon = TRUE;
    set->withzeros = FALSE;
    set->verbose = OFF; 
    set->daemon = TRUE;

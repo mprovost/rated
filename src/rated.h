@@ -104,7 +104,7 @@ typedef struct config_struct {
     char dbpass[80];
     volatile enum debugLevel verbose;
     unsigned short withzeros;
-    unsigned short dboff;
+    unsigned short dbon;
     unsigned short multiple;
     unsigned short snmp_port;
     unsigned short threads;

@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
 	    conf_file = optarg;
 	    break;
 	case 'd':
-	    set->dboff = TRUE;
+	    set->dbon = FALSE;
 	    break;
 	case 'D':
 	    set->daemon = FALSE;
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
     /* output oids numerically - this is equivalent to -On in the snmp tools */
     netsnmp_ds_set_int(NETSNMP_DS_LIBRARY_ID, NETSNMP_DS_LIB_OID_OUTPUT_FORMAT, NETSNMP_OID_OUTPUT_NUMERIC);
 
-    if (!(set->dboff)) {
+    if (set->dbon) {
         /* load the database driver */
         /* we need a db connection before we parse the targets file so we can check and create tables */
         if (!(db_init(set) && db_connect(set)))
@@ -157,7 +157,8 @@ int main(int argc, char *argv[]) {
         fatal("Error updating target list.");
 
     /* don't need a db connection in the main program anymore */
-    db_disconnect();
+    if (set->dbon)
+        db_disconnect();
 
     if (hosts < set->threads) {
         debug(LOW, "Number of hosts is less than configured number of threads, defaulting to %i.\n", hosts);
