@@ -353,6 +353,7 @@ char *__db_check_and_create_data_table(const char *table) {
     /* first check if it already exists */
     if (!db_unsafe_check_table(pgsql, table_esc)) {
         asprintf(&query, create, table_esc);
+        debug(LOW, "\'%s\' table not found, creating\n", table_esc);
         debug(HIGH, "Query = %s\n", query);
 
         if (db_exec_command(pgsql, query)) {

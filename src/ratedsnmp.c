@@ -378,20 +378,12 @@ int do_insert(worker_t *worker, int db_reconnect, unsigned long long result, get
 
             /* Now we have a DB connection */
 
-            /* only escape the table name once and save it */
-            if (host->host_esc == NULL) {
-                /* check that we have a data table for this host */
-                host->host_esc = db_check_and_create_data_table(host->host);
-                tdebug(DEBUG, "host: %s -> host_esc: %s\n", host->host, host->host_esc);
-                if (host->host_esc == NULL) {
-                    db_error = TRUE;
-                    goto cleanup;
-                }
-            }
-
             /* check if we have a cached value for iid */
             if (getnext->iid == 0) {
                 /* don't let two threads try and manipulate the oids table at the same time */
+                /* FIXME do we care? db should be able to handle it, if not do the locking in the driver
+                   but first we have to pass the crew mutex to the driver...
+                 */
                 PT_MUTEX_LOCK(&crew->mutex);
                 /* get the oid->iid mapping from the db */
                 if (!db_lookup_oid(oid_string, &getnext->iid)) {
