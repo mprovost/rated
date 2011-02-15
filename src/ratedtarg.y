@@ -18,6 +18,8 @@ static host_t *thst;
 
 static template_t *template_tail;
 static template_t template_dummy;
+static template_t *parent;
+static template_t *ttemplate;
 
 u_char *community;
 size_t community_len;
@@ -76,6 +78,7 @@ statement     : template_entry
 
 template_entry: T_TMPL L_IDENT
 {
+    parent = template_dummy.next;
     template_tail = &template_dummy;
     template_dummy.next = NULL;
 }
@@ -83,17 +86,22 @@ template_entry: T_TMPL L_IDENT
 {
     /* we don't store the template name so free it to avoid a memory leak */
     free($2);
+    /* the last target gets set to the head of the parent template */
+    ttemplate->next = parent;
+    /* reset the parent */
+    template_dummy.next = parent;
 };
 
-template_directives: template_directives target_directive
-                   | template_directives community_entry
+template_directives: template_entry
+                   | community_entry
                    | target_directive
-                   | host_entry
+                   | template_directives template_entry
+                   | template_directives community_entry
+                   | template_directives target_directive
                    ;
 
 target_directive: TMPL_TRGT L_OID
 {
-    template_t *ttemplate;
     ttemplate = calloc(1, sizeof(template_t));
     ttemplate->next = NULL;
     ttemplate->objoid = $2;
