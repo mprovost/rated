@@ -16,12 +16,12 @@ endtoken      ;$
 newline       [\n]*
 whitespace    [ \t\v\f]+
 hashcmnt      #.*$
-cppcmnt               "//".*$
+cppcmnt       "//".*$
 ipv4addr      ([0-9]{1,3}\.){1,3}[0-9]{1,3}
 oid           (\.[0-9]+)+
-string                \"[^\"\n]+\"
-number                [0-9]+
-identifier      [a-zA-Z0-9]([^; \t]|[:print:])*
+string        \"[^\"\n]+\"
+number        [0-9]+
+identifier    [a-zA-Z0-9]([^; \t]|[:print:])*
 true          [Tt]rue|[Yy]es
 false         [Ff]alse|[Nn]o
 
@@ -49,9 +49,9 @@ address       { return HST_ADDR; }
 #endif
                 return L_NUMBER;
               }
-{ipv4addr}      { yylval.string = strdup(yytext); return L_IPADDR; }
+{ipv4addr}    { yylval.string = strdup(yytext); return L_IPADDR; }
 {oid}         { yylval.string = strdup(yytext); return L_OID; }
-{string}        { yylval.string = strdup(yytext+1);
+{string}      { yylval.string = strdup(yytext+1);
                   if(yylval.string[yyleng-2] != '"')
                       fprintf(stderr,"Unterminated character string\n");
                   else
@@ -60,7 +60,7 @@ address       { return HST_ADDR; }
               }
 {true}        { yylval.boolean = TRUE; return L_BOOLEAN; }
 {false}       { yylval.boolean = FALSE; return L_BOOLEAN; }
-{identifier}    { yylval.string = strdup(yytext); return L_IDENT; }
+{identifier}  { yylval.string = strdup(yytext); return L_IDENT; }
 
 			
 
