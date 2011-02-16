@@ -143,7 +143,7 @@ sver_directives: host_entry
                | sver_directives host_entry
                ;
 
-host_entry:   T_HOST L_IDENT
+host_entry:   T_HOST L_IDENT HST_ADDR L_IPADDR
 {
     thst = calloc(1, sizeof(host_t));
     thst->host = $2;
@@ -164,25 +164,13 @@ host_entry:   T_HOST L_IDENT
         thst->host_esc = db_check_and_create_data_table(thst->host);
         debug(DEBUG, "host: %s -> host_esc: %s\n", thst->host, thst->host_esc);
     }
-}
-'{' host_directives '}'
-{
+
+    thst->address = $4;
+    thst->session.peername = $4;
+
     hosts++;
     hosts_tail->next = thst;
     hosts_tail = hosts_tail->next;
-};
-
-host_directives       : host_directives host_directive
-              | host_directive
-              ;
-
-host_directive        : addr_directive
-              ;
-
-addr_directive : HST_ADDR L_IPADDR
-{
-    thst->address = $2;
-    thst->session.peername = $2;
 };
 
 
