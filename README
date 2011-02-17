@@ -123,29 +123,32 @@ Here's a sample target configuration file (specified with -t):
 
 template switch {
     # ifHCInOctets
-    target .1.3.6.1.2.1.31.1.1.1.6;
+    target .1.3.6.1.2.1.31.1.1.1.6
     # ifHCOutOctets
-    target .1.3.6.1.2.1.31.1.1.1.10;
+    target .1.3.6.1.2.1.31.1.1.1.10
     # ifHCInUcastPkts
-    target .1.3.6.1.2.1.31.1.1.1.7;
+    target .1.3.6.1.2.1.31.1.1.1.7
     # ifHCOutUcastPkts
-    target .1.3.6.1.2.1.31.1.1.1.11;
+    target .1.3.6.1.2.1.31.1.1.1.11
     community public {
         snmpver 2 {
-            host myswitch1 {
-                address 192.168.1.1;
-                snmpver 2;
-            }
-            host myswitch2 {
-                address 192.168.1.2;
-                snmpver 2;
-            }
+            host myswitch1 address 192.168.1.1
+            host myswitch2 address 192.168.1.2
         }
     }
     community private {
         snmpver 1 {
-            host myfirewall1 {
-                address 10.1.1.1;
+            host myfirewall1 address 10.1.1.1
+        }
+    }
+    template Foundry-RX {
+        # enterprises.foundry.products.switch.snAgentSys.snAgentCpu.snAgentCpuUtilTable.snAgentCpuUtilEntry.snAgentCpuUtilValue
+        target .1.3.6.1.4.1.1991.1.1.2.11.1.1.4
+        # enterprises.foundry.products.switch.snAgentSys.snAgentTemp.snAgentTempTable.snAgentTempEntry.snAgentTempValue
+        target .1.3.6.1.4.1.1991.1.1.2.13.1.1.4
+        community public {
+            snmpver 2 {
+                host myrxswitch1 address 192.168.1.3
             }
         }
     }
@@ -155,8 +158,14 @@ Comments start with a # (shell style) or // (C++ style) and go to the
 end of the line.
 
 Target OIDs are grouped into templates so that they apply to multiple
-hosts to reduce the size of the configuration. The target OID is used
+hosts and to reduce the size of the configuration. The target OID is used
 by rated in the first getnext request, so the first result will be the
 next value in the OID tree. This is the same behaviour as the snmpwalk
-utility. 
+utility. Templates can be nested and inherit the targets from the
+parent template(s). At this time the template names are symbolic and
+not actually used by the program.
 
+Within each template are one or more communities. This is the SNMP
+community string to be used for the enclosed hosts. Then the hosts are
+grouped by SNMP version (1 or 2). Finally the hosts are listed, one
+per line.
