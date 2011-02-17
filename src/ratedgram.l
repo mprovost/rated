@@ -21,7 +21,7 @@ ipv4addr      ([0-9]{1,3}\.){1,3}[0-9]{1,3}
 oid           (\.[0-9]+)+
 string        \"[^\"\n]+\"
 number        [0-9]+
-identifier    [a-zA-Z0-9]([^; \t]|[:print:])*
+identifier    [a-zA-Z0-9]([^ \n\t]|[:print:])*
 true          [Tt]rue|[Yy]es
 false         [Ff]alse|[Nn]o
 
