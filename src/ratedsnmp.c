@@ -76,14 +76,14 @@ unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp) {
                 break;
             case STAT_SUCCESS:
                 stats.errors++;
-                if (response->variables->type == SNMP_NOSUCHINSTANCE) {
-                    tdebug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", oid_string, session->peername);
-                } else {
-                    if (response) {
-                        tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, snmp_errstring(response->errstat));
+                if (response) {
+                    if (response->variables->type == SNMP_NOSUCHINSTANCE) {
+                        tdebug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", oid_string, session->peername);
                     } else {
-                        tdebug(LOW, "*** SNMP NULL response: (%s@%s)\n", oid_string, session->peername);
+                        tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, snmp_errstring(response->errstat));
                     }
+                } else {
+                    tdebug(LOW, "*** SNMP NULL response: (%s@%s)\n", oid_string, session->peername);
                 }
                 break;
             default:
@@ -205,14 +205,14 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
                 break;
             case STAT_SUCCESS:
                 stats.errors++;
-                if (response->variables->type == SNMP_NOSUCHINSTANCE) {
-                    tdebug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", oid_string, session->peername);
-                } else {
-                    if (response) {
-                        tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, snmp_errstring(response->errstat));
+                if (response) {
+                    if (response->variables->type == SNMP_NOSUCHINSTANCE) {
+                        tdebug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", oid_string, session->peername);
                     } else {
-                        tdebug(LOW, "*** SNMP NULL response: (%s@%s)\n", oid_string, session->peername);
+                        tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, snmp_errstring(response->errstat));
                     }
+                } else {
+                    tdebug(LOW, "*** SNMP NULL response: (%s@%s)\n", oid_string, session->peername);
                 }
                 break;
             default:
