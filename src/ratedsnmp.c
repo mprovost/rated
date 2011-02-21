@@ -36,6 +36,8 @@ unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp) {
     netsnmp_variable_list *vars;
     netsnmp_session *session;
     char result_string[SPRINT_MAX_LEN];
+    char *errstr;
+    int liberr, syserr;
     int sysuptime_status;
     unsigned long timeticks = 0;
 
@@ -80,7 +82,9 @@ unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp) {
                     if (response->variables->type == SNMP_NOSUCHINSTANCE) {
                         tdebug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", oid_string, session->peername);
                     } else {
-                        tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, snmp_errstring(response->errstat));
+                        snmp_sess_error(&session, &liberr, &syserr, &errstr);
+                        tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, errstr);
+                        free(errstr);
                     }
                 } else {
                     tdebug(LOW, "*** SNMP NULL response: (%s@%s)\n", oid_string, session->peername);
@@ -106,6 +110,8 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
     netsnmp_pdu *response;
     netsnmp_variable_list *vars;
     netsnmp_session *session;
+    char *errstr;
+    int liberr, syserr;
     int getnext_status = 0;
     short bits = 32; /* default */
     char result_string[SPRINT_MAX_LEN];
@@ -119,7 +125,7 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
     session = snmp_sess_session(sessp);
     tdebug(HIGH, "Polling (%s@%s)\n", oid_string, session->peername);
 
-    /* this will free the pdu on error so we can't save them for reuse between rounds */
+    /* this will free the pdu so we can't save them for reuse between rounds */
     getnext_status = snmp_sess_synch_response(sessp, pdu, &response);
 
     /* Get the current time */
@@ -209,7 +215,9 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
                     if (response->variables->type == SNMP_NOSUCHINSTANCE) {
                         tdebug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", oid_string, session->peername);
                     } else {
-                        tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, snmp_errstring(response->errstat));
+                        snmp_sess_error(&session, &liberr, &syserr, &errstr);
+                        tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, errstr);
+                        free(errstr);
                     }
                 } else {
                     tdebug(LOW, "*** SNMP NULL response: (%s@%s)\n", oid_string, session->peername);
