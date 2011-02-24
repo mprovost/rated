@@ -199,6 +199,9 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
         *anOID_len = vars->name_length;
     } else { 
         bits = -1; /* error */
+        /* if we didn't get a result back, set anOID to NULL so we break out of the getnext loop */
+        anOID = NULL;
+        anOID_len = 0;
 
         switch (getnext_status) {
             case STAT_DESCRIP_ERROR:
@@ -225,7 +228,9 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
                 break;
             default:
                 stats.errors++;
-                tdebug(LOW, "*** SNMP Error: (%s@%s) Unsuccessful (%i).\n", oid_string, session->peername, getnext_status);
+                snmp_sess_error(&session, &liberr, &syserr, &errstr);
+                tdebug(LOW, "*** SNMP Error: (%s@%s) Unsuccessful (%s).\n", oid_string, session->peername, errstr);
+                free(errstr);
                 break;
         }
         PT_MUTEX_UNLOCK(&stats.mutex);
@@ -656,13 +661,14 @@ void *poller(void *thread_args)
             current_getnext = current_target->getnexts;
 
         } /* while (current_template) */
-        if (sessp != NULL)
-            snmp_sess_close(sessp);
 
         /* update timestamp */
         host->sysuptime = sysuptime;
 
 cleanup:
+        if (sessp != NULL)
+            snmp_sess_close(sessp);
+
 
         PT_MUTEX_LOCK(&crew->mutex);
         crew->running--;
