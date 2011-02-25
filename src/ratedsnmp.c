@@ -541,7 +541,7 @@ void *poller(void *thread_args)
         current_getnext = current_target->getnexts;
 
         /* open an snmp session once for all targets for this host for this round */
-        /* TODO only do it once at startup and store it in the host struct? */
+        /* this makes a copy of the struct from host->session */
         sessp = snmp_sess_open(&host->session);
 
         if (sessp == NULL) {
@@ -666,9 +666,9 @@ void *poller(void *thread_args)
         host->sysuptime = sysuptime;
 
 cleanup:
+
         if (sessp != NULL)
             snmp_sess_close(sessp);
-
 
         PT_MUTEX_LOCK(&crew->mutex);
         crew->running--;

@@ -41,7 +41,6 @@ typedef struct host_struct {
     unsigned long sysuptime;
     netsnmp_session session;
     target_t *targets;
-    //target_t *current; /* FIXME move to stack */
     struct host_struct *next;
 } host_t;
 
