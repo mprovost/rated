@@ -68,10 +68,6 @@ unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp) {
         }
     } else {
         switch (sysuptime_status) {
-            case STAT_DESCRIP_ERROR:
-                stats.errors++;
-                tdebug(LOW, "*** SNMP Error: (%s) Bad descriptor.\n", session->peername);
-                break;
             case STAT_TIMEOUT:
                 stats.no_resp++;
                 tdebug(LOW, "*** SNMP No response: (%s@%s).\n", oid_string, session->peername);
@@ -82,7 +78,7 @@ unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp) {
                     if (response->variables->type == SNMP_NOSUCHINSTANCE) {
                         tdebug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", oid_string, session->peername);
                     } else {
-                        snmp_sess_error(&session, &liberr, &syserr, &errstr);
+                        snmp_error(session, &liberr, &syserr, &errstr);
                         tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, errstr);
                         free(errstr);
                     }
@@ -90,9 +86,10 @@ unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp) {
                     tdebug(LOW, "*** SNMP NULL response: (%s@%s)\n", oid_string, session->peername);
                 }
                 break;
-            default:
+            default: /* STAT_ERROR */
                 stats.errors++;
-                tdebug(LOW, "*** SNMP Error: (%s@%s) Unsuccessful (%i).\n", oid_string, session->peername, sysuptime_status);
+                snmp_error(session, &liberr, &syserr, &errstr);
+                tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, errstr);
                 break;
         }
         PT_MUTEX_UNLOCK(&stats.mutex);
@@ -199,15 +196,11 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
         *anOID_len = vars->name_length;
     } else { 
         bits = -1; /* error */
-        /* if we didn't get a result back, set anOID to NULL so we break out of the getnext loop */
-        anOID = NULL;
-        anOID_len = 0;
+        /* if we didn't get a result back, zero anOID so we break out of the getnext loop */
+        memset(anOID, 0, *anOID_len * sizeof(oid));
+        *anOID_len = 0;
 
         switch (getnext_status) {
-            case STAT_DESCRIP_ERROR:
-                stats.errors++;
-                tdebug(LOW, "*** SNMP Error: (%s) Bad descriptor.\n", session->peername);
-                break;
             case STAT_TIMEOUT:
                 stats.no_resp++;
                 tdebug(LOW, "*** SNMP No response: (%s@%s).\n", oid_string, session->peername);
@@ -218,7 +211,7 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
                     if (response->variables->type == SNMP_NOSUCHINSTANCE) {
                         tdebug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", oid_string, session->peername);
                     } else {
-                        snmp_sess_error(&session, &liberr, &syserr, &errstr);
+                        snmp_error(session, &liberr, &syserr, &errstr);
                         tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, errstr);
                         free(errstr);
                     }
@@ -226,17 +219,14 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
                     tdebug(LOW, "*** SNMP NULL response: (%s@%s)\n", oid_string, session->peername);
                 }
                 break;
-            default:
+            default: /* STAT_ERROR */
                 stats.errors++;
-                snmp_sess_error(&session, &liberr, &syserr, &errstr);
+                snmp_error(session, &liberr, &syserr, &errstr);
                 tdebug(LOW, "*** SNMP Error: (%s@%s) Unsuccessful (%s).\n", oid_string, session->peername, errstr);
                 free(errstr);
                 break;
         }
         PT_MUTEX_UNLOCK(&stats.mutex);
-
-        anOID = NULL;
-        anOID_len = 0;
     }
 
     if (response)
@@ -584,7 +574,7 @@ void *poller(void *thread_args)
             current_target->poll.last_time = now;
 
             /* keep doing getnexts */
-            while (anOID) {
+            while (anOID_len) {
                 /* reset variables */
                 result = 0;
 
@@ -635,7 +625,7 @@ void *poller(void *thread_args)
                  */
                 db_reconnect = do_insert(worker, db_reconnect, result, current_getnext, bits, current_time, oid_string, host);
 
-            } /* while (anOID) */
+            } /* while (anOID_len) */
             /* grab the time that we finished this target for the internal stats insert */
             gettimeofday(&now, NULL);
 
