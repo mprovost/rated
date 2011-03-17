@@ -20,7 +20,7 @@ AC_ARG_WITH(pgsql,
    [  --with-pgsql=PATH       Postgres path [default=/usr/local]],,[with_pgsql=check])
 
 AC_ARG_WITH(snmp,
-   [  --with-snmp=PATH        SNMP path [default=/usr/local]],,)
+   [  --with-snmp=PATH        SNMP path [default=/usr/local]],,[with_snmp=check])
 
 dnl substitute them in all the files listed in AC_OUTPUT
 AC_SUBST(RATED_HOME)
@@ -97,33 +97,25 @@ else
 fi
 AC_DEFINE_UNQUOTED(RATED_HOME, "$RATED_HOME", RATED root installation prefix)
 
-dnl ****************** Begin SNMP checking ***********************
+dnl ****************** Begin SNMP checking *********************** 
 AC_MSG_CHECKING(snmp)
-AS_IF([test "x$with_snmp" == "x"],
-    [ dnl try some standard locations
-    for i in /usr /usr/local /opt/local/; do
-        test -f $i/bin/snmpwalk && SNMP_DIR=$i && break
-    done
-    ], 
-    [ SNMP_DIR=$with_snmp ]
+AS_IF([test "x$with_snmp" != "xcheck"],
+    [CPPFLAGS="$CPPFLAGS -I${with_snmp}/include/net-snmp"
+     LDFLAGS="$LDFLAGS -L${with_snmp}/lib"
+     AC_SUBST(rated_LDADD, "-L${with_snmp}/lib")
+     AC_SUBST(SNMP_LIB, "${with_snmp}/lib")]
 )
-
-OLD_CPPFLAGS=$CPPFLAGS
-CPPFLAGS="$CPPFLAGS -I${SNMP_DIR}/include/net-snmp"
-AC_CHECK_HEADER(net-snmp-config.h,
-    [ AC_SUBST(rated_CPPFLAGS, "-I${SNMP_DIR}/include -I${SNMP_DIR}/include/net-snmp") ],
-    [ if test "x$with_snmp" == "x"; then
-	AC_MSG_ERROR(["Cannot find net-snmp headers in ${SNMP_DIR}. Use --with-snmp to specify non-default path."])
-    else
-	AC_MSG_ERROR(["Cannot find net-snmp headers in ${SNMP_DIR}."])
-    fi
-    ]
-)
-CPPFLAGS=$OLD_CPPFLAGS
-
-AC_CHECK_LIB([netsnmp], [snmp_sess_open],
-    [ AC_SUBST(rated_LDADD, "-lnetsnmp") ],
-    [ AC_MSG_ERROR(["Cannot link with net-snmp libs! (libnetsnmp)"]) ]
+dnl this is a prereq for the other headers
+AC_CHECK_HEADER([net-snmp/net-snmp-config.h],
+    [AC_CHECK_HEADERS([net-snmp/net-snmp-includes.h net-snmp/config_api.h net-snmp/session_api.h],
+        [AC_CHECK_LIB(netsnmp, snmp_sess_open,
+            [AC_SUBST(rated_LDADD, "${rated_LDADD} -lnetsnmp")],
+            [AC_MSG_ERROR(["Cannot link with net-snmp libs! (libnetsnmp). Use --with-snmp to specify non-default path."])]
+        )],
+        [AC_MSG_ERROR(["Cannot find net-snmp headers. Use --with-snmp to specify non-default path."])],
+        [#include <net-snmp/net-snmp-config.h>]
+    )],
+    [AC_MSG_ERROR(["Cannot find net-snmp headers. Use --with-snmp to specify non-default path."])]
 )
 dnl ****************** End SNMP checking ***********************
 
