@@ -1,7 +1,7 @@
 #include <common.h>
 
-#include "net-snmp-config.h"
-#include "net-snmp-includes.h"
+#include "net-snmp/net-snmp-config.h"
+#include "net-snmp/net-snmp-includes.h"
 
 #ifndef _RATEDSNMP_H_
 #define _RATEDSNMP_H_ 1
