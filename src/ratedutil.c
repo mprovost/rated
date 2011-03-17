@@ -155,7 +155,7 @@ int sleepy(unsigned int sleep_time, config_t *set)
     debug(LOW, "Sleeping for %u seconds\n", sleep_time);
 
     /* always sleep in chunks so we can quit if signalled */
-    if (!set->daemon)
+    if (!set->daemon && sleep_time)
         debug(LOW, "Next Poll: ");
     for (i = 0; i < sleep_time; i++) {
         /* check if we've been signalled */
