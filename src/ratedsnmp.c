@@ -200,6 +200,12 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
         memset(anOID, 0, *anOID_len * sizeof(oid));
         *anOID_len = 0;
 
+        if (session) {
+            snmp_error(session, &liberr, &syserr, &errstr);
+        } else {
+            errstr = "NULL session";
+        }
+
         switch (getnext_status) {
             case STAT_TIMEOUT:
                 stats.no_resp++;
@@ -211,9 +217,7 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
                     if (response->variables->type == SNMP_NOSUCHINSTANCE) {
                         tdebug(LOW, "*** SNMP Error: No Such Instance Exists (%s@%s)\n", oid_string, session->peername);
                     } else {
-                        snmp_error(session, &liberr, &syserr, &errstr);
                         tdebug(LOW, "*** SNMP Error: (%s@%s) %s\n", oid_string, session->peername, errstr);
-                        free(errstr);
                     }
                 } else {
                     tdebug(LOW, "*** SNMP NULL response: (%s@%s)\n", oid_string, session->peername);
@@ -221,16 +225,17 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
                 break;
             default: /* STAT_ERROR */
                 stats.errors++;
-                snmp_error(session, &liberr, &syserr, &errstr);
                 tdebug(LOW, "*** SNMP Error: (%s@%s) Unsuccessful (%s).\n", oid_string, session->peername, errstr);
-                free(errstr);
                 break;
         }
         PT_MUTEX_UNLOCK(&stats.mutex);
+
+        free(errstr);
     }
 
     if (response)
         snmp_free_pdu(response);
+
     return bits;
 }
 
@@ -584,7 +589,7 @@ void *poller(void *thread_args)
                 if (bits < 0) {
                     /* skip to next oid */
                     tdebug(DEBUG, "bits < 0\n");
-                    continue;
+                    break;
                 }
 
                 /* this is a counter so we never zero it */
