@@ -18,7 +18,7 @@ libratedpgsql_la_LDFLAGS  = -rpath '$(libdir)'
 
 rated_SOURCES  = ratedsnmp.c rateddbi.c rated.c ratedutil.c ratedtarg.y ratedgram.l ratedhash.c
 #rated_CPPFLAGS = $(SNMP_CPPFLAGS)
-rated_LDFLAGS  = -rpath '$(libdir)'
+rated_LDFLAGS  = -rpath '$(libdir) $(SNMP_LIB)'
 #rated_LDADD    = $(LEXLIB) $(SNMP_LIB)
 
 include_HEADERS = rated.h common.h rateddbi.h

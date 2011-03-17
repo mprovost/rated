@@ -88,10 +88,9 @@ libratedpgsql_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(libratedpgsql_la_LDFLAGS) $(LDFLAGS) -o $@
 PROGRAMS = $(bin_PROGRAMS)
-am_rated_OBJECTS = rated-ratedsnmp.$(OBJEXT) rated-rateddbi.$(OBJEXT) \
-	rated-rated.$(OBJEXT) rated-ratedutil.$(OBJEXT) \
-	rated-ratedtarg.$(OBJEXT) rated-ratedgram.$(OBJEXT) \
-	rated-ratedhash.$(OBJEXT)
+am_rated_OBJECTS = ratedsnmp.$(OBJEXT) rateddbi.$(OBJEXT) \
+	rated.$(OBJEXT) ratedutil.$(OBJEXT) ratedtarg.$(OBJEXT) \
+	ratedgram.$(OBJEXT) ratedhash.$(OBJEXT)
 rated_OBJECTS = $(am_rated_OBJECTS)
 rated_DEPENDENCIES =
 rated_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
@@ -189,6 +188,7 @@ RATED_HOME = @RATED_HOME@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+SNMP_LIB = @SNMP_LIB@
 STRIP = @STRIP@
 VERSION = @VERSION@
 YACC = @YACC@
@@ -241,7 +241,6 @@ pdfdir = @pdfdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
-rated_CPPFLAGS = @rated_CPPFLAGS@
 rated_LDADD = @rated_LDADD@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
@@ -265,7 +264,7 @@ libratedpgsql_la_SOURCES = libratedpgsql.c
 libratedpgsql_la_LDFLAGS = -rpath '$(libdir)'
 rated_SOURCES = ratedsnmp.c rateddbi.c rated.c ratedutil.c ratedtarg.y ratedgram.l ratedhash.c
 #rated_CPPFLAGS = $(SNMP_CPPFLAGS)
-rated_LDFLAGS = -rpath '$(libdir)'
+rated_LDFLAGS = -rpath '$(libdir) $(SNMP_LIB)'
 #rated_LDADD    = $(LEXLIB) $(SNMP_LIB)
 include_HEADERS = rated.h common.h rateddbi.h
 all: $(BUILT_SOURCES)
@@ -398,13 +397,13 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libratedmysql_la-libratedmysql.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libratedpgsql_la-libratedpgsql.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated-rated.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated-rateddbi.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated-ratedgram.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated-ratedhash.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated-ratedsnmp.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated-ratedtarg.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated-ratedutil.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rateddbi.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ratedgram.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ratedhash.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ratedsnmp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ratedtarg.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ratedutil.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -440,104 +439,6 @@ libratedpgsql_la-libratedpgsql.lo: libratedpgsql.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='libratedpgsql.c' object='libratedpgsql_la-libratedpgsql.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libratedpgsql_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libratedpgsql_la-libratedpgsql.lo `test -f 'libratedpgsql.c' || echo '$(srcdir)/'`libratedpgsql.c
-
-rated-ratedsnmp.o: ratedsnmp.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedsnmp.o -MD -MP -MF $(DEPDIR)/rated-ratedsnmp.Tpo -c -o rated-ratedsnmp.o `test -f 'ratedsnmp.c' || echo '$(srcdir)/'`ratedsnmp.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/rated-ratedsnmp.Tpo $(DEPDIR)/rated-ratedsnmp.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedsnmp.c' object='rated-ratedsnmp.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedsnmp.o `test -f 'ratedsnmp.c' || echo '$(srcdir)/'`ratedsnmp.c
-
-rated-ratedsnmp.obj: ratedsnmp.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedsnmp.obj -MD -MP -MF $(DEPDIR)/rated-ratedsnmp.Tpo -c -o rated-ratedsnmp.obj `if test -f 'ratedsnmp.c'; then $(CYGPATH_W) 'ratedsnmp.c'; else $(CYGPATH_W) '$(srcdir)/ratedsnmp.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/rated-ratedsnmp.Tpo $(DEPDIR)/rated-ratedsnmp.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedsnmp.c' object='rated-ratedsnmp.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedsnmp.obj `if test -f 'ratedsnmp.c'; then $(CYGPATH_W) 'ratedsnmp.c'; else $(CYGPATH_W) '$(srcdir)/ratedsnmp.c'; fi`
-
-rated-rateddbi.o: rateddbi.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-rateddbi.o -MD -MP -MF $(DEPDIR)/rated-rateddbi.Tpo -c -o rated-rateddbi.o `test -f 'rateddbi.c' || echo '$(srcdir)/'`rateddbi.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/rated-rateddbi.Tpo $(DEPDIR)/rated-rateddbi.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rateddbi.c' object='rated-rateddbi.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-rateddbi.o `test -f 'rateddbi.c' || echo '$(srcdir)/'`rateddbi.c
-
-rated-rateddbi.obj: rateddbi.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-rateddbi.obj -MD -MP -MF $(DEPDIR)/rated-rateddbi.Tpo -c -o rated-rateddbi.obj `if test -f 'rateddbi.c'; then $(CYGPATH_W) 'rateddbi.c'; else $(CYGPATH_W) '$(srcdir)/rateddbi.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/rated-rateddbi.Tpo $(DEPDIR)/rated-rateddbi.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rateddbi.c' object='rated-rateddbi.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-rateddbi.obj `if test -f 'rateddbi.c'; then $(CYGPATH_W) 'rateddbi.c'; else $(CYGPATH_W) '$(srcdir)/rateddbi.c'; fi`
-
-rated-rated.o: rated.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-rated.o -MD -MP -MF $(DEPDIR)/rated-rated.Tpo -c -o rated-rated.o `test -f 'rated.c' || echo '$(srcdir)/'`rated.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/rated-rated.Tpo $(DEPDIR)/rated-rated.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rated.c' object='rated-rated.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-rated.o `test -f 'rated.c' || echo '$(srcdir)/'`rated.c
-
-rated-rated.obj: rated.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-rated.obj -MD -MP -MF $(DEPDIR)/rated-rated.Tpo -c -o rated-rated.obj `if test -f 'rated.c'; then $(CYGPATH_W) 'rated.c'; else $(CYGPATH_W) '$(srcdir)/rated.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/rated-rated.Tpo $(DEPDIR)/rated-rated.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rated.c' object='rated-rated.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-rated.obj `if test -f 'rated.c'; then $(CYGPATH_W) 'rated.c'; else $(CYGPATH_W) '$(srcdir)/rated.c'; fi`
-
-rated-ratedutil.o: ratedutil.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedutil.o -MD -MP -MF $(DEPDIR)/rated-ratedutil.Tpo -c -o rated-ratedutil.o `test -f 'ratedutil.c' || echo '$(srcdir)/'`ratedutil.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/rated-ratedutil.Tpo $(DEPDIR)/rated-ratedutil.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedutil.c' object='rated-ratedutil.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedutil.o `test -f 'ratedutil.c' || echo '$(srcdir)/'`ratedutil.c
-
-rated-ratedutil.obj: ratedutil.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedutil.obj -MD -MP -MF $(DEPDIR)/rated-ratedutil.Tpo -c -o rated-ratedutil.obj `if test -f 'ratedutil.c'; then $(CYGPATH_W) 'ratedutil.c'; else $(CYGPATH_W) '$(srcdir)/ratedutil.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/rated-ratedutil.Tpo $(DEPDIR)/rated-ratedutil.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedutil.c' object='rated-ratedutil.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedutil.obj `if test -f 'ratedutil.c'; then $(CYGPATH_W) 'ratedutil.c'; else $(CYGPATH_W) '$(srcdir)/ratedutil.c'; fi`
-
-rated-ratedtarg.o: ratedtarg.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedtarg.o -MD -MP -MF $(DEPDIR)/rated-ratedtarg.Tpo -c -o rated-ratedtarg.o `test -f 'ratedtarg.c' || echo '$(srcdir)/'`ratedtarg.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/rated-ratedtarg.Tpo $(DEPDIR)/rated-ratedtarg.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedtarg.c' object='rated-ratedtarg.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedtarg.o `test -f 'ratedtarg.c' || echo '$(srcdir)/'`ratedtarg.c
-
-rated-ratedtarg.obj: ratedtarg.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedtarg.obj -MD -MP -MF $(DEPDIR)/rated-ratedtarg.Tpo -c -o rated-ratedtarg.obj `if test -f 'ratedtarg.c'; then $(CYGPATH_W) 'ratedtarg.c'; else $(CYGPATH_W) '$(srcdir)/ratedtarg.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/rated-ratedtarg.Tpo $(DEPDIR)/rated-ratedtarg.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedtarg.c' object='rated-ratedtarg.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedtarg.obj `if test -f 'ratedtarg.c'; then $(CYGPATH_W) 'ratedtarg.c'; else $(CYGPATH_W) '$(srcdir)/ratedtarg.c'; fi`
-
-rated-ratedgram.o: ratedgram.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedgram.o -MD -MP -MF $(DEPDIR)/rated-ratedgram.Tpo -c -o rated-ratedgram.o `test -f 'ratedgram.c' || echo '$(srcdir)/'`ratedgram.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/rated-ratedgram.Tpo $(DEPDIR)/rated-ratedgram.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedgram.c' object='rated-ratedgram.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedgram.o `test -f 'ratedgram.c' || echo '$(srcdir)/'`ratedgram.c
-
-rated-ratedgram.obj: ratedgram.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedgram.obj -MD -MP -MF $(DEPDIR)/rated-ratedgram.Tpo -c -o rated-ratedgram.obj `if test -f 'ratedgram.c'; then $(CYGPATH_W) 'ratedgram.c'; else $(CYGPATH_W) '$(srcdir)/ratedgram.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/rated-ratedgram.Tpo $(DEPDIR)/rated-ratedgram.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedgram.c' object='rated-ratedgram.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedgram.obj `if test -f 'ratedgram.c'; then $(CYGPATH_W) 'ratedgram.c'; else $(CYGPATH_W) '$(srcdir)/ratedgram.c'; fi`
-
-rated-ratedhash.o: ratedhash.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedhash.o -MD -MP -MF $(DEPDIR)/rated-ratedhash.Tpo -c -o rated-ratedhash.o `test -f 'ratedhash.c' || echo '$(srcdir)/'`ratedhash.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/rated-ratedhash.Tpo $(DEPDIR)/rated-ratedhash.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedhash.c' object='rated-ratedhash.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedhash.o `test -f 'ratedhash.c' || echo '$(srcdir)/'`ratedhash.c
-
-rated-ratedhash.obj: ratedhash.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT rated-ratedhash.obj -MD -MP -MF $(DEPDIR)/rated-ratedhash.Tpo -c -o rated-ratedhash.obj `if test -f 'ratedhash.c'; then $(CYGPATH_W) 'ratedhash.c'; else $(CYGPATH_W) '$(srcdir)/ratedhash.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/rated-ratedhash.Tpo $(DEPDIR)/rated-ratedhash.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ratedhash.c' object='rated-ratedhash.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(rated_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o rated-ratedhash.obj `if test -f 'ratedhash.c'; then $(CYGPATH_W) 'ratedhash.c'; else $(CYGPATH_W) '$(srcdir)/ratedhash.c'; fi`
 
 .l.c:
 	$(am__skiplex) $(SHELL) $(YLWRAP) $< $(LEX_OUTPUT_ROOT).c $@ -- $(LEXCOMPILE)
