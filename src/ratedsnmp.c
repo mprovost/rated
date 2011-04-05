@@ -309,6 +309,7 @@ getnext_t *walk_getnexts(worker_t *worker, getnext_t *current_getnext, const oid
     } else {
         /* empty list */
         tdebug(DEBUG, "empty getnext list, creating\n");
+        /* insert_getnext will create a new list if it's empty */
     }
     /* either it's an empty list or we've gotten to the end and need to append a new item */
     return insert_getnext(current_getnext, anOID, anOID_len);
@@ -531,10 +532,6 @@ void *poller(void *thread_args)
         /* take the unlock off the cancel stack */
         pthread_cleanup_pop(FALSE);
 
-        current_template = host->template;
-        current_target = host->targets;
-        current_getnext = current_target->getnexts;
-
         /* open an snmp session once for all targets for this host for this round */
         /* this makes a copy of the struct from host->session */
         sessp = snmp_sess_open(&host->session);
@@ -554,17 +551,18 @@ void *poller(void *thread_args)
         }
 
         /* if the host reset */
+        /* TODO check if we were within one poll's time of the 32 bit timestamp */
         if (host->sysuptime && sysuptime < host->sysuptime) {
             tdebug(LOW, "system uptime went backwards on %s (%lu < %lu)!\n", host->host, sysuptime, host->sysuptime);
-
-            /* this will make do_insert think it's a first poll */
-            //entry->current->last_time.tv_sec = entry->current->last_time.tv_usec = 0;
 
             /* erase the getnexts, they aren't valid anymore if the host reset */
             free_target_list(host->targets);
             host->targets = calloc(1, sizeof(target_t));
-            current_target = host->targets;
         }
+
+        current_template = host->template;
+        current_target = host->targets;
+        current_getnext = current_target->getnexts;
                 
         /* loop through the targets for this host */
         while (current_template) {
