@@ -167,7 +167,7 @@ int sleepy(unsigned int sleep_time, config_t *set)
         }
         nanosleep(&ts, NULL);
     }
-    if (!set->daemon)
+    if (!set->daemon && sleep_time)
         debug(LOW, "\n");
     return (0);
 }
