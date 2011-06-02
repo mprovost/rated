@@ -248,19 +248,6 @@ int checkPID(char *pidfile, config_t *set) {
 	}
 }
 
-int alldigits(char *s) {
-    int result = TRUE;
-
-	if (*s == '\0') return FALSE;
-
-    while (*s != '\0') {
-        if (!(*s >= '0' && *s <= '9')) 
-			return FALSE;
-        s++;
-    }
-    return result;
-}
-
 /* As per Stevens */
 int daemon_init() {
 	pid_t pid;
