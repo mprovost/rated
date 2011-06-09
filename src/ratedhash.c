@@ -25,7 +25,6 @@ unsigned int targets;
  */
 host_t *hash_target_file(char *file) {
     host_t *host;
-    target_t *ttgt;
     /* dummy target so we can build the list in the correct order, from the tail */
     host_t host_dummy;
 
