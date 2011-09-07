@@ -114,6 +114,10 @@ int main(int argc, char *argv[]) {
     if (pthread_sigmask(SIG_BLOCK, &signal_set, NULL) != 0)
         fatal("pthread_sigmask error\n");
 
+    /* start a thread to catch signals */
+    if (pthread_create(&sig_thread, NULL, sig_handler, (void *) &(signal_set)) != 0)
+	fatal("pthread_create error\n");
+
     /* Read configuration file to establish local environment */
     if (conf_file) {
         if ((read_rated_config(conf_file, set)) < 0) 
@@ -181,8 +185,6 @@ int main(int argc, char *argv[]) {
 	debug(HIGH, " %i", i);
 	}
     debug(HIGH, " done\n");
-    if (pthread_create(&sig_thread, NULL, sig_handler, (void *) &(signal_set)) != 0)
-	fatal("pthread_create error\n");
 
     /* spin waiting for all threads to start up */
     debug(HIGH, "Waiting for thread startup.\n");
