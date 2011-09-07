@@ -187,7 +187,11 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
                 break;
             default:
                 /* no result that we can use, skip to the next target */
-                tdebug(LOW, "Unusable result : %s\n", vars->val.string);
+                if (set->verbose >= LOW) {
+                    if (strlen(result_string) == 0)
+                        snprint_value(result_string, SPRINT_MAX_LEN, vars->name, vars->name_length, vars);
+                    tdebug_all("Unusable result: (%s@%s) %s\n", oid_string, session->peername, result_string);
+                }
                 *result = 0;
                 bits = -1;
         } /* switch (vars->type) */
