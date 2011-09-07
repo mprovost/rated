@@ -186,8 +186,8 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
                 }
                 break;
             default:
-                /* no result that we can use, restart the polling loop */
-                /* TODO should we remove this target from the list? */
+                /* no result that we can use, skip to the next target */
+                tdebug(LOW, "Unusable result : %s\n", vars->val.string);
                 *result = 0;
                 bits = -1;
         } /* switch (vars->type) */
@@ -584,14 +584,16 @@ void *poller(void *thread_args)
                 /* do the actual snmp poll */
                 bits = snmp_getnext(worker, sessp, anOID, &anOID_len, oid_string, &result, &current_time);
 
-                if (bits < 0) {
-                    /* skip to next oid */
-                    tdebug(DEBUG, "bits < 0\n");
-                    break;
-                }
-
                 /* this is a counter so we never zero it */
+                /* count the getnext even if it was an error or returned an unusable result */
                 current_target->getnext_counter++;
+
+                if (bits < 0) {
+                    tdebug(DEBUG, "bits < 0\n");
+                    /* skip to next oid without doing an insert */
+                    /* if there was an snmp error anOID_len will be zeroed and we'll break out of the while and go to the next target */
+                    continue;
+                }
 
                 /*
                  * checks to see if the getnexts are finished
@@ -617,6 +619,7 @@ void *poller(void *thread_args)
                 assert(memcmp(&current_getnext->anOID, &anOID, anOID_len) == 0);
 
                 /* check if we started with an empty list */
+                /* TODO do we just want to create a new list if it's empty at the start of the loop? */
                 if (current_target->getnexts == NULL)
                     /* copy the newly created list into place */
                     current_target->getnexts = current_getnext;
@@ -643,6 +646,8 @@ void *poller(void *thread_args)
                 }
                 current_getnext = current_target->getnexts;
             }
+
+            /* TODO check for and delete orphaned getnexts at the end of the list */
 
             /* move to next target in template */
             current_template = current_template->next;
