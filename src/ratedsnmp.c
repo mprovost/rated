@@ -592,13 +592,6 @@ void *poller(void *thread_args)
                 /* count the getnext even if it was an error or returned an unusable result */
                 current_target->getnext_counter++;
 
-                if (bits < 0) {
-                    tdebug(DEBUG, "bits < 0\n");
-                    /* skip to next oid without doing an insert */
-                    /* if there was an snmp error anOID_len will be zeroed and we'll break out of the while and go to the next target */
-                    continue;
-                }
-
                 /*
                  * checks to see if the getnexts are finished
                  */
@@ -615,6 +608,14 @@ void *poller(void *thread_args)
                         print_objid(anOID, anOID_len);
                     }
                     break;
+                }
+
+                /* check for errors/unusable results */
+                if (bits < 0) {
+                    tdebug(DEBUG, "bits < 0\n");
+                    /* skip to next oid without doing an insert */
+                    /* if there was an snmp error anOID_len will be zeroed and we'll break out of the while and go to the next target */
+                    continue;
                 }
 
                 current_getnext = walk_getnexts(worker, current_getnext, anOID, anOID_len);
