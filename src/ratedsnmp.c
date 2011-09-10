@@ -12,6 +12,7 @@
 
 extern stats_t stats;
 extern config_t *set;
+extern sig_atomic_t quitting_now;
 
 void cancel_lock(void *arg)
 {
@@ -208,7 +209,8 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
                     if (set->verbose >= LOW) {
                         if (strlen(result_string) == 0)
                             snprint_value(result_string, SPRINT_MAX_LEN, vars->name, vars->name_length, vars);
-                        tdebug_all("Unusable result: (%s@%s) %s\n", oid_string, session->peername, result_string);
+                        /* this may not print a readable result value */
+                        tdebug(LOW, "Unusable result: (%s@%s) %s\n", oid_string, session->peername, result_string);
                     }
                     *result = 0;
                     bits = -1;
@@ -527,6 +529,9 @@ void *poller(void *thread_args)
 	/* see if we've been cancelled before we start another loop */
 	pthread_testcancel();
 
+        if (quitting_now)
+            break;
+
 	tdebug(DEVELOP, "locking (wait on work)\n");
 	PT_MUTEX_LOCK(&crew->mutex);
 	/* add an unlock to the cancel stack */
@@ -589,6 +594,9 @@ void *poller(void *thread_args)
                 
         /* loop through the targets for this host */
         while (current_template) {
+            if (quitting_now)
+                break;
+
             tdebug(DEVELOP, "processing %s@%s\n", current_template->objoid, host->host);
 
             /* set up the variables for the first poll */
@@ -601,6 +609,9 @@ void *poller(void *thread_args)
 
             /* keep doing getnexts */
             while (anOID_len) {
+                if (quitting_now)
+                    break;
+
                 /* reset variables */
                 result = 0;
 
@@ -639,6 +650,9 @@ void *poller(void *thread_args)
                 db_reconnect = do_insert(worker, db_reconnect, result, current_getnext, bits, current_time, oid_string, host);
 
             } /* while (anOID_len) */
+            if (quitting_now)
+                break;
+
             /* grab the time that we finished this target for the internal stats insert */
             gettimeofday(&now, NULL);
 
@@ -668,6 +682,8 @@ void *poller(void *thread_args)
 
         } /* while (current_template) */
 
+        /* done with targets for this host */
+
         /* update timestamp */
         host->sysuptime = sysuptime;
 
@@ -679,8 +695,10 @@ cleanup:
         PT_MUTEX_LOCK(&crew->mutex);
         crew->running--;
         tdebug(HIGH, "running-- = %i\n", crew->running);
-        /* done with targets for this host */
-        tdebug(HIGH, "Queue processed. Broadcasting thread done condition.\n");
+        if (quitting_now)
+            tdebug(HIGH, "Quitting early! Broadcasting thread done condition.\n");
+        else
+            tdebug(HIGH, "Queue processed. Broadcasting thread done condition.\n");
         /* this will wake up the main thread which will see if any other threads are still running */
         /* TODO change to pthread_cond_signal? */
         PT_COND_BROAD(&crew->done);

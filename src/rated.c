@@ -23,9 +23,10 @@ config_t config;
 config_t *set = &config;
 
 /* for signal handler */
-volatile sig_atomic_t waiting;
-volatile sig_atomic_t quitting;
-volatile sig_atomic_t quit_signal;
+volatile sig_atomic_t waiting = FALSE;
+volatile sig_atomic_t quitting = FALSE;
+volatile sig_atomic_t quitting_now = FALSE;
+volatile sig_atomic_t quit_signal = 0;
 
 char config_paths[CONFIG_PATHS][BUFSIZE];
 
@@ -45,9 +46,6 @@ int main(int argc, char *argv[]) {
     char errstr[BUFSIZE];
     int ch, i, freed;
     struct timespec ts;
-    waiting = FALSE;
-    quitting = FALSE;
-    quit_signal = 0;
 
     dfp = stderr;
 
@@ -241,6 +239,13 @@ int main(int argc, char *argv[]) {
         } while (crew.running > 0);
 	PT_MUTEX_UNLOCK(&(crew.mutex));
 
+        if (quitting_now) {
+            if (set->verbose >= LOW) {
+                print_stats(stats, set);
+            }
+            continue;
+        }
+
 	gettimeofday(&now, NULL);
 	end_time = tv2ms(now);
 	poll_time = end_time - begin_time;
@@ -296,7 +301,12 @@ void *sig_handler(void *arg)
             case SIGINT:
             case SIGQUIT:
                 quit_signal = sig_number;
-                quitting = TRUE;
+                /* on first ctrl-c, quit nicely at the end of a polling round
+                 * on the second, quit ASAP */
+                if (quitting)
+                    quitting_now = TRUE;
+                else
+                    quitting = TRUE;
                 break;
         }
     }
