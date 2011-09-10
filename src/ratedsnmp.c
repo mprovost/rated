@@ -101,7 +101,7 @@ unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp) {
     return timeticks;
 }
 
-short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, unsigned long long *result, struct timeval *current_time) {
+short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len, char *oid_string, unsigned long long *result, struct timeval *current_time, template_t *current_template) {
     crew_t *crew = worker->crew;
     netsnmp_pdu *pdu;
     netsnmp_pdu *response;
@@ -145,59 +145,78 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
             snprint_value(result_string, SPRINT_MAX_LEN, vars->name, vars->name_length, vars);
             tdebug_all("(%s@%s) %s\n", oid_string, session->peername, result_string);
         }
-        switch (vars->type) {
-            /*
-             * Switch over vars->type and modify/assign result accordingly.
-             */
-            case ASN_COUNTER64:
-                bits = 64;
-                *result = vars->val.counter64->high;
-                *result = *result << 32;
-                *result = *result + vars->val.counter64->low;
-                break;
-            case ASN_COUNTER:
-                *result = (unsigned long) *(vars->val.integer);
-                break;
-            case ASN_INTEGER:
-                bits = 0;
-                *result = (unsigned long) *(vars->val.integer);
-                break;
-            case ASN_GAUGE:
-                bits = 0;
-                *result = (unsigned long) *(vars->val.integer);
-                break;
-            case ASN_TIMETICKS:
-                *result = (unsigned long) *(vars->val.integer);
-                break;
-            case ASN_OPAQUE:
-                *result = (unsigned long) *(vars->val.integer);
-                break;
-            case ASN_OCTET_STR:
-            /* TODO should we handle negative numbers? */
-#ifdef HAVE_STRTOULL
-                *result = strtoull(vars->val.string, NULL, 0);
-                if (*result == ULLONG_MAX && errno == ERANGE) {
-#else
-                *result = strtoul(vars->val.string, NULL, 0);
-                if (*result == ULONG_MAX && errno == ERANGE) {
-#endif
-                    tdebug(LOW, "Negative number found: %s\n", vars->val.string);
+
+        /*
+         * checks to see if the getnexts are finished
+         */
+        /* check to see if the new oid is smaller than the original target */
+        if (vars->name_length < current_template->anOID_len ||
+        /* match against the original target to see if we're going into a different part of the oid tree */
+           (memcmp(&current_template->anOID, vars->name, current_template->anOID_len * sizeof(oid)) != 0)) {
+            tdebug(DEBUG, "snmp_getnext done: %s > %s\n", oid_string, current_template->objoid);
+            bits = -1;
+            /* zero anOID so we break out of the getnext loop */
+            memset(anOID, 0, *anOID_len * sizeof(oid));
+            *anOID_len = 0;
+        /* valid getnext, process */
+        } else {
+            switch (vars->type) {
+                /*
+                 * Switch over vars->type and modify/assign result accordingly.
+                 */
+                case ASN_COUNTER64:
+                    bits = 64;
+                    *result = vars->val.counter64->high;
+                    *result = *result << 32;
+                    *result = *result + vars->val.counter64->low;
+                    break;
+                case ASN_COUNTER:
+                    *result = (unsigned long) *(vars->val.integer);
+                    break;
+                case ASN_INTEGER:
+                    bits = 0;
+                    *result = (unsigned long) *(vars->val.integer);
+                    break;
+                case ASN_GAUGE:
+                    bits = 0;
+                    *result = (unsigned long) *(vars->val.integer);
+                    break;
+                case ASN_TIMETICKS:
+                    *result = (unsigned long) *(vars->val.integer);
+                    break;
+                case ASN_OPAQUE:
+                    *result = (unsigned long) *(vars->val.integer);
+                    break;
+                case ASN_OCTET_STR:
+                /* TODO should we handle negative numbers? */
+    #ifdef HAVE_STRTOULL
+                    *result = strtoull(vars->val.string, NULL, 0);
+                    if (*result == ULLONG_MAX && errno == ERANGE) {
+    #else
+                    *result = strtoul(vars->val.string, NULL, 0);
+                    if (*result == ULONG_MAX && errno == ERANGE) {
+    #endif
+                        tdebug(LOW, "Negative number found: %s\n", vars->val.string);
+                        bits = -1;
+                    }
+                    break;
+                default:
+                    /* no result that we can use, skip to the next target */
+                    PT_MUTEX_LOCK(&stats.mutex);
+                    stats.unusable++;
+                    PT_MUTEX_UNLOCK(&stats.mutex);
+                    if (set->verbose >= LOW) {
+                        if (strlen(result_string) == 0)
+                            snprint_value(result_string, SPRINT_MAX_LEN, vars->name, vars->name_length, vars);
+                        tdebug_all("Unusable result: (%s@%s) %s\n", oid_string, session->peername, result_string);
+                    }
+                    *result = 0;
                     bits = -1;
-                }
-                break;
-            default:
-                /* no result that we can use, skip to the next target */
-                if (set->verbose >= LOW) {
-                    if (strlen(result_string) == 0)
-                        snprint_value(result_string, SPRINT_MAX_LEN, vars->name, vars->name_length, vars);
-                    tdebug_all("Unusable result: (%s@%s) %s\n", oid_string, session->peername, result_string);
-                }
-                *result = 0;
-                bits = -1;
-        } /* switch (vars->type) */
-        tdebug(DEBUG, "Setting next: (%s@%s)\n", oid_string, session->peername);
-        memmove(anOID, vars->name, vars->name_length * sizeof(oid));
-        *anOID_len = vars->name_length;
+            } /* switch (vars->type) */
+            tdebug(DEBUG, "Setting next: (%s@%s)\n", oid_string, session->peername);
+            memmove(anOID, vars->name, vars->name_length * sizeof(oid));
+            *anOID_len = vars->name_length;
+        }
     } else { 
         bits = -1; /* error */
         /* if we didn't get a result back, zero anOID so we break out of the getnext loop */
@@ -586,35 +605,18 @@ void *poller(void *thread_args)
                 result = 0;
 
                 /* do the actual snmp poll */
-                bits = snmp_getnext(worker, sessp, anOID, &anOID_len, oid_string, &result, &current_time);
+                bits = snmp_getnext(worker, sessp, anOID, &anOID_len, oid_string, &result, &current_time, current_template);
 
                 /* this is a counter so we never zero it */
                 /* count the getnext even if it was an error or returned an unusable result */
                 current_target->getnext_counter++;
 
-                /*
-                 * checks to see if the getnexts are finished
-                 */
-                /* check to see if the new oid is smaller than the original target */
-                if (anOID_len < current_template->anOID_len) {
-                    tdebug(DEBUG, "snmpgetnext done <\n");
-                    break;
-                /* match against the original target to see if we're going into a different part of the oid tree */
-                } else if ((memcmp(&current_template->anOID, &anOID, current_template->anOID_len * sizeof(oid)) != 0)) {
-                    if (set->verbose >= DEBUG) {
-                        tdebug_all("snmpgetnext done memcmp\n");
-                        /* TODO use snprint_objid */
-                        print_objid(current_template->anOID, current_template->anOID_len);
-                        print_objid(anOID, anOID_len);
-                    }
-                    break;
-                }
-
                 /* check for errors/unusable results */
                 if (bits < 0) {
                     tdebug(DEBUG, "bits < 0\n");
                     /* skip to next oid without doing an insert */
-                    /* if there was an snmp error anOID_len will be zeroed and we'll break out of the while and go to the next target */
+                    /* if there was an snmp error or we've reached the end of this part of the tree,
+                    anOID_len will be zeroed and we'll break out of the while and go to the next target */
                     continue;
                 }
 
@@ -641,6 +643,7 @@ void *poller(void *thread_args)
             gettimeofday(&now, NULL);
 
             /* insert the internal poll data (ie how many getnexts for this oid) into the host table */
+            tdebug(DEBUG, "Inserting poll data for %s@%s\n", current_template->objoid, host->host);
             db_reconnect = do_insert(worker, db_reconnect, current_target->getnext_counter, &current_target->poll, 64, now, current_template->objoid, host);
 
             if (set->verbose >= HIGH) {
