@@ -123,6 +123,7 @@ typedef struct poll_stats {
     unsigned int obo; /* off by one */
     unsigned int no_resp;
     unsigned int errors;
+    unsigned int unusable;
     unsigned int slow;
     /* times in ms */
     unsigned int min_time;

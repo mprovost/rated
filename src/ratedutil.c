@@ -109,8 +109,8 @@ void print_stats(stats_t stats, config_t *set)
 {
   debug(OFF, "[Polls = %llu] [DBInserts = %llu] [DBErrors = %llu] [Zero = %u] [Wraps = %u] [Wraps64 = %u] [OBO = %u]\n",
       stats.polls, stats.db_inserts, stats.db_errors, stats.zero, stats.wraps, stats.wraps64, stats.obo);
-  debug(OFF, "[NoResp = %u] [SNMPErrors = %u] [Slow = %u] [Min = %u ms] [Max = %u ms] [Avg = %u ms]\n",
-      stats.no_resp, stats.errors, stats.slow, stats.min_time, stats.max_time, stats.average_time);
+  debug(OFF, "[NoResp = %u] [SNMPErrors = %u] [Unusable = %u] [Slow = %u] [Min = %u ms] [Max = %u ms] [Avg = %u ms]\n",
+      stats.no_resp, stats.errors, stats.unusable, stats.slow, stats.min_time, stats.max_time, stats.average_time);
   return;
 }
 
