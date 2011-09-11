@@ -114,6 +114,7 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
     short bits = 32; /* default */
     char result_string[SPRINT_MAX_LEN];
 
+    result_string[0] = '\0';
     pdu = snmp_pdu_create(SNMP_MSG_GETNEXT);
     snmp_add_null_var(pdu, anOID, *anOID_len);
 
@@ -207,10 +208,9 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
                     stats.unusable++;
                     PT_MUTEX_UNLOCK(&stats.mutex);
                     if (set->verbose >= LOW) {
-                        if (strlen(result_string) == 0)
+                        if (strlen(result_string) == 0) 
                             snprint_value(result_string, SPRINT_MAX_LEN, vars->name, vars->name_length, vars);
-                        /* this may not print a readable result value */
-                        tdebug(LOW, "Unusable result: (%s@%s) %s\n", oid_string, session->peername, result_string);
+                        tdebug_all("Unusable result: (%s@%s) %s\n", oid_string, session->peername, result_string);
                     }
                     *result = 0;
                     bits = -1;
