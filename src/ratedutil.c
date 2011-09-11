@@ -117,7 +117,7 @@ void print_stats(stats_t stats, config_t *set)
 /* recalculate the overall poll timing stats
  * this assumes that the stats.poll hasn't been incremented yet
  * stats has to be locked by the caller
- * handle the first poll seperately it needs to set the min time
+ * handle the first poll separately it needs to set the min time
  */
 /* TODO maybe don't count the first poll? It won't do any DB inserts
  * for counters so it should be faster than the others and may skew the stats
