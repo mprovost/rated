@@ -131,12 +131,8 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
     gettimeofday(current_time, NULL);
 
     /* Collect response and process stats */
-    PT_MUTEX_LOCK(&stats.mutex);
     /* check for NULL responses */
     if (getnext_status == STAT_SUCCESS && response && response->errstat == SNMP_ERR_NOERROR) {
-        stats.polls++;
-        PT_MUTEX_UNLOCK(&stats.mutex);
-
         vars = response->variables;
         /* convert the result oid to a string for debug */
         snprint_objid(oid_string, SPRINT_MAX_LEN, vars->name, vars->name_length);
@@ -231,6 +227,7 @@ short snmp_getnext(worker_t *worker, void *sessp, oid *anOID, size_t *anOID_len,
             errstr = "NULL session";
         }
 
+        PT_MUTEX_LOCK(&stats.mutex);
         switch (getnext_status) {
             case STAT_TIMEOUT:
                 stats.no_resp++;
@@ -489,6 +486,7 @@ void *poller(void *thread_args)
     short bits;
     unsigned long long result = 0;
     unsigned long sysuptime = 0;
+    unsigned long long last_getnext_counter;
     /*
     int cur_work = 0;
     int prev_work = 99999999;
@@ -603,6 +601,9 @@ void *poller(void *thread_args)
             memmove(&anOID, current_template->anOID, current_template->anOID_len * sizeof(oid));
             anOID_len = current_template->anOID_len;
 
+            /* sync back to last poll */
+            last_getnext_counter = current_target->getnext_counter;
+
             /* update the time in the previous poll getnext struct so that we don't count the idle time between polls */
             gettimeofday(&now, NULL);
             current_target->poll.last_time = now;
@@ -659,6 +660,12 @@ void *poller(void *thread_args)
             /* insert the internal poll data (ie how many getnexts for this oid) into the host table */
             tdebug(DEBUG, "Inserting poll data for %s@%s\n", current_template->objoid, host->host);
             db_reconnect = do_insert(worker, db_reconnect, current_target->getnext_counter, &current_target->poll, 64, now, current_template->objoid, host);
+
+            /* just update the stats once so we can avoid locking and unlocking on each getnext */
+            PT_MUTEX_UNLOCK(&stats.mutex);
+            stats.polls += current_target->getnext_counter - last_getnext_counter;
+            PT_MUTEX_UNLOCK(&stats.mutex);
+            tdebug(DEBUG, "getnext_counter = %llu - %llu = %llu\n", current_target->getnext_counter, last_getnext_counter, current_target->getnext_counter - last_getnext_counter);
 
             if (set->verbose >= HIGH) {
                 current_getnext = current_target->getnexts;
