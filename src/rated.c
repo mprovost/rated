@@ -39,9 +39,12 @@ int main(int argc, char *argv[]) {
     crew_t crew;
     pthread_t sig_thread;
     sigset_t signal_set;
-    struct timeval now;
-    unsigned long begin_time, end_time, sleep_time;
-    unsigned int poll_time;
+    struct timeval begin_time, end_time;
+    unsigned long sleep_time;
+    unsigned long poll_time;
+    unsigned long long polls;
+    unsigned long long last_poll;
+    double rate;
     char *conf_file = NULL;
     char errstr[BUFSIZE];
     int ch, i, freed;
@@ -149,6 +152,9 @@ int main(int argc, char *argv[]) {
         if (!(db_init(set) && db_connect(set)))
             fatal("** Database error - check configuration.\n");
 
+        /* create our own internal tables */
+        if (!db_check_and_create_data_table(RATED))
+            fatal("** Database error - couldn't create rated table.\n");
         if (!db_check_and_create_oids_table(OIDS))
             fatal("** Database error - couldn't create oids table.\n");
     }
@@ -157,10 +163,6 @@ int main(int argc, char *argv[]) {
     head = hash_target_file(target_file);
     if (head == NULL)
         fatal("Error updating target list.");
-
-    /* don't need a db connection in the main program anymore */
-    if (set->dbon)
-        db_disconnect();
 
     if (hosts < set->threads) {
         debug(LOW, "Number of hosts is less than configured number of threads, defaulting to %i.\n", hosts);
@@ -188,14 +190,12 @@ int main(int argc, char *argv[]) {
     debug(HIGH, "Waiting for thread startup.\n");
     ts.tv_sec = 0;
     ts.tv_nsec = 10000000; /* 10 ms */
-    gettimeofday(&now, NULL);
-    begin_time = tv2ms(now); /* convert to milliseconds */
+    gettimeofday(&begin_time, NULL);
     while (crew.running > 0 ) {
 	nanosleep(&ts, NULL);
     }
-    gettimeofday(&now, NULL);
-    end_time = tv2ms(now); /* convert to milliseconds */
-    debug(HIGH, "Waited %lu milliseconds for thread startup.\n", end_time - begin_time);
+    gettimeofday(&end_time, NULL);
+    debug(HIGH, "Waited %lu milliseconds for thread startup.\n", timediff(end_time, begin_time));
 
     debug(LOW, "rated ready.\n");
 
@@ -204,6 +204,8 @@ int main(int argc, char *argv[]) {
 	/* check if we've been signalled */
 	if (quitting) {
             debug(LOW, "Quitting: received signal %i.\n", quit_signal);
+            if (set->dbon)
+                db_disconnect();
             unlink(pid_file);
             exit(1);
 	} else if (waiting) {
@@ -217,8 +219,9 @@ int main(int argc, char *argv[]) {
             waiting = FALSE;
 	}
 
-	gettimeofday(&now, NULL);
-	begin_time = tv2ms(now);
+        last_poll = stats.polls;
+
+	gettimeofday(&begin_time, NULL);
 
 	PT_MUTEX_LOCK(&(crew.mutex));
         crew.current = head;
@@ -239,16 +242,13 @@ int main(int argc, char *argv[]) {
         } while (crew.running > 0);
 	PT_MUTEX_UNLOCK(&(crew.mutex));
 
-        if (quitting_now) {
-            if (set->verbose >= LOW) {
-                print_stats(stats, set);
-            }
+        if (quitting_now)
             continue;
-        }
 
-	gettimeofday(&now, NULL);
-	end_time = tv2ms(now);
-	poll_time = end_time - begin_time;
+	gettimeofday(&end_time, NULL);
+	poll_time = timediff(end_time, begin_time);
+        polls = stats.polls - last_poll;
+        rate = ((double) polls / poll_time) * 1000;
         /* don't underflow */
         if (poll_time < set->interval) {
 	    sleep_time = set->interval - poll_time;
@@ -261,7 +261,11 @@ int main(int argc, char *argv[]) {
         calc_stats(&stats, poll_time);
 
         stats.round++;
-	debug(LOW, "Poll round %d completed in %u ms.\n", stats.round, poll_time);
+	debug(LOW, "Poll round %d completed %llu getnexts in %lu ms (%.0f/s).\n", stats.round, polls, poll_time, rate);
+        /* insert the internal poll data for this round into the rated table */
+        if (set->dbon)
+            db_insert(RATED, 1, end_time, stats.polls - last_poll, rate);
+
 	if (set->verbose >= LOW) {
             print_stats(stats, set);
         }

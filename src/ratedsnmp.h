@@ -6,6 +6,8 @@
 #ifndef _RATEDSNMP_H_
 #define _RATEDSNMP_H_ 1
 
+/* internal poll table */
+#define RATED "rated"
 /* oid lookup table */
 #define OIDS "oids"
 

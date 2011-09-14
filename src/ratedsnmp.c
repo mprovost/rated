@@ -50,10 +50,7 @@ unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp) {
     /* do the snmp query */
     sysuptime_status = snmp_sess_synch_response(sessp, pdu, &response);
 
-    PT_MUTEX_LOCK(&stats.mutex);
     if (sysuptime_status == STAT_SUCCESS && response && response->errstat == SNMP_ERR_NOERROR){
-        stats.polls++;
-        PT_MUTEX_UNLOCK(&stats.mutex);
         vars = response->variables;
         if (vars->type == ASN_TIMETICKS) {
             if (set->verbose >= DEBUG) {
@@ -68,6 +65,7 @@ unsigned long snmp_sysuptime(worker_t *worker, netsnmp_session *sessp) {
             }
         }
     } else {
+        PT_MUTEX_LOCK(&stats.mutex);
         switch (sysuptime_status) {
             case STAT_TIMEOUT:
                 stats.no_resp++;
@@ -395,14 +393,15 @@ int do_insert(worker_t *worker, int db_reconnect, unsigned long long result, get
      * the last_time should be 0 on the first poll */
     } else if ((getnext->last_value >= 0) && (getnext->last_time.tv_sec > 0)) {
         insert_val = result - getnext->last_value;
-        rate = insert_val / timediff(current_time, getnext->last_time);
+        /* rate = per second */
+        rate = (double)insert_val / timediff(current_time, getnext->last_time) * 1000;
     /* getnext->last_value < 0, so this must be the first poll */
     } else {
         tdebug(HIGH, "First Poll, Normalizing\n");
         goto cleanup;
     }
 
-    if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / (%lums - %lums = %.15fs) = %.15f\n", 
+    if (rate) tdebug(DEBUG, "(%lld - %lld = %llu) / (%lums - %lums = %lums) = %.15f/s\n", 
         result, getnext->last_value, insert_val, tv2ms(current_time), tv2ms(getnext->last_time), timediff(current_time, getnext->last_time), rate);
 
     /* TODO do we need to check for zero values again? */

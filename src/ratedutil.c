@@ -122,7 +122,7 @@ void print_stats(stats_t stats, config_t *set)
 /* TODO maybe don't count the first poll? It won't do any DB inserts
  * for counters so it should be faster than the others and may skew the stats
  */
-void calc_stats(stats_t *stats, unsigned int poll_time)
+void calc_stats(stats_t *stats, unsigned long poll_time)
 {
     if (stats->round) {
         /* see if we set a new record */
@@ -185,19 +185,19 @@ void timestamp(char *str) {
    return;
 }
 
-/* Return number double precision seconds difference between timeval structs */
-double timediff(struct timeval tv1, struct timeval tv2) {
-	double result = 0.0;
+/* Return milliseconds difference between timeval structs */
+unsigned long timediff(struct timeval tv1, struct timeval tv2) {
+    int result = 0;
 
-	result = ( (double) tv1.tv_usec / MEGA + tv1.tv_sec ) -
-		( (double) tv2.tv_usec / MEGA + tv2.tv_sec );
+    result = ( tv1.tv_usec / 1000 + tv1.tv_sec * 1000 ) -
+        ( tv2.tv_usec / 1000 + tv2.tv_sec * 1000 );
 
-	if (result < 0) {
-		result = ( (double) tv2.tv_usec / MEGA + tv2.tv_sec ) -
-			( (double) tv1.tv_usec / MEGA + tv1.tv_sec );
-	}
+    if (result < 0) {
+        result = ( tv2.tv_usec / 1000 + tv2.tv_sec * 1000 ) -
+            ( tv1.tv_usec / 1000 + tv1.tv_sec * 1000 );
+    }
 
-	return (result);
+    return (result);
 }
 
 /* convert a timeval to milliseconds */
