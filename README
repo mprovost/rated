@@ -46,8 +46,9 @@ between rounds. Since get-nexts return the results in order (in
 well-behaved SNMP agents) they can be stored in an efficient linked
 list. Rated can detect when new OIDS need to be inserted or deleted
 from the list but in the common case where the agent returns the same
-OIDS in the same order it can walk through the list (so it just
-updates a pointer every time instead of searching).
+OIDS in the same order during each polling round, it can walk through
+the list (so it just follows a pointer every time instead of
+searching).
 
 The type of each response (gauge or counter) and size (32 or 64 bits)
 is detected automatically.
@@ -55,7 +56,7 @@ is detected automatically.
 For counters, after the second successful poll, the delta between the
 current value of the counter and the previous value is calculated as
 well as the rate of change (ie difference divided by the time between
-polls). Gauges can be inserted after the first poll.
+polls) per second. Gauges can be inserted after the first poll.
 
 The delta and rate (for counters) are then sent to the database
 driver. Rated does database inserts synchronously for each OID as a
@@ -79,25 +80,28 @@ database tables before running rated.
 
 Rated will detect and correct counter wraps, when the (32 bit) counter
 has overflowed and the new value is less than the previous value. This
-can also occur when the device is rebooted. To detect this, an SNMP
-query for the sysUpTime OID is done at the beginning of each polling
-round. If it detects that the device has rebooted since the last poll,
-all of the counters are zeroed.
+can also occur when the device is rebooted. To detect the latter case,
+an SNMP get query for the sysUpTime OID is done at the beginning of
+each polling round for each host. If it detects that the device has
+rebooted since the last poll, all of the counters are zeroed.
 
-Wrapping can be avoided by using 64 bit counters when available.
+Wrapping can be avoided by using 64 bit counters where available.
 
 If there is a problem inserting into the database, rated will keep the
 last value and timestamp the same. When the database comes back, it
 will do a single insert with the delta and rate since then. So it
-loses precision but maintains the correct value. Cacheing all of the
-intermediate values can quickly use up the available memory and flood
+loses precision but maintains the correct values. Cacheing all of the
+intermediate results can quickly use up the available memory and flood
 the database with inserts when it reconnects.
 
 When rated is done doing getnexts for a target OID for a host, it will
 record a single entry in the host's table for the target OID with the
-number of getnexts and the rate at which they were polled (and
-inserted). This allows monitoring the performance of the poller itself
-and of the SNMP responses from the host.
+number of getnexts and the rate (per second) at which they were polled
+(and inserted). This allows monitoring the performance of the poller
+itself and of the SNMP responses from the host.
+
+After the entire polling round is complete, the overall statistics for
+the poll are inserted into the 'rated' table in the database.
 
 Sending a HUP signal to the rated poller forces it to reread the
 target config file at the start of the next poll. Currently this
