@@ -34,7 +34,7 @@ int read_rated_config(char *file, config_t * set)
         while(!feof(fp)) {
            fgets(buff, BUFSIZE, fp);
            if (!feof(fp) && *buff != '#' && *buff != ' ' && *buff != '\n') {
-              sscanf(buff, "%20s %20s", p1, p2);
+              sscanf(buff, "%80s %80s", p1, p2);
               if (!strcasecmp(p1, "Interval")) set->interval = atoi(p2) * 1000; /* convert to milliseconds */
               else if (!strcasecmp(p1, "SNMP_Port")) set->snmp_port = atoi(p2);
               else if (!strcasecmp(p1, "Threads")) set->threads = atoi(p2);
@@ -44,7 +44,7 @@ int read_rated_config(char *file, config_t * set)
               else if (!strcasecmp(p1, "DB_User")) strncpy(set->dbuser, p2, sizeof(set->dbuser));
               else if (!strcasecmp(p1, "DB_Pass")) strncpy(set->dbpass, p2, sizeof(set->dbpass));
               else { 
-                 fatalfile(dfp, "*** Unrecongized directive: %s=%s in %s\n", 
+                 fatalfile(dfp, "*** Unrecognised directive: %s=%s in %s\n", 
                     p1, p2, file);
               }
            }
