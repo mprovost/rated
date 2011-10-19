@@ -298,7 +298,7 @@ int db_unsafe_check_table(PGconn *pgsql, const char *table) {
     db = PQdb(pgsql);
 
     asprintf(&query,
-        "SELECT \"table_name\" FROM information_schema.tables WHERE table_catalog = '%s' AND table_schema = 'public' AND table_name = '%s'",
+        "SELECT \"table_name\" FROM information_schema.tables WHERE table_catalog = '%s' AND table_schema = current_schema() AND table_name = '%s'",
         db, table);
 
     debug(HIGH, "Query = %s\n", query);
