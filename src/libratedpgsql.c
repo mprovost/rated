@@ -117,6 +117,7 @@ int __db_connect(config_t *config) {
 
 	/* TODO escape strings */
 	asprintf(&connectstring, "host='%s' dbname='%s' user='%s' password='%s'", set->dbhost, set->dbdb, set->dbuser, set->dbpass);
+        debug(HIGH, "Connecting to postgres %s@%s:%s\n", set->dbuser, set->dbhost, set->dbdb);
 
 	pgsql = PQconnectdb(connectstring);
 
