@@ -36,7 +36,8 @@
 #define MEGA (unsigned int)(KILO * KILO)
 #define GIGA (unsigned long long)(MEGA * KILO)
 #define TERA (unsigned long long)(GIGA * KILO)
-#define ISO8601 "%Y-%m-%dT%H:%M:%S"
+/* include milliseconds */
+#define ISO8601 "%Y-%m-%dT%H:%M:%S.000"
 
 /* Define CONFIG_PATHS places to search for the rated.conf file.  Note
    that RTG_HOME, as determined during autoconf is one path */
@@ -149,9 +150,11 @@ void timestamp(char *);
 unsigned long timediff(struct timeval, struct timeval);
 unsigned long tv2ms(struct timeval);
 struct timeval ms2tv(unsigned long);
-size_t tv2iso8601(char *, struct timeval);
 int checkPID(char *, config_t *);
 int daemon_init();
+
+/* Precasts: rateddbiutil.c */
+size_t tv2iso8601(char *, struct timeval);
 
 /* extern config_t set; */
 extern int lock;

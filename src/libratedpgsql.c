@@ -42,17 +42,6 @@ PGconn* getpgsql() {
 	return(pgsql);
 }
 
-/* convert a timeval to an ISO 8601 format string, return the length of the string */
-size_t tv2iso8601(char *iso, struct timeval tv) {
-    size_t len;
-    time_t secs = tv.tv_sec;
-    struct tm *tm = localtime(&secs);
-    /* 1970-01-30T13:25:01 == 19, plus terminating NUL */
-    len = strftime(iso, 20, ISO8601, tm);
-    assert(len == 19);
-    return(len);
-}
-
 /* utility function to safely escape table names */
 char *escape_string(PGconn *pgsql, const char *input)
 {

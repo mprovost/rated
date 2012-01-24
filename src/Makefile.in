@@ -39,8 +39,7 @@ host_triplet = @host@
 bin_PROGRAMS = rated$(EXEEXT)
 subdir = src
 DIST_COMMON = $(include_HEADERS) $(srcdir)/Makefile.am \
-	$(srcdir)/Makefile.in COPYING INSTALL ratedgram.c ratedtarg.c \
-	ratedtarg.h
+	$(srcdir)/Makefile.in ratedgram.c ratedtarg.c ratedtarg.h
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.in
@@ -82,7 +81,8 @@ libratedmysql_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(libratedmysql_la_LDFLAGS) $(LDFLAGS) -o $@
 libratedpgsql_la_DEPENDENCIES =
-am_libratedpgsql_la_OBJECTS = libratedpgsql_la-libratedpgsql.lo
+am_libratedpgsql_la_OBJECTS = libratedpgsql_la-libratedpgsql.lo \
+	libratedpgsql_la-rateddbiutil.lo
 libratedpgsql_la_OBJECTS = $(am_libratedpgsql_la_OBJECTS)
 libratedpgsql_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
@@ -260,7 +260,7 @@ libratedmysql_la_SOURCES = libratedmysql.c
 libratedmysql_la_CPPFLAGS = $(MYSQL_CPPFLAGS)
 libratedmysql_la_LDFLAGS = -rpath '$(libdir)'
 libratedmysql_la_LIBADD = $(MYSQL_LIB)
-libratedpgsql_la_SOURCES = libratedpgsql.c
+libratedpgsql_la_SOURCES = libratedpgsql.c rateddbiutil.c
 libratedpgsql_la_LDFLAGS = -rpath '$(libdir)'
 rated_SOURCES = ratedsnmp.c rateddbi.c rated.c ratedutil.c ratedtarg.y ratedgram.l ratedhash.c
 #rated_CPPFLAGS = $(SNMP_CPPFLAGS)
@@ -397,6 +397,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libratedmysql_la-libratedmysql.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libratedpgsql_la-libratedpgsql.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libratedpgsql_la-rateddbiutil.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rated.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rateddbi.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ratedgram.Po@am__quote@
@@ -439,6 +440,13 @@ libratedpgsql_la-libratedpgsql.lo: libratedpgsql.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='libratedpgsql.c' object='libratedpgsql_la-libratedpgsql.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libratedpgsql_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libratedpgsql_la-libratedpgsql.lo `test -f 'libratedpgsql.c' || echo '$(srcdir)/'`libratedpgsql.c
+
+libratedpgsql_la-rateddbiutil.lo: rateddbiutil.c
+@am__fastdepCC_TRUE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libratedpgsql_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libratedpgsql_la-rateddbiutil.lo -MD -MP -MF $(DEPDIR)/libratedpgsql_la-rateddbiutil.Tpo -c -o libratedpgsql_la-rateddbiutil.lo `test -f 'rateddbiutil.c' || echo '$(srcdir)/'`rateddbiutil.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/libratedpgsql_la-rateddbiutil.Tpo $(DEPDIR)/libratedpgsql_la-rateddbiutil.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='rateddbiutil.c' object='libratedpgsql_la-rateddbiutil.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL)  --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libratedpgsql_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libratedpgsql_la-rateddbiutil.lo `test -f 'rateddbiutil.c' || echo '$(srcdir)/'`rateddbiutil.c
 
 .l.c:
 	$(am__skiplex) $(SHELL) $(YLWRAP) $< $(LEX_OUTPUT_ROOT).c $@ -- $(LEXCOMPILE)

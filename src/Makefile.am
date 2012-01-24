@@ -13,7 +13,7 @@ libratedmysql_la_CPPFLAGS = $(MYSQL_CPPFLAGS)
 libratedmysql_la_LDFLAGS  = -rpath '$(libdir)'
 libratedmysql_la_LIBADD    = $(MYSQL_LIB)
 
-libratedpgsql_la_SOURCES  = libratedpgsql.c
+libratedpgsql_la_SOURCES  = libratedpgsql.c rateddbiutil.c
 libratedpgsql_la_LDFLAGS  = -rpath '$(libdir)'
 
 rated_SOURCES  = ratedsnmp.c rateddbi.c rated.c ratedutil.c ratedtarg.y ratedgram.l ratedhash.c
