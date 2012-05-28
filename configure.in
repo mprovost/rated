@@ -76,6 +76,7 @@ AC_CHECK_LIB(ltdl, lt_dlopen,[],[AC_MSG_ERROR(Cannot link with libtool libs! (li
 
 dnl Checks for header files.
 AC_HEADER_STDC
+AC_CHECK_HEADER(ltdl.h)
 AC_CHECK_HEADERS(malloc.h math.h syslog.h ctype.h sys/time.h netinet/in.h unistd.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.

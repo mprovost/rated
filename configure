@@ -11503,6 +11503,12 @@ $as_echo "#define STDC_HEADERS 1" >>confdefs.h
 
 fi
 
+ac_fn_c_check_header_mongrel "$LINENO" "ltdl.h" "ac_cv_header_ltdl_h" "$ac_includes_default"
+if test "x$ac_cv_header_ltdl_h" = x""yes; then :
+
+fi
+
+
 for ac_header in malloc.h math.h syslog.h ctype.h sys/time.h netinet/in.h unistd.h
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`

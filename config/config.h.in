@@ -48,6 +48,15 @@
 /* Define to 1 if you have the <netinet/in.h> header file. */
 #undef HAVE_NETINET_IN_H
 
+/* Define to 1 if you have the <net-snmp/config_api.h> header file. */
+#undef HAVE_NET_SNMP_CONFIG_API_H
+
+/* Define to 1 if you have the <net-snmp/net-snmp-includes.h> header file. */
+#undef HAVE_NET_SNMP_NET_SNMP_INCLUDES_H
+
+/* Define to 1 if you have the <net-snmp/session_api.h> header file. */
+#undef HAVE_NET_SNMP_SESSION_API_H
+
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
 
