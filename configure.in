@@ -158,7 +158,8 @@ AS_IF([test "x$with_pgsql" != "xno"],
         )
         CPPFLAGS=$OLD_CPPFLAGS
     fi
-    ]
+    ],
+    [AC_MSG_RESULT(no)]
 )
 dnl ****************** End Postgres checking ***********************
 
@@ -203,7 +204,8 @@ AS_IF([test "x$with_mysql" != "xno"],
     else
         AC_MSG_WARN([mysql not found. Use --with-mysql to specify non-default path.])
     fi
-    ]
+    ],
+    [AC_MSG_RESULT(no)]
 )
 dnl ****************** End MySQL checking ***********************
 

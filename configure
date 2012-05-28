@@ -12043,6 +12043,9 @@ fi
         CPPFLAGS=$OLD_CPPFLAGS
     fi
 
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 
 fi
 
@@ -12134,6 +12137,9 @@ fi
 $as_echo "$as_me: WARNING: mysql not found. Use --with-mysql to specify non-default path." >&2;}
     fi
 
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 
 fi
 
