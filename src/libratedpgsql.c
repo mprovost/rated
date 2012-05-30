@@ -156,7 +156,7 @@ int __db_insert(const char *table_esc, unsigned long iid, struct timeval current
 
 	char *query;
         char now[20];
-	ExecStatusType status;
+	int status;
 
 	PGresult *result;
 
@@ -184,49 +184,70 @@ int __db_insert(const char *table_esc, unsigned long iid, struct timeval current
 
 	result = PQexec(pgsql, query);
 
-	free(query);
-
-	status = PQresultStatus(result);
+        if (PQresultStatus(result) == PGRES_COMMAND_OK) {
+            status = TRUE;
+        } else {
+            status = FALSE;
+            /* Note that by libpq convention, a non-empty PQerrorMessage will include a trailing newline. */
+            /* also errors start with 'ERROR:' so we don't need to */
+            debug(LOW, "Postgres %s%s\n", PQerrorMessage(pgsql), query);
+	}
 
 	/* free the result */
 	(void)PQclear(result);
+	free(query);
 
-        if (status == PGRES_COMMAND_OK) {
-            return TRUE;
-        } else {
-            /* Note that by libpq convention, a non-empty PQerrorMessage will include a trailing newline. */
-            /* also errors start with 'ERROR:' so we don't need to */
-            debug(LOW, "Postgres %s", PQerrorMessage(pgsql));
-
-            return FALSE;
-	}
+        return(status);
 }
 
 /*
  * insert an (escaped) snmp oid into the database and update the iid
  */
 int db_insert_oid(PGconn *pgsql, const char *oid_esc, unsigned long *iid) {
-    int status;
+    int status = FALSE;
     char *query;
     PGresult *result;
 
+
     asprintf(&query,
-        "INSERT INTO \"oids\" (oid) VALUES (\'%s\') RETURNING iid",
-        oid_esc);
+        "INSERT INTO \"oids\" (oid) (SELECT \'%s\' AS oid WHERE NOT EXISTS (SELECT 1 FROM \"oids\" WHERE oid=\'%s\')) RETURNING iid",
+        oid_esc, oid_esc);
     debug(HIGH, "Query = %s\n", query);
 
+    result = PQexec(pgsql, "BEGIN");
+    (void)PQclear(result);
     result = PQexec(pgsql, query);
-    free(query);
 
     if (PQresultStatus(result) == PGRES_TUPLES_OK) {
-        *iid = strtoul(PQgetvalue(result, 0, 0), NULL, 0);
-        status = TRUE;
-    } else {
-        debug(LOW, "Postgres %s", PQerrorMessage(pgsql));
+        if (PQntuples(result)) {
+            *iid = strtoul(PQgetvalue(result, 0, 0), NULL, 0);
+            status = TRUE;
+        } else {
+            /* no result so may have been a concurrent insert, do a select instead */
+            /* don't call db_lookup_oid because that calls back here */
+            free(query);
+            asprintf(&query,
+                "SELECT \"iid\" from \"oids\" WHERE \"oid\" = \'%s\'",
+                oid_esc);
+            debug(HIGH, "Query = %s\n", query);
+            (void)PQclear(result);
+            result = PQexec(pgsql, query);
+            if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result)) {
+                *iid = strtoul(PQgetvalue(result, 0, 0), NULL, 0);
+                status = TRUE;
+            }
+        }
+    }
+
+    if (status == FALSE) {
+        debug(LOW, "Postgres %s%s\n", PQerrorMessage(pgsql), query);
         status = FALSE;
     }
 
     (void)PQclear(result);
+    result = PQexec(pgsql, "END");
+    (void)PQclear(result);
+    free(query);
 
     return status;
 }
