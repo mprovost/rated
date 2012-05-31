@@ -161,8 +161,9 @@ int sleepy(unsigned int sleep_time, config_t *set)
         /* check if we've been signalled */
         if (quitting)
             break;
-        if (!set->daemon) {
-            debug(LOW, "%d...", i + 1);
+        /* only print out every 10 seconds */
+        if (!set->daemon && i % 10 == 0) {
+            debug(LOW, "%d...", sleep_time - i);
             fflush(NULL);
         }
         nanosleep(&ts, NULL);
