@@ -264,7 +264,7 @@ int main(int argc, char *argv[]) {
 	debug(LOW, "Poll round %d completed %llu getnexts in %lu ms (%.0f/s).\n", stats.round, polls, poll_time, rate);
         /* insert the internal poll data for this round into the rated table */
         if (set->dbon)
-            db_insert(RATED, 1, end_time, stats.polls - last_poll, rate);
+            db_insert(RATED, 0, end_time, stats.polls - last_poll, rate);
 
 	if (set->verbose >= LOW) {
             print_stats(stats, set);
