@@ -151,12 +151,13 @@ int __db_disconnect() {
  * insert a row into the db
  * this expects an escaped table name
  */
-int __db_insert(const char *table_esc, unsigned long iid, struct timeval current_time, unsigned long long insert_val, double insert_rate) {
+enum DB_RESULT __db_insert(const char *table_esc, unsigned long iid, struct timeval current_time, unsigned long long insert_val, double insert_rate) {
 	PGconn *pgsql = getpgsql();
 
 	char *query;
+        char *diag;
         char now[20];
-	int status;
+	enum DB_RESULT status;
 
 	PGresult *result;
 
@@ -185,12 +186,21 @@ int __db_insert(const char *table_esc, unsigned long iid, struct timeval current
 	result = PQexec(pgsql, query);
 
         if (PQresultStatus(result) == PGRES_COMMAND_OK) {
-            status = TRUE;
+            status = DB_OK;
         } else {
-            status = FALSE;
             /* Note that by libpq convention, a non-empty PQerrorMessage will include a trailing newline. */
             /* also errors start with 'ERROR:' so we don't need to */
-            debug(LOW, "Postgres %s%s\n", PQerrorMessage(pgsql), query);
+            debug(LOW, "Postgres (%s) %s%s\n", PQresultErrorField(result, PG_DIAG_SQLSTATE), PQerrorMessage(pgsql), query);
+
+            diag = PQresultErrorField(result, PG_DIAG_SQLSTATE);
+
+            if (strncmp(diag, "22003", 5) == 0) {
+                /* NUMERIC VALUE OUT OF RANGE */
+                /* this can happen because postgres doesn't have unsigned integers */
+                status = DB_OOR;
+            } else {
+                status = DB_RETRY;
+            }
 	}
 
 	/* free the result */

@@ -340,6 +340,7 @@ int do_insert(worker_t *worker, int db_reconnect, unsigned long long result, get
     crew_t *crew = worker->crew;
     unsigned long long insert_val = 0;
     double rate = 0;
+    int status;
     int db_error = FALSE;
 
     /* zero delta */
@@ -435,12 +436,22 @@ int do_insert(worker_t *worker, int db_reconnect, unsigned long long result, get
 
             tdebug(DEVELOP, "db_insert sent: %s %lu %lu %llu %.15f\n", host->host_esc, getnext->iid, tv2ms(current_time), insert_val, rate);
             /* insert into the database */
-            if (db_insert(host->host_esc, getnext->iid, current_time, insert_val, rate)) {
+            status = db_insert(host->host_esc, getnext->iid, current_time, insert_val, rate);
+            if (status == DB_OK) {
                 PT_MUTEX_LOCK(&stats.mutex);
                 stats.db_inserts++;
                 PT_MUTEX_UNLOCK(&stats.mutex);
             } else {
-                db_error = TRUE;
+                if (status == DB_OOR) {
+                    tdebug(LOW, "db_insert out of range: %llu\n", insert_val);
+                    PT_MUTEX_LOCK(&stats.mutex);
+                    stats.db_oor++;
+                    PT_MUTEX_UNLOCK(&stats.mutex);
+                    /* leave db_error false so that we reset the poll */
+                    /* basically we've lost the data from the last poll, it won't go into the db so don't retry */
+                } else {
+                    db_error = TRUE;
+                }
             } /* db_insert */
         } /* zero */
     } /* dbon */

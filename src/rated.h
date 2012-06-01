@@ -118,6 +118,7 @@ typedef struct poll_stats {
     unsigned long long polls;
     unsigned long long db_inserts;
     unsigned long long db_errors;
+    unsigned long long db_oor;
     unsigned int zero;
     unsigned int wraps;
     unsigned int wraps64;
