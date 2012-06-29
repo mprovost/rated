@@ -9,6 +9,8 @@
 
 #include <sys/param.h>
 
+#define db_debug(level,x...) do {if (set->verbose >= level) {if (set->daemon) sysloginfo(x); else {fprintf(stdout, "Postgres [%u]: ", PQbackendPID(pgsql)); fprintf(stdout,x);} } } while (0)
+
 /* thread-specific global variable */
 pthread_key_t key;
 
@@ -63,7 +65,7 @@ char *escape_string(PGconn *pgsql, const char *input)
             output = NULL;
         }
 
-        debug(DEBUG, "escape_string input = '%s' output = '%s'\n", input, output);
+        db_debug(DEBUG, "escape_string input = '%s' output = '%s'\n", input, output);
 
         return output;
 }
@@ -85,7 +87,7 @@ int __db_status() {
 	if (PQstatus(pgsql) == CONNECTION_OK) {
 		return TRUE;
 	} else {
-		debug(LOW, "Postgres error: %s\n", PQerrorMessage(pgsql));
+		db_debug(LOW, "error: %s\n", PQerrorMessage(pgsql));
 		return FALSE;
 	}
 }
@@ -181,7 +183,7 @@ enum DB_RESULT __db_insert(const char *table_esc, unsigned long iid, struct time
                 table_esc, iid, now, insert_val);
         }
 
-	debug(HIGH, "Query = %s\n", query);
+	db_debug(HIGH, "Query = %s\n", query);
 
 	result = PQexec(pgsql, query);
 
@@ -190,7 +192,8 @@ enum DB_RESULT __db_insert(const char *table_esc, unsigned long iid, struct time
         } else {
             /* Note that by libpq convention, a non-empty PQerrorMessage will include a trailing newline. */
             /* also errors start with 'ERROR:' so we don't need to */
-            debug(LOW, "Postgres (%s) %s%s\n", PQresultErrorField(result, PG_DIAG_SQLSTATE), PQerrorMessage(pgsql), query);
+            db_debug(LOW, "(error code %s) %s", PQresultErrorField(result, PG_DIAG_SQLSTATE), PQerrorMessage(pgsql));
+            db_debug(LOW, "%s\n", query);
 
             diag = PQresultErrorField(result, PG_DIAG_SQLSTATE);
 
@@ -222,7 +225,7 @@ int db_insert_oid(PGconn *pgsql, const char *oid_esc, unsigned long *iid) {
     asprintf(&query,
         "INSERT INTO \"oids\" (oid) (SELECT \'%s\' AS oid WHERE NOT EXISTS (SELECT 1 FROM \"oids\" WHERE oid=\'%s\')) RETURNING iid",
         oid_esc, oid_esc);
-    debug(HIGH, "Query = %s\n", query);
+    db_debug(HIGH, "Query = %s\n", query);
 
     result = PQexec(pgsql, "BEGIN");
     (void)PQclear(result);
@@ -239,7 +242,7 @@ int db_insert_oid(PGconn *pgsql, const char *oid_esc, unsigned long *iid) {
             asprintf(&query,
                 "SELECT \"iid\" from \"oids\" WHERE \"oid\" = \'%s\'",
                 oid_esc);
-            debug(HIGH, "Query = %s\n", query);
+            db_debug(HIGH, "Query = %s\n", query);
             (void)PQclear(result);
             result = PQexec(pgsql, query);
             if (PQresultStatus(result) == PGRES_TUPLES_OK && PQntuples(result)) {
@@ -250,7 +253,7 @@ int db_insert_oid(PGconn *pgsql, const char *oid_esc, unsigned long *iid) {
     }
 
     if (status == FALSE) {
-        debug(LOW, "Postgres %s%s\n", PQerrorMessage(pgsql), query);
+        db_debug(LOW, "%s%s\n", PQerrorMessage(pgsql), query);
         status = FALSE;
     }
 
@@ -271,12 +274,12 @@ int __db_lookup_oid(const char *oid, unsigned long *iid) {
     PGresult *result;
 
     oid_esc = escape_string(pgsql, oid);
-    debug(DEBUG, "oid_esc = %s\n", oid_esc);
+    db_debug(DEBUG, "oid_esc = %s\n", oid_esc);
 
     asprintf(&query,
         "SELECT \"iid\" from \"oids\" WHERE \"oid\" = \'%s\'",
         oid_esc);
-    debug(HIGH, "Query = %s\n", query);
+    db_debug(HIGH, "Query = %s\n", query);
 
     result = PQexec(pgsql, query);
     free(query);
@@ -285,7 +288,7 @@ int __db_lookup_oid(const char *oid, unsigned long *iid) {
         switch (PQntuples(result)) {
             case 1:
                 *iid = strtoul(PQgetvalue(result, 0, 0), NULL, 0);
-                debug(DEBUG, "iid = %lu\n", *iid);
+                db_debug(DEBUG, "iid = %lu\n", *iid);
                 status = TRUE;
                 break;
             case 0:
@@ -293,11 +296,11 @@ int __db_lookup_oid(const char *oid, unsigned long *iid) {
                 break;
             default:
                 /* this shouldn't happen */
-                debug(DEBUG, "oid '%s' ntuples = %i\n", oid_esc, PQntuples(result));
+                db_debug(DEBUG, "oid '%s' ntuples = %i\n", oid_esc, PQntuples(result));
                 status = FALSE;
         }
     } else {
-        debug(LOW, "Postgres %s", PQerrorMessage(pgsql));
+        db_debug(LOW, "%s", PQerrorMessage(pgsql));
         status = FALSE;
     }
 
@@ -321,7 +324,8 @@ int db_unsafe_check_table(PGconn *pgsql, const char *table) {
         "SELECT \"table_name\" FROM information_schema.tables WHERE table_catalog = '%s' AND table_schema = current_schema() AND table_name = '%s'",
         db, table);
 
-    debug(HIGH, "Query = %s\n", query);
+    db_debug(HIGH, "Query = %s\n", query);
+
     result = PQexec(pgsql, query);
     free(query);
 
@@ -334,7 +338,7 @@ int db_unsafe_check_table(PGconn *pgsql, const char *table) {
             status = FALSE;
         }
     } else {
-        debug(LOW, "Postgres %s", PQerrorMessage(pgsql));
+        db_debug(LOW, "%s", PQerrorMessage(pgsql));
         status = FALSE;
     }
 
@@ -353,7 +357,7 @@ int db_exec_command(PGconn *pgsql, const char *query) {
     if (PQresultStatus(result) == PGRES_COMMAND_OK) {
         status = TRUE;
     } else {
-        debug(LOW, "Postgres %s", PQerrorMessage(pgsql));
+        db_debug(LOW, "%s", PQerrorMessage(pgsql));
         status = FALSE;
     }
 
@@ -382,13 +386,13 @@ char *__db_check_and_create_data_table(const char *table) {
     /* first check if it already exists */
     if (!db_unsafe_check_table(pgsql, table_esc)) {
         asprintf(&query, create, table_esc);
-        debug(LOW, "\'%s\' table not found, creating\n", table_esc);
-        debug(HIGH, "Query = %s\n", query);
+        db_debug(LOW, "\'%s\' table not found, creating\n", table_esc);
+        db_debug(HIGH, "Query = %s\n", query);
 
         if (db_exec_command(pgsql, query)) {
             free(query);
             asprintf(&query, index, table_esc, table_esc);
-            debug(HIGH, "Query = %s\n", query);
+            db_debug(HIGH, "Query = %s\n", query);
             if (!db_exec_command(pgsql, query)) {
                 free(table_esc);
                 table_esc = NULL;
@@ -420,8 +424,8 @@ int __db_check_and_create_oids_table(const char *table) {
         status = TRUE;
     } else {
         asprintf(&query, create, table);
-        debug(LOW, "oids table not found, creating\n");
-        debug(HIGH, "Query = %s\n", query);
+        db_debug(LOW, "oids table not found, creating\n");
+        db_debug(HIGH, "Query = %s\n", query);
 
         if (db_exec_command(pgsql, query)) {
             status = TRUE;
