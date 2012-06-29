@@ -210,6 +210,8 @@ int main(int argc, char *argv[]) {
             debug(LOW, "Quitting: received signal %i.\n", quit_signal);
             if (set->dbon)
                 db_disconnect();
+            /* one final stat output */
+            print_stats(stats, set);
             unlink(pid_file);
             exit(1);
 	} else if (waiting) {
