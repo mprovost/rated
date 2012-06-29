@@ -384,8 +384,14 @@ int do_insert(worker_t *worker, int db_reconnect, unsigned long long result, get
         PT_MUTEX_UNLOCK(&stats.mutex);
 
         if (insert_val) {
-            tdebug(LOW, "*** Counter Wrap (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
-                oid_string, host->host, result, getnext->last_value, insert_val);
+            if (bits == 32) {
+                tdebug(LOW, "*** Counter Wrap (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
+                    oid_string, host->host, result, getnext->last_value, insert_val);
+            } else {
+                tdebug(LOW, "*** Counter Wrap 64 (%s@%s) [poll: %llu][last: %llu][insert: %llu]\n",
+                    oid_string, host->host, result, getnext->last_value, insert_val);
+            }
+
             rate = insert_val / timediff(current_time, getnext->last_time);
         } else {
             tdebug(LOW, "*** Off by one (%s@%s): %llu - %llu == 1\n", oid_string, host->host, getnext->last_value, result);
