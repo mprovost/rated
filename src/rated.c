@@ -46,6 +46,7 @@ int main(int argc, char *argv[]) {
     unsigned long long last_poll;
     double rate;
     char *conf_file = NULL;
+    char *table;
     char errstr[BUFSIZE];
     int ch, i, freed;
     struct timespec ts;
@@ -153,8 +154,11 @@ int main(int argc, char *argv[]) {
             fatal("** Database error - check configuration.\n");
 
         /* create our own internal tables */
-        if (!db_check_and_create_data_table(RATED))
+        table = db_check_and_create_data_table(RATED);
+        if (table == NULL)
             fatal("** Database error - couldn't create rated table.\n");
+        else
+            free(table);
         if (!db_check_and_create_oids_table(OIDS))
             fatal("** Database error - couldn't create oids table.\n");
     }
