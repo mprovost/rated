@@ -197,7 +197,7 @@ enum DB_RESULT __db_insert(const char *table_esc, unsigned long iid, struct time
 
             diag = PQresultErrorField(result, PG_DIAG_SQLSTATE);
 
-            if (strncmp(diag, "22003", 5) == 0) {
+            if (diag && strncmp(diag, "22003", 5) == 0) {
                 /* NUMERIC VALUE OUT OF RANGE */
                 /* this can happen because postgres doesn't have unsigned integers */
                 status = DB_OOR;
